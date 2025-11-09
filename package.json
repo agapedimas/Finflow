@@ -1,0 +1,23 @@
+{
+	"name": "nodejs",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"axios": "^1.11.0",
+		"body-parser": "^1.20.3",
+		"express": "^4.18.2",
+		"express-fileupload": "^1.5.2",
+		"express-mysql-session": "^3.0.3",
+		"express-session": "^1.17.3",
+		"jimp": "^1.6.0",
+		"mysql": "^2.18.1",
+		"webp-converter": "^2.3.3"
+	}
+}
