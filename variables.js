@@ -2,18 +2,17 @@ const isProduction = (process.env.NODE_ENV == "production");
 const Variables = 
 {
     Production: isProduction,
-	Version: "1.0.0",
+	Version: "1.0.1",
 
-	AppIcon: "/icon_logo.ico",
-	AppTitle: "App",
-	AppTitleAdmin: "App for Admin",
+	AppIcon: "/assets/icon_logo.ico",
+	AppTitle: "Finflow",
 
 	AppThumbnail: "",
-	AppAssets: isProduction ? "https://assets.agapedimas.com" : "http://localhost:1202",
+	AppAssets: "https://assets.agapedimas.com",
 	
-	WebHost: "https://app.agapedimas.com",
+	WebHost: "https://finflow.agapedimas.com",
 	WebHomepage: "/home",
-	WebPing: isProduction ? "https://app.agapedimas.com/ping" : "http://localhost:7199/ping",
+	WebPing: isProduction ? "https://finflow.agapedimas.com/ping" : "http://localhost:7199/ping",
 }
 
 module.exports = Variables;

@@ -49,7 +49,7 @@ async function Configure()
     {
 		if (req.session.language == null)
 		{
-			let lang = req.acceptsLanguages(["id"]);
+			let lang = req.acceptsLanguages(Language.Available);
 
 			if (lang && typeof lang == "String")
 			{

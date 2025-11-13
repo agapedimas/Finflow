@@ -5,41 +5,13 @@ const Authentication =
     /**
      * Check if account has listed in authentication list
      * @param { string } sessionId Id of session
-     * @param { Array<string>? | } roles Allowed roles
      * @returns { Promise<boolean> } @true if user has access, otherwise @false
      */
-    HasAccess: async function(sessionId, roles)
+    HasAccess: async function(sessionId)
     {
-        let query;
-        let param = [];
-        
-        if (roles)
-        {
-            if (typeof roles == "string")
-                roles = [roles];
-
-            query = "SELECT authentication.id FROM authentication JOIN accounts ON accounts.id = authentication.user WHERE authentication.id=? AND (" ;
-            param.push(sessionId);
-
-            for (let i = 0; i < roles.length; i++)
-            {
-                query += "accounts.role=?";
-                param.push(roles[i]);
-
-                if (i < roles.length - 1)
-                    query += " OR ";
-            }
-
-            query += ")";
-        }
-        else
-        {
-            query = "SELECT id FROM authentication WHERE id=?";
-            param.push(sessionId);
-        }
-
-        query += " LIMIT 1";
-        const results = await SQL.Query(query, param);
+        let query = "SELECT id FROM authentication WHERE id=? LIMIT 1";
+        let param = sessionId;
+        const results = await SQL.Query(query, [param]);
         
         return results.data?.length > 0;
     },

@@ -1,5 +1,6 @@
 const FileIO = require("fs");
 const Path = require("path");
+const Variables = require("./variables");
 const Path_Language = "./src/languages/";
 
 /**
@@ -7,19 +8,50 @@ const Path_Language = "./src/languages/";
  */
 function Initialize() 
 {
+	if (FileIO.existsSync(Path_Language) == false)
+		return;
+
+	
 	const languages = FileIO.readdirSync(Path_Language);
 	for (let i = 0; i < languages.length; i++)
 	{
 		const language =  languages[i];
 		Languages[i] = language;
-		Data[language] = {};
+		
+		/** @type { Array<string> } */
 		const components = FileIO.readdirSync(Path_Language + language);
-		for (let component of components)
-		{
-			let name = Path.parse(component).name;
-			let value = FileIO.readFileSync(Path_Language + language + "\/" + component, { encoding: "utf8" });
 
-			Data[language][name] = JSON.parse(value.toString());
+		if (Variables.Production) 
+		{			
+			Data[language] = {};
+			for (let component of components)
+			{
+				// make sure only read json file
+				if (component.endsWith(".json") == false)
+					continue;
+				
+				let name = Path.parse(component).name;
+				let value = FileIO.readFileSync(Path_Language + language + "\/" + component, { encoding: "utf8" });
+
+				Data[language][name] = JSON.parse(value.toString());
+			}
+		}
+		else 
+		{
+			localDataLang = {};
+			Data[language];
+
+			module.exports.Data[language] = new Proxy(Data, 
+			{
+				get(target, property) 
+				{
+					const component = components.find(o => o == property + ".json");
+					if (component == null) 
+						return;
+					const content = FileIO.readFileSync(Path_Language + language + "\/" + component, { encoding: "utf8" });
+					return JSON.parse(content.toString());
+				}
+			});
 		}
 	}
 }
@@ -47,7 +79,6 @@ function Compile(content, language)
 			content = content.replaceAll(prefix, replacement);
 		}
 	}
-
 	return content;
 }
 

@@ -1,16 +1,16 @@
-<ad-title>Sign in - Admin</ad-title>
+<ad-title><$ signin title /></ad-title>
 
 <div class="panel" theme="light" accent="red">
     <img src="<#? appassets ?#>/icon_text.png"/>
-    <div class="title"><#? apptitle ?#> for Admin</div>
-    <div class="subtitle">Access as administrator and post practice drills for students</div>
+    <div class="title"><#? apptitle ?#></div>
+    <div class="subtitle"><$ signin description /></div>
     <div class="inputs">
-        <input type="text" id="Input_Username" placeholder="Username" name="username" autofocus/>
-        <input type="password" id="Input_Password" placeholder="Password" name="password"/>
+        <input type="text" id="Input_Username" placeholder="<$ generic username />" name="username" autofocus/>
+        <input type="password" id="Input_Password" placeholder="<$ generic password />" name="password"/>
         <span class="error"></span>
         <button class="accent" id="Button_SignIn" disabled>
             <div class="progressring"></div>
-            <span>Sign in</span>
+            <span><$ signin title /></span>
         </button>
     </div>
 </div>
@@ -129,36 +129,36 @@
             { 
                 username: Input_Username.value, 
                 password: Input_Password.value
-            }
-        })
-        .done(function(data) 
-        {
-            window.location.replace("/admin/");
-        })
-        .fail(function(data, err) 
-        {
-            $(".panel").removeClass("loading");
-            $(".panel .inputs input, .panel .inputs button").removeAttr("disabled");
-            
-            if (data.status == 401)
+            },
+            success: function()
             {
-                $(".panel .inputs .error").html("Incorrect username or password");
-            }
-            else if (data.status == 0)
+                window.location.replace("/client");
+            },
+            error: function(error)
             {
-                $(".panel .inputs .error").html("Connect to internet");
-            }
-            else if (data.status >= 500 && data.status < 600)
-            {
-                $(".panel .inputs .error").html("We're having trouble right now. Please try again later.");
-            }
-            else
-            {
-                $(".panel .inputs .error").html("Something went wrong");
-            }
+                $(".panel").removeClass("loading");
+                $(".panel .inputs input, .panel .inputs button").removeAttr("disabled");
+                
+                if (error.status == 401)
+                {
+                    $(".panel .inputs .error").html("<$ signin error_incorrect />");
+                }
+                else if (error.status == 0)
+                {
+                    $(".panel .inputs .error").html("<$ signin error_nointernet />");
+                }
+                else if (error.status >= 500 && error.status < 600)
+                {
+                    $(".panel .inputs .error").html("<$ signin error_server />");
+                }
+                else
+                {
+                    $(".panel .inputs .error").html("<$ signin error_generic />");
+                }
 
-            $(".panel .inputs .error").show();
-            Input_Username.focus();
-        });
+                $(".panel .inputs .error").show();
+                Input_Username.focus();
+            }
+        })
     }
 </script>

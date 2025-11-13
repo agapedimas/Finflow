@@ -12,21 +12,6 @@ const Functions =
 	 */
 	Initialize: function()
 	{
-		const check = async function()
-		{
-			try
-			{
-				await Axios.post(Variables.WebPing);
-			}
-			catch
-			{
-				console.error("Server shut down"); 
-				process.exit(); 
-			}
-		}
-			
-		// check every 5 minutes
-		setInterval(check, 1000 * 60 * 5);
 	},
 	Administrator_Log: async function(userid, type, from, to, reference)
 	{
@@ -108,7 +93,7 @@ const Functions =
 		});
 	},
 	/**
-	 * @param { string } type Type of page, admin, games, or general
+	 * @param { string } type Type of page, client, games, or general
 	 * @param { string } body Body of page
 	 * @param { string } language Preferred language of page
 	 * @param { string } path Path of page
@@ -123,10 +108,10 @@ const Functions =
 				"<!DOCTYPE html>" +
 					"<html " + Template.Data.Configuration + ">" +
 						"<head>" +
-							(type == "admin" ? Template.Data.Head_Admin : Template.Data.Head) +
+							(type == "client" ? Template.Data.Head_Client : Template.Data.Head) +
 						"</head>" +
 						"<body>" +
-							(type == "admin" ? Template.Data.Body_Admin : Template.Data.Body) +
+							(type == "client" ? Template.Data.Body_Client : Template.Data.Body) +
 							Template.Data.Title +
 						"</body>" +
 					"</html>";
@@ -142,7 +127,7 @@ const Functions =
 		body = 
 			body
 				.replace("<#? content ?#>", content)
-				.replace("<#? navigation ?#>", (type == "admin" ? Template.Data.Navigation_Admin : Template.Data.Navigation))
+				.replace("<#? navigation ?#>", (type == "client" ? Template.Data.Navigation_Client : Template.Data.Navigation))
 				.replace("<#? appsettings ?#>", Template.Data.Settings)
 				.replaceAll("<#? applang ?#>", language)
 				.replaceAll("<#? apptitle ?#>", Variables.AppTitle)
@@ -211,7 +196,7 @@ const Functions =
 	 */
 	Server_Start: function (Server)
 	{
-		Server.listen(3000, () =>  
+		Server.listen(1111, () =>  
 		{
 			if (Variables.Production)
 			{
@@ -219,7 +204,7 @@ const Functions =
 			}
 			else
 			{
-				console.log("Server for development is ready. Go to http://localhost:3000");
+				console.log("Server for development is ready. Go to http://localhost:1111");
 				console.error("This server is running under development mode. Please switch to production as soon as possible since it's vulnerable.");
 			}
 		});

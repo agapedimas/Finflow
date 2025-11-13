@@ -1,0 +1,51 @@
+<section class="desktop">
+	<div class="navigation">
+		<a goto="/client/home">
+			<span class='icon'>&#xfe8a;</span>
+			<span><$ home title /></span>
+		</a>
+		<a goto="/client/cashflow">
+			<span class='icon'>&#xef0e;</span>
+			<span><$ cashflow title /></span>
+		</a>
+		<a goto="/client/parentportal">
+			<span class='icon'>&#xf7ec;</span>
+			<span><$ parentportal title /></span>
+		</a>
+		<a goto="/client/assistant">
+			<span class='icon'>&#xfb45;</span>
+			<span><$ assistant title /></span>
+		</a>
+	</div> 
+	<div class="footer">
+		<a goto="/client/settings">
+			<span class='icon'>&#xf337;</span>
+			<span><$ settings title /></span>
+		</a>
+		<a goto="/client/settings/">
+			<img class="icon" src="/avatar/<#? activeuser.id ?#>?avatarversion=<#? activeuser.avatarversion ?#>"/>
+			<span><#? activeuser.nickname ?#></span>
+		</a>
+	</div>
+</section>
+
+<section class="mobile">
+	<span class="navigation">	
+		<a goto="/client/home">
+			<span class='icon'>&#xfe8b;</span>
+			<span><$ home title /></span>
+		</a>
+		<a goto="/client/cashflow">
+			<span class='icon'>&#xef0e;</span>
+			<span><$ cashflow title /></span>
+		</a>
+		<a goto="/client/parentportal">
+			<span class='icon'>&#xf7e8;</span>
+			<span><$ parentportal title /></span>
+		</a>
+		<a goto="/client/settings">
+			<span class='icon'>&#xf337;</span>
+			<span><$ settings title /></span>
+		</a>
+	</span> 
+</section>

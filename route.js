@@ -19,7 +19,7 @@ function Route(Server)
             res.send();
         });
 
-        Server.post("/admin/signin", async function(req, res)
+        Server.post("/client/signin", async function(req, res)
         {
             const valid = await Authentication.CheckCredentials(req.body.username, req.body.password);
 
@@ -36,23 +36,23 @@ function Route(Server)
             }
         });
 
-        Server.get("/admin/signout", async function(req, res)
+        Server.get("/client/signout", async function(req, res)
         {
             if (req.session.account)
             {
                 await Authentication.Remove(req.session.account);
-                delete req.session["admin"];
+                delete req.session["client"];
             }
 
-            res.redirect("/admin/signin");
+            res.redirect("/client/signin");
         });
 
-        Server.get("/admin*", async function(req, res, next)
+        Server.get("/client*", async function(req, res, next)
         {
             const path = req.url;
-            const hasAccess = await Authentication.HasAccess(req.session.account, ["editor", "admin"]);
+            const hasAccess = await Authentication.HasAccess(req.session.account);
 
-            if (hasAccess == false && path != "/admin/signin" && path != "/admin/manifest.json")
+            if (hasAccess == false && path != "/client/signin" && path != "/client/manifest.json")
             {
                 if (path.endsWith(".js") || path.endsWith(".css"))
                 {
@@ -62,12 +62,12 @@ function Route(Server)
                 else
                 {
                     req.session.redirect = req.url;
-                    return res.redirect("/admin/signin");
+                    return res.redirect("/client/signin");
                 }
             }
             else if (hasAccess == true)
             {
-                if (path == "/admin" || path == "/admin/signin")
+                if (path == "/client" || path == "/client/signin")
                 {
                     const redirect = req.session.redirect;
                     req.session.redirect = null;
@@ -75,7 +75,7 @@ function Route(Server)
                     if (redirect)
                         return res.redirect(redirect);
                     else
-                        return res.redirect("/admin" + Variables.WebHomepage);
+                        return res.redirect("/client" + Variables.WebHomepage);
                 }
 
                 const id = await Authentication.GetAccountId(req.session.account);
@@ -87,8 +87,6 @@ function Route(Server)
                         "activeuser.id": account[0].id,
                         "activeuser.nickname": account[0].nickname || account[0].username,
                         "activeuser.username": account[0].username,
-                        "activeuser.role": account[0].role,
-                        "activeuser.role.name": Language.Data[req.session.language]["roles"][account[0].role],
                         "activeuser.url": account[0].url,
                         "activeuser.avatarversion": account[0].avatarversion
                     }
@@ -98,12 +96,12 @@ function Route(Server)
             next();
         });
 
-        Server.post("/admin*", async function(req, res, next)
+        Server.post("/client*", async function(req, res, next)
         {
             const path = req.url;
-            if (await Authentication.HasAccess(req.session.account, ["editor", "admin"]) == false && path != "/admin/signin")
+            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
             {
-                res.status(403).send(language.Data[req.session.language]["signin"]["error_signin"]);
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
             }
             else
             {
@@ -111,12 +109,12 @@ function Route(Server)
             }
         });
 
-        Server.put("/admin*", async function(req, res, next)
+        Server.put("/client*", async function(req, res, next)
         {
             const path = req.url;
-            if (await Authentication.HasAccess(req.session.account, ["editor", "admin"]) == false && path != "/admin/signin")
+            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
             {
-                res.status(403).send(language.Data[req.session.language]["signin"]["error_signin"]);
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
             }
             else
             {
@@ -124,12 +122,12 @@ function Route(Server)
             }
         });
 
-        Server.patch("/admin*", async function(req, res, next)
+        Server.patch("/client*", async function(req, res, next)
         {
             const path = req.url;
-            if (await Authentication.HasAccess(req.session.account, ["editor", "admin"]) == false && path != "/admin/signin")
+            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
             {
-                res.status(403).send(language.Data[req.session.language]["signin"]["error_signin"]);
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
             }
             else
             {
@@ -137,12 +135,12 @@ function Route(Server)
             }
         });
 
-        Server.delete("/admin*", async function(req, res, next)
+        Server.delete("/client*", async function(req, res, next)
         {
             const path = req.url;
-            if (await Authentication.HasAccess(req.session.account, ["editor", "admin"]) == false && path != "/admin/signin")
+            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
             {
-                res.status(403).send(language.Data[req.session.language]["signin"]["error_signin"]);
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
             }
             else
             {
@@ -188,7 +186,56 @@ function Route(Server)
     }
 
     // CUSTOM ROUTE HERE
-    // Server.get(function(req, res) ...)
+    Server.get("/avatar/*", async function(req, res)
+    {
+        // Set cache of avatar to 1 year, because it can be refreshed with banner version query
+        res.header("Cache-Control", "public, max-age=31536000");
+        res.header("Content-Type", "image/webp");
+        
+        const paths = req.path.split("/").filter(o => o != "");
+        const avatarPath = "./src/avatars/" + paths[1];
+
+        if (FileIO.existsSync(avatarPath))
+            res.sendFile(avatarPath, { root: "./" });
+        else
+            res.sendFile("./src/avatar.webp", { root: "./" });
+    });
+
+    Server.post("/accounts/setavatar", async function(req, res)
+    {
+        const id = req.session.account;
+        const account = await Authentication.GetAccountId(id);
+
+        if (!id || !account)
+            return res.status(403).send();
+        
+        const buffer = req.files.file.data;
+
+        if (buffer.length > 2000000)
+            return res.status(400).send(language.Data[req.session.language]["accounts"]["error_avatar_toobig"]);
+        
+        const success = await Accounts.Avatars.Save(account, buffer);
+        
+        if (success)
+            res.send();
+        else
+            res.status(500).send();
+    });
+
+    Server.post("/accounts/clearavatar", async function(req, res)
+    {
+        const id = req.session.account;
+
+        if (id == null)
+            return res.status(403).send();
+        
+        const success = Accounts.Avatars.Delete(id);
+        
+        if (success)
+            res.send();
+        else
+            res.status(500).send();
+    });
 
     Map(Server);
 }
@@ -212,7 +259,7 @@ function Map(Server)
         const isCSS = path.endsWith(".css") && FileIO.existsSync(rootPath + path);
         const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
         const isImage = /(\.png|\.webp|\.jpg|\.bmp|\.jpeg)$/g.test(path);
-        const pageType = path.startsWith("admin") || req.isAdmin == true ? "admin" : "public";
+        const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
 
         if (isHTML)
         {
@@ -265,7 +312,7 @@ function Map(Server)
         const rootPath = req.filepath ? "" : "./public/";
         const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
         const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
-        const pageType = path.startsWith("admin") || req.isAdmin == true ? "admin" : "public";
+        const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
 
         if (isHTML)
         {

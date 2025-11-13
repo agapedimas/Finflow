@@ -1,15 +1,19 @@
 <script src="/script.js"></script>
-<header class="titlebar">
-	<img class="icon" src="<#? appassets ?#>/icon_logo.ico" />
-	<span class="name"><#? apptitle ?#></span>
-</header>
-<section class="root">
-	<nav>
-		<#? navigation ?#>
-	</nav>
-	<section class="main">
-		<div class="activity">
-			<#? content ?#>
+
+<div class="root">
+	<header class="titlebar">
+		<img class="brand" src="/assets/logo_text.png" />
+		<nav>
+			<#? navigation ?#>
+		</nav>
+		<div class="buttons">
+			<button class="accent" goto="/client/">
+				<span><$ signin title /></span>
+				<span class="icon">&#xf9f6;</span>
+			</button>
 		</div>
+	</header>
+	<section class="main">
+		<#? content ?#>
 	</section>
-</section>
+</div>

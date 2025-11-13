@@ -1,0 +1,18 @@
+{
+    "avatar_change": "Change avatar",
+    "avatar_upload_error_title": "Failed to Upload Avatar",
+    "avatar_upload_error_message": "Maximum file size is 2 MB.",
+    "avatar_upload_success_title": "Avatar Changed",
+    "avatar_upload_success_message": "The avatar has been set successfully.",
+
+    "create_account_title": "Create Account",
+    "create_account_error_title": "Failed to Create Account",
+    "delete_account_confirm_title": "Are you sure you want to delete this account?",
+    "delete_account_confirm_message": "This will remove their access, but any courses, topics, and problems they've created will remain available.",
+    "delete_error_title": "Deletion Failed",
+
+    "error_generic": "Something went wrong.",
+    "error_parameter_missing": "{0} must be specified.",
+    "error_create_nopermission": "You don't have permission to create an account.",
+    "error_delete_nopermission": "You don't have permission to delete an account."
+}

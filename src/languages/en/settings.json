@@ -1,0 +1,23 @@
+{
+    "title": "Settings",
+
+    "signout": "Sign Out",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "theme_system": "System Default",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "accent_color": "Accent Color",
+    "language": "Language",
+    "accounts": "Accounts",
+    "about_app": "About App",
+    "git_repository": "Git Repository",
+    "version": "Version",
+    "copyright": "Copyright",
+    "copyright_text": "All exam content is copyrighted by Universitas Katolik Parahyangan.",
+    
+    "signout_confirm_title": "Are you sure you want to sign out?",
+    "signout_confirm_message": "You can sign back in at any time.",
+
+    "error_generic": "Something went wrong."
+}

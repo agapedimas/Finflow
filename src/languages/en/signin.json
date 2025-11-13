@@ -1,0 +1,10 @@
+{
+    "title": "Sign In",
+    "description": "Access as administrator and post drills for students.",
+    
+    "error_generic": "Something went wrong",
+    "error_incorrect": "Username or password is incorrect",
+    "error_nointernet": "Connect to internet",
+    "error_server": "We're having trouble right now. Please try again later.",
+    "error_signin": "Please sign in to continue"
+}

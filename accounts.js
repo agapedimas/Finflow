@@ -11,21 +11,18 @@ const Accounts =
      * @param { {
      *      id: string?,
      *      username: string?,
-     *      role: string?
      * } } details Details of account by id, username, or role
      * @returns { Promise<Array<{
      *      id: string,
      *      username: string,
      *      nickname: string,
-     *      url: string,
      *      created: string,
-     *      role: string,
      *      avatarversion: number
      * }>> } Details of accounts 
      */
     Get: async function(details)
     {
-        let query = "SELECT id, username, nickname, url, created, role, avatarversion FROM accounts";
+        let query = "SELECT id, username, nickname, created, avatarversion FROM accounts";
         let params = [];
 
         if (details?.id)
@@ -38,11 +35,6 @@ const Accounts =
             query += " WHERE username=?";
             params.push(details.username);  
         }
-        else if (details?.role)
-        {
-            query += " WHERE role=?";
-            params.push(details.role);  
-        }
 
         const results = await SQL.Query(query, [params]);            
         return results.data || [];
@@ -50,15 +42,13 @@ const Accounts =
     /**
      * @param { string } username
      * @param { string } nickname
-     * @param { string } url
      * @param { string } password
-     * @param { string } role
      * @returns { Promise<string> } Id of account
      */
-    Add: async function(username, nickname, url, password, role)
+    Add: async function(username, nickname, password)
     {
         const id = (Date.now() * 50 + 321).toString(36);
-        await SQL.Query("INSERT INTO accounts (id, username, nickname, url, password, role) VALUES (?,?,?,?,?,?)", [id, username, nickname, url, password, role]);
+        await SQL.Query("INSERT INTO accounts (id, username, nickname, password) VALUES (?,?,?,?)", [id, username, nickname, password]);
 
         return id;
     },
@@ -85,6 +75,9 @@ const Accounts =
         {
             try
             {
+                if (FileIO.existsSync("./src/avatars") == false)
+                    FileIO.mkdirSync("./src/avatars");
+                
                 const path = "./src/avatars/" + id;
                 FileIO.writeFileSync(path + ".png", buffer);
                 

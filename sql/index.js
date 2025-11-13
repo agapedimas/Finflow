@@ -1,5 +1,5 @@
 const FileIO = require("fs");
-const MySQL = require("mysql");
+const MySQL = require("mysql2");
 const Delay = (msec) => new Promise((resolve) => setTimeout(resolve, msec));
 
 const SQL = 
@@ -13,7 +13,6 @@ const SQL =
         password: process.env.SQL_PASSWORD,
         database: process.env.SQL_DATABASE,
         charset: "utf8mb4",
-        createDatabaseTable: true,
         multipleStatements: true,
         typeCast: function(field, next)
         {
