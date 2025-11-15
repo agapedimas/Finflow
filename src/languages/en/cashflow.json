@@ -1,3 +1,16 @@
 {
-    "title": "Cashflow"
+    "title": "Cashflow",
+
+    "recap_title": "Recap",
+    "recap_budgetremaining": "Remaining Budget",
+    "recap_budgetstatus_toohigh": "Too high, you may readjust your budget plan.",
+    "recap_budgetstatus_high": "Caution! Your balance is low.",
+    "recap_budgetstatus_normal": "Looks normal. Keep up the good work.",
+    "recap_spendingtotal": "Total Spending",
+    "recap_spendingcategories": "Spending Categories",
+
+    "monthlyreport_title": "Monthly Report",
+
+    "transaction_scanbill": "Scan Bill",
+    "transaction_addmanual": "Input Manual"
 }

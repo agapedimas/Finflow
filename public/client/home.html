@@ -4,17 +4,201 @@
     <div class="title"><$ home title /></div>
 </div>
 
+<style>
+    #Cards_Budgets {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 300px;
+        gap: 10px;
+        overflow: auto;
+        margin: 0 -30px;
+        padding: 0 30px;
+        scrollbar-width: none;
+    }
+        #Cards_Budgets .card {
+            display: grid;
+            background: var(--overlay-7);
+            border-radius: 15px;
+            padding: 15px;
+        }
+            #Cards_Budgets .card .name {
+                color: var(--foreground-description);
+                letter-spacing: 0.025em;
+                font-weight: 500;
+            }
+            #Cards_Budgets .card .balance {
+                font-size: 2em;
+                font-weight: bold;
+                margin-bottom: 20px;
+            }
+            #Cards_Budgets .card .allocated {
+                font-weight: 600;
+            }
+
+    #Cards_Recommendations {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 275px;
+        gap: 10px;
+        overflow: auto;
+        margin: 0 -30px;
+        padding: 0 30px;
+        scrollbar-width: none;
+    }
+        #Cards_Recommendations .card {
+            display: grid;
+            grid-auto-rows: 275px max-content;
+            background: var(--overlay-7);
+            border-radius: 15px;
+        }
+            #Cards_Recommendations .card .description {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: auto max-content;
+                gap: 5px;
+                padding: 12px 15px;
+            }
+                #Cards_Recommendations .card .description .text {
+                }
+                #Cards_Recommendations .card .description .cta {
+                    position: relative;
+                    border-radius: 30px;
+                    text-transform: uppercase;
+                    font-size: 0.85em;
+                    letter-spacing: 0.015em;
+                    font-weight: 500;
+                    overflow: hidden;
+                }
+                    #Cards_Recommendations .card .description .cta::before {
+                        content: "";
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: var(--accent);
+                        opacity: 0.1;
+                    }
+        </style>
+
 <div class="content">
-    <section ad-header="<$ home overview />">
-        <div class="cards">
-            <div class="card">
-                <div>You've spent 50k this month</div>
-                <div class="money">Danger</div>
-            </div>
-            <div class="card">
-                <div>Your remaining balance</div>
-                <div class="money">50k</div>
-            </div>
-        </div>
+    <section ad-header="<$ home budgets_title />">
+        <div id="Cards_Budgets" class="cards"></div>
+    </section>
+    <section ad-header="<$ home recommendations_title />">
+        <div id="Cards_Recommendations" class="cards"></div>
     </section>
 </div>
+
+<script>
+    const DUMMY_CARDSBUDGETS = [
+        {
+            "id": "1",          
+            "name": "Parent",   
+            "balance": 259000,  
+            "allocated": 50000  
+        },
+        {
+            "id": "2",          
+            "name": "Scholarship",   
+            "balance": 952000,  
+            "allocated": 3200000  
+        }
+    ]
+
+    const DUMMY_RECOMMENDATIONS = [
+        {
+            "id": "1",
+            "text": "Plan your budget before the October ends.",
+            "cta": "Go",
+            "url": "/client/budgetplan/"
+        },
+        {
+            "id": "2",
+            "text": "Overbudget? Ask assistant with no worries.",
+            "cta": "Ask",
+            "url": "/client/assistant/"
+        },
+        {
+            "id": "3",
+            "text": "Need comfy food? Find places to eat.",
+            "cta": "Check",
+            "url": "https://maps.google.com"
+        },
+        {
+            "id": "4",
+            "text": "Activate 2FA to enhance security.",
+            "cta": "Begin",
+            "url": "/client/settings"
+        }
+    ]
+
+    initializeBudgetCards();
+    initializeRecommendationCards();
+
+    async function initializeBudgetCards() {
+        // fetch data from '/client/budgets'
+        const budgets = DUMMY_CARDSBUDGETS || await $.get("/client/budgets");
+
+        // create card for each budget
+        for (const budget of budgets) {
+            const nameElement = document.createElement("span");
+            nameElement.classList.add("name");
+            nameElement.innerText = budget.name;
+
+            let balanceFormat = "Rp" + budget.balance.toLocaleString(document.documentElement.lang);
+            const balanceElement = document.createElement("span");
+            balanceElement.classList.add("balance");
+            balanceElement.innerText = balanceFormat;
+            
+            let allocatedFormat = "Rp" + budget.allocated.toLocaleString(document.documentElement.lang);
+            const allocatedElement = document.createElement("span");
+            allocatedElement.classList.add("allocated");
+            allocatedElement.innerText = "<$ home budgets_allocatedfor />".format(allocatedFormat);
+
+            const containerElement = document.createElement("div");
+            containerElement.classList.add("card");
+            containerElement.append(nameElement);
+            containerElement.append(balanceElement);
+            containerElement.append(allocatedElement);
+
+            // append to cards container
+            Cards_Budgets.append(containerElement);
+        }
+    }
+
+    async function initializeRecommendationCards() {
+        // fetch data from '/client/recommendations'
+        const recommendations = DUMMY_RECOMMENDATIONS || await $.get("/client/recommendations");
+
+        // create card for each recommendation
+        for (const recommendation of recommendations) {
+            const thumbnailElement = document.createElement("img");
+            thumbnailElement.classList.add("thumbnail");
+            thumbnailElement.src = "/recommendations/thumbnails/" + recommendation.id;
+
+            const textElement = document.createElement("span");
+            textElement.classList.add("text");
+            textElement.innerText = recommendation.text;
+
+            const ctaElement = document.createElement("button");
+            ctaElement.classList.add("cta");
+            ctaElement.classList.add("plain");
+            ctaElement.innerText = recommendation.cta;
+            ctaElement.setAttribute("goto", recommendation.url);
+
+            const descriptionGroupElement = document.createElement("div");
+            descriptionGroupElement.classList.add("description");
+            descriptionGroupElement.append(textElement);
+            descriptionGroupElement.append(ctaElement);
+
+            const containerElement = document.createElement("card");
+            containerElement.classList.add("card");
+            containerElement.append(thumbnailElement);
+            containerElement.append(descriptionGroupElement);
+
+            // append to cards container
+            Cards_Recommendations.append(containerElement);
+        }
+    }
+</script>

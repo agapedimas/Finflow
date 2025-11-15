@@ -1,5 +1,8 @@
 {
     "title": "Home",
 
-    "overview": "Overview"
+    "budgets_title": "Budgets",
+    "budgets_allocatedfor": "Allocated for {0}",
+
+    "recommendations_title": "Recommended For You"
 }

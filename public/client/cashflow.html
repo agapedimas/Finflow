@@ -1,15 +1,482 @@
 <ad-title><$ cashflow title /></ad-title>
 
 <div class="header">
+    <div class="buttons">
+        <button id="Button_NewTransaction"><$ generic new /></button>
+    </div>
     <div class="title"><$ cashflow title /></div>
 </div>
 
+<style>
+    #Cards_Recap {
+        display: grid;
+        grid-template-areas:
+            "total budget"
+            "total category";
+        grid-auto-columns: 450px auto;
+        gap: 15px;
+    }
+        #Cards_Recap .card {
+            background: var(--background-list);
+            border-radius: 15px;
+            padding: 15px;
+        }
+    #Card_SpendingTotal {
+        grid-area: total;
+        display: grid;
+        gap: 1em;
+    }
+        #Card_SpendingTotal .header {
+            display: grid;
+        }
+            #Card_SpendingTotal .header .label {
+                color: var(--foreground-description);
+                font-weight: 600;
+                font-size: 0.85em;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            #Card_SpendingTotal .header #Text_SpendingTotal {
+                font-weight: bold;
+                font-size: 2em;
+            }
+        #Card_SpendingTotal .chart {
+            display: grid;
+            grid-auto-flow: column;
+        }
+            #Card_SpendingTotal .chart .days {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: 1fr;
+            }
+                #Card_SpendingTotal .chart .days .day {
+                    display: grid;
+                    position: relative;
+                    grid-auto-rows: auto max-content;
+                    height: 150px;
+                    justify-items: center;
+                    align-items: end;
+                }
+                    #Card_SpendingTotal .chart .days .day::before {
+                        content: "";
+                        position: absolute;
+                        display: block;
+                        bottom: calc(1.5ch + 5px);
+                        left: 0;
+                        right: 0;
+                        height: 1px;
+                        background-color: var(--overlay-8);
+                    }
+                    #Card_SpendingTotal .chart .days .day .bar {
+                        --height: 0%;
+                        background: var(--accent);
+                        height: var(--height);
+                        width: 25px;
+                        border-radius: 3px 3px 0 0;
+                    }
+                    #Card_SpendingTotal .chart .days .day span {
+                        color: var(--foreground-description);
+                        font-weight: 600;
+                        font-size: 0.8em;
+                        letter-spacing: 0.05em;
+                        margin-top: 5px;
+                    }
+
+    #Header_MonthlyReport {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: auto max-content;
+        align-items: center;
+        gap: 20px;
+    }
+        #Header_MonthlyReport #Tab_Months {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: max-content;
+            gap: 20px;
+            overflow-x: auto;
+            margin: 0 -20px 0 -30px;
+            padding: 0 20px 0 30px;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+        }
+            #Header_MonthlyReport #Tab_Months span {
+                font-size: 1.1em;
+                font-weight: 600;
+                opacity: 0.5;
+                transition: 0.075s opacity;
+            }
+            #Header_MonthlyReport #Tab_Months span.active {
+                opacity: 1;
+            }
+            #Header_MonthlyReport #Tab_Months span:hover {
+                opacity: 0.75;
+            }
+            #Header_MonthlyReport #Tab_Months span:active {
+                opacity: 0.35;
+            }
+
+    #Header_MonthlyReport,
+    #List_MonthlyReport {
+        max-width: 800px;
+    }
+        #List_MonthlyReport .stack .thumbnail {
+            width: 35px;
+            height: 35px;
+            border-radius: 100%;
+            background: var(--overlay-8);
+        }
+        #List_MonthlyReport .stack .description {
+            display: grid;
+            grid-auto-flow: row;
+            grid-auto-rows: max-content;
+        }
+            #List_MonthlyReport .stack .description .category {
+                color: var(--foreground-description);
+            }
+        #List_MonthlyReport .stack .navigate {
+            display: grid;
+            grid-auto-flow: column;
+            gap: 0.15em;
+        }
+            #List_MonthlyReport .stack .navigate .price {
+                display: grid;
+                grid-auto-flow: column;
+                align-items: center;
+                gap: 0.75ch;
+            }
+            #List_MonthlyReport .stack .navigate .price.income {
+                color: #34c759;
+            }
+            [theme=dark]
+            #List_MonthlyReport .stack .navigate .price.income {
+                color: #30d158;
+            }
+            #List_MonthlyReport .stack .navigate .price.expenses {
+                color: #ff3b30;
+            }
+            [theme=dark]
+            #List_MonthlyReport .stack .navigate .price.expenses {
+                color: #ff453a;
+            }
+                #List_MonthlyReport .stack .navigate .price.income::before {
+                    content: "\eae9";
+                    font-family: var(--font-icon);
+                    font-size: 0.85em;
+                }
+                #List_MonthlyReport .stack .navigate .price.expenses::before {
+                    content: "\eba9";
+                    font-family: var(--font-icon);
+                    font-size: 0.85em;
+                }
+            #List_MonthlyReport .stack .navigate .icon {
+                color: var(--foreground-description);
+            }
+</style>
+
 <div class="content">
-    <section id="Section_Monthly" ad-header="Pinned Courses">
-        <div></div>
+    <section ad-header="<$ cashflow recap_title />">
+        <div id="Cards_Recap" class="cards">
+            <div class="card" id="Card_SpendingTotal">
+                <div class="header">
+                    <span class="label"><$ cashflow recap_spendingtotal /></span>
+                    <span id="Text_SpendingTotal">&nbsp;</span>
+                </div>
+                <div class="chart">
+                    <div class="days" id="Grid_SpendingDays">
+                        <div class="day" data-day="mon">
+                            <div class="bar"></div>
+                            <span><$ generic day_monday_short/></span>
+                        </div>
+                        <div class="day" data-day="tue">
+                            <div class="bar"></div>
+                            <span><$ generic day_tuesday_short/></span>
+                        </div>
+                        <div class="day" data-day="wed">
+                            <div class="bar"></div>
+                            <span><$ generic day_wednesday_short/></span>
+                        </div>
+                        <div class="day" data-day="thu">
+                            <div class="bar"></div>
+                            <span><$ generic day_thursday_short/></span>
+                        </div>
+                        <div class="day" data-day="fri">
+                            <div class="bar"></div>
+                            <span><$ generic day_friday_short/></span>
+                        </div>
+                        <div class="day" data-day="sat">
+                            <div class="bar"></div>
+                            <span><$ generic day_saturday_short/></span>
+                        </div>
+                        <div class="day" data-day="sun">
+                            <div class="bar"></div>
+                            <span><$ generic day_sunday_short/></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card" id="Card_RemainingBudget"></div>
+            <div class="card" id="Card_SpendingCategories"></div>
+        </div>
+    </section>
+    <section ad-header="<$ cashflow monthlyreport_title />">
+        <div id="Header_MonthlyReport" class="header">
+            <div id="Tab_Months" class="tab">
+                <span data-month="jan"><$ generic month_january_short /></span>
+                <span data-month="feb"><$ generic month_february_short /></span>
+                <span data-month="mar"><$ generic month_march_short /></span>
+                <span data-month="apr"><$ generic month_april_short /></span>
+                <span data-month="may"><$ generic month_may_short /></span>
+                <span data-month="jun"><$ generic month_june_short /></span>
+                <span data-month="jul"><$ generic month_july_short /></span>
+                <span data-month="aug"><$ generic month_august_short /></span>
+                <span data-month="sep"><$ generic month_september_short /></span>
+                <span data-month="oct"><$ generic month_october_short /></span>
+                <span data-month="nov"><$ generic month_november_short /></span>
+                <span data-month="dec"><$ generic month_december_short /></span>
+            </div>
+            <select id="Select_Years"></select>
+        </div>
+        <div id="List_MonthlyReport" class="cards">
+            <div class="list" ad-header="Today" data-date="15">
+                <div class="stack">Hello</div>
+            </div>
+        </div>
     </section>
 </div>
 
 <script>
-    Section_Monthly.onheaderclick = function() {}
+    const DUMMY_RECAP = {
+        "type": "weekly",               
+        "spending": {
+            "total": 1960545.23,           
+            "summary": [450123, 250000.23, 120322, 384200, 393000, 213900, 149000]
+        },
+        "categories": [
+            {
+                "id": "category1",
+                "name": "education",
+                "allocated": 250000,
+                "usage": 90203,
+                "balance": 159797
+            }
+        ],
+        "budgets":
+        [
+            {
+                "id": "123",
+                "name": "Parent",
+                "allocated": 500000,
+                "usage": 241000,
+                "balance": 259000
+            }
+        ]
+    }
+
+    const DUMMY_CATEGORIES = [
+        {
+            "id": "category1",
+            "name": "Food & Drink",
+            "allocated": 250000,
+            "usage": 90203,
+            "balance": 159797
+        },
+        {
+            "id": "category2",
+            "name": "Education",
+            "allocated": 15000000,
+            "usage": 8500000,
+            "balance": 6500000
+        }
+    ]
+
+    const DUMMY_YEARS = [2024, 2025]
+
+    const DUMMY_MONTHLY_REPORT = [
+        {
+            "id": "ggasfakjfha",
+            "timestamp": 1763139600000,
+            "isExpenses": true,
+            "name": "Pembayaran Biaya SKS",
+            "price": 1500000,
+            "category_id": "category2"
+        },
+        {
+            "id": "aksfhawi2",
+            "timestamp": 1763053200000,
+            "isExpenses": false,
+            "name": "Income from Parent",
+            "price": 2000000,
+            "category_id": null
+        },
+        {
+            "id": "smfnamsa2",
+            "timestamp": 1763053200000,
+            "isExpenses": true,
+            "name": "Ayam Goreng",
+            "price": 12500,
+            "category_id": "category1"
+        },
+        {
+            "id": "ashjjasd",
+            "timestamp": 1762880400000,
+            "isExpenses": true,
+            "name": "Bawang",
+            "price": 25000,
+            "category_id": "category1"
+        }
+    ]
+
+    initializeRecapCards();
+    initializeReportList();
+    
+    Button_NewTransaction.onclick = function(event) {
+        Components.ContextMenu.Open("Transaction_New", Button_NewTransaction, event);
+    }
+
+    Components.ContextMenu.Add("Transaction_New", [
+        {
+            Title: "<$ cashflow transaction_scanbill />",
+            Icon: "fce6",
+            Action: o => {}
+        },
+        {
+            Title: "<$ cashflow transaction_addmanual />",
+            Icon: "eef7",
+            Action: o => {}
+        }
+    ]);
+
+    function initializeRecapCards() {
+        const recap = DUMMY_RECAP || $.get("/client/cashflow/recap");
+        
+        Text_SpendingTotal.innerText = "Rp" + recap.spending.total.toLocaleString(document.documentElement.lang);
+        const highestSpending = Math.max(...recap.spending.summary);
+        
+        // total spending chart
+        for (let i = 0; i < 7; i++) {
+            const bar = Grid_SpendingDays.children[i].children[0];
+            const value = recap.spending.summary[i];
+
+            bar.style.setProperty("--height", (value / highestSpending * 100) + "%");
+        }
+    }
+
+    function initializeReportList() {
+        for (const tab of Tab_Months.children) {
+            tab.onclick = function() {
+                fetchReportList(tab.dataset.month, Select_Years.value);
+            }
+        }
+        
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const currentMonth = months[new Date().getMonth()];
+        const currentYear = new Date().getFullYear();
+        fetchReportList(currentMonth, currentYear);
+        
+        const years = DUMMY_YEARS || $.get("/client/cashflow/transactions/years");
+        for (const year of years) {
+            const optionElement = document.createElement("option");
+            optionElement.value = year;
+            optionElement.innerText = year;
+            if (currentYear == year)
+                optionElement.selected = true;
+            Select_Years.append(optionElement);
+        }
+    }
+
+    function fetchReportList(month, year) {
+        let activeTab;
+
+        for (const tab of Tab_Months.children) {
+            if (tab.dataset.month == month) {
+                tab.classList.add("active");
+                activeTab = tab;
+            }
+            else {
+                tab.classList.remove("active");
+            }
+        }
+            
+        if (activeTab) {
+            console.log(activeTab.nextElement)
+            const x = activeTab.getBoundingClientRect().x;
+            if (x < 20)
+                Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
+            else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50)
+                Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
+        }
+
+        const transactions = DUMMY_MONTHLY_REPORT || $("/client/transactions/?month=" + month + "&year=" + year);
+        
+        List_MonthlyReport.innerHTML = null;
+
+        for (const transaction of transactions) {
+            appendReportList(transaction);
+        }
+    }
+
+    function appendReportList(transaction) {
+        const thumbnailElement = document.createElement("img");
+        thumbnailElement.classList.add("thumbnail");
+        thumbnailElement.src = "/client/categories/thumbnail/" + transaction.category_id;
+
+        const nameElement = document.createElement("span");
+        nameElement.classList.add("name");
+        nameElement.innerText = transaction.name;
+
+        const categoryElement = document.createElement("span");
+        categoryElement.classList.add("category");
+        categoryElement.innerText = transaction.category_id;
+
+        const descriptionGroupElement = document.createElement("div");
+        descriptionGroupElement.classList.add("description");
+        descriptionGroupElement.append(nameElement);
+        descriptionGroupElement.append(categoryElement);
+
+        const priceElement = document.createElement("span");
+        priceElement.classList.add("price");
+        priceElement.classList.add(transaction.isExpenses ? "expenses" : "income");
+        priceElement.innerText = "Rp" + transaction.price.toLocaleString(document.documentElement.lang);
+
+        const chevronElement = document.createElement("span");
+        chevronElement.classList.add("icon");
+        chevronElement.innerText = "\uef4a";
+
+        const navigateElement = document.createElement("div");
+        navigateElement.classList.add("navigate");
+        navigateElement.append(priceElement);
+        navigateElement.append(chevronElement);
+
+        const containerElement = document.createElement("div");
+        containerElement.classList.add("stack");
+        containerElement.classList.add("iconed");
+        containerElement.classList.add("clickable");
+        containerElement.append(thumbnailElement);
+        containerElement.append(descriptionGroupElement);
+        containerElement.append(navigateElement);
+        
+        const dateGroupElements = [...List_MonthlyReport.children];
+        let dateGroupMatches = dateGroupElements.find(o => o.dataset.date == new Date(transaction.timestamp).getDate());
+
+        if (dateGroupMatches == null) {
+            dateGroupMatches = document.createElement("div");
+            dateGroupMatches.classList.add("list");
+            dateGroupMatches.dataset.date = new Date(transaction.timestamp).getDate();
+
+            // today
+            const diffTimestamp = Date.now() - transaction.timestamp; 
+            if (diffTimestamp < 1000 * 60 * 60 * 24)
+                dateGroupMatches.setAttribute("ad-header", "<$ generic today />");
+            // yesterday
+            else if (diffTimestamp < 1000 * 60 * 60 * 24 * 2)
+                dateGroupMatches.setAttribute("ad-header", "<$ generic yesterday />");
+            // a long time ago
+            else
+                dateGroupMatches.setAttribute("ad-header", moment(transaction.timestamp).format("ll"));
+            List_MonthlyReport.append(dateGroupMatches);
+        }
+
+        dateGroupMatches.append(containerElement);
+    }
 </script>
