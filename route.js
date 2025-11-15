@@ -6,6 +6,8 @@ const Functions = require("./functions");
 const Language = require("./language");
 const FileIO = require("fs");
 
+const transactionController = require('./controllers/transactionController');
+
 /**
  * @param { import("express").Application } Server Express instance
  * @returns { void }
