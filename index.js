@@ -6,6 +6,7 @@ const Functions = require("./functions");
 const Template = require("./template");
 const Language = require("./language");
 const Route = require("./route");
+const Gemini = require("./gemini");
 
 const Express = require("express");
 const Server = Express();
@@ -21,6 +22,7 @@ async function Configure()
 	await SQL.Initialize();
     await Template.Initialize();
 	await Language.Initialize();
+	await Gemini.Initialize();
 	
     const Session_Store = new MySQLStore(SQL.Configuration);
     
