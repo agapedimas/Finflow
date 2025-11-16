@@ -328,28 +328,31 @@
     async function sendMessage() {
         Input_Message.disabled = true;
         Button_SendMessage.disabled = true;
-        await Delay(1);
+
         try {
-            const data = { time: Date.now(), author: "user", id: 1, content: Input_Message.value.trim() } //|| await $.post("/...", { ... });
+            const message = Input_Message.value.trim();
+            const userData = { time: Date.now(), author: "user", id: Date.now(), content: message };
+            appendMessage(userData);
+            toLatestMessage(true);            
             Input_Message.value = "";
-            appendMessage(data);
-            toLatestMessage(true);
+            Grid_Messages.classList.add("typing");
+
+            const modelResponse = await $.post("/client/assistant/send", { message: message });
+            const modelData = { time: Date.now(), author: "model", id: Date.now(), content: modelResponse.trim() };
+            
+            Grid_Messages.classList.remove("typing");
+            appendMessage(modelData);
+            toLatestMessage();  
+
             $(".messages .group").removeClass("read");
         }
         catch (error) {
             // handle error
+            console.error(error);
         }
+
         Input_Message.disabled = false;
         Input_Message.focus();
         checkInput();
     }
-
-    // dummy response from AI
-    setInterval(function() {
-        const responses = [ "Haha, you're hilarious", "Anything i can help you with?", "Yo, what's up now?", "What are you guys up to?", "Just chilling, i'm on standby", "Lol, that's true though", "Ohh really, i didn't know that", "Got it, got it", "Roger that, on it", "You're too much", "That's awesome", "Let's go", "Whoa, seriously?", "Don't do that", "Hahaha, gotta laugh", "I'm right here", "Let me know if you need anything", "This is fun", "Totally agree", "Yeah, that's right dude", "Can't argue with that", "Alright, roger that", "Keep it going", "Any other ideas?", "How about this then?", "That's cool", "Hahaha, classic", "Lolol", "What if we do that?", "Whatever you want", "Dying laughing", "Just thinking here", "I'm in for whatever", "What's next?", "Tell me more", "Oh, interesting", "That's a good one", "For sure", "Bored now", "Hahaha, yeah", "Definitely", "I agree", "Can't wait", "No cap", "Just kidding", "Too serious", "Chill out", "Already done", "One sec", "I'm on fire", "That's insane", "Yeah, totally", "Nah, not really", "That's not it", "For real?", "Uh oh, what happened?", "Oof, how about that", "You got this", "Good luck!", "Don't give up", "Try again", "Okay, okay", "Exactly", "Sounds good", "Hahaha, wild", "Here it is", "Told you so", "Kinda scary", "Don't panic", "All good", "You never know", "I think so", "In my opinion", "Anything different?", "That's easy", "It's tough too", "My head hurts", "Relax", "Full throttle", "Let's go!", "You can do it", "Just trust", "I'll help you", "That's a piece of cake", "Lemme do it", "Done", "How's it going?", "Hehehe", "Don't forget"] ;
-        const randomIndex = parseInt(Math.random() * responses.length);
-        const data = { time: Date.now(), author: "model", id: Date.now(), content: responses[randomIndex] };
-        appendMessage(data);
-        toLatestMessage();
-    }, 5000);
 </script>
