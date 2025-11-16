@@ -1,0 +1,289 @@
+<ad-title><$ budgetplan title /></ad-title>
+
+<div class="header">
+    <div class="buttons">
+        <button id="Button_NewTransaction"><$ generic new /></button>
+    </div>
+    <div class="title"><$ budgetplan title /></div>
+</div>
+
+<style>
+    html:not([theme=dark]) .root .main {
+        background: var(--gray-6);
+    }
+    #Header_MonthlyPlan {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: auto max-content;
+        align-items: center;
+        gap: 20px;
+    }
+        #Header_MonthlyPlan #Tab_Months {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: max-content;
+            gap: 20px;
+            overflow-x: auto;
+            margin: 0 -20px 0 -30px;
+            padding: 0 20px 0 30px;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+        }
+            #Header_MonthlyPlan #Tab_Months span {
+                font-size: 1.1em;
+                font-weight: 600;
+                opacity: 0.5;
+                transition: 0.075s opacity;
+            }
+            #Header_MonthlyPlan #Tab_Months span.active {
+                opacity: 1;
+            }
+            #Header_MonthlyPlan #Tab_Months span:hover {
+                opacity: 0.75;
+            }
+            #Header_MonthlyPlan #Tab_Months span:active {
+                opacity: 0.35;
+            }
+
+    #Header_MonthlyPlan,
+    #List_MonthlyPlan {
+        max-width: 800px;
+    }
+        #List_MonthlyPlan .stack .thumbnail {
+            width: 35px;
+            height: 35px;
+            border-radius: 100%;
+            background: var(--overlay-8);
+        }
+        #List_MonthlyPlan .stack .description {
+            display: grid;
+            grid-auto-flow: row;
+            grid-auto-rows: max-content;
+        }
+            #List_MonthlyPlan .stack .description .price {
+                color: var(--foreground-description);
+            }
+        #List_MonthlyPlan .stack .navigate {
+            display: grid;
+            grid-auto-flow: column;
+            gap: 0.15em;
+        }
+            #List_MonthlyPlan .stack .navigate .price {
+                display: grid;
+                grid-auto-flow: column;
+                align-items: center;
+                gap: 0.75ch;
+            }
+            #List_MonthlyPlan .stack .navigate .price.income {
+                color: #34c759;
+            }
+            [theme=dark]
+            #List_MonthlyPlan .stack .navigate .price.income {
+                color: #30d158;
+            }
+            #List_MonthlyPlan .stack .navigate .price.expenses {
+                color: #ff3b30;
+            }
+            [theme=dark]
+            #List_MonthlyPlan .stack .navigate .price.expenses {
+                color: #ff453a;
+            }
+                #List_MonthlyPlan .stack .navigate .price.income::before {
+                    content: "\eae9";
+                    font-family: var(--font-icon);
+                    font-size: 0.85em;
+                }
+                #List_MonthlyPlan .stack .navigate .price.expenses::before {
+                    content: "\eba9";
+                    font-family: var(--font-icon);
+                    font-size: 0.85em;
+                }
+            #List_MonthlyPlan .stack .navigate .icon {
+                color: var(--foreground-description);
+            }
+</style>
+
+<div class="content">
+    <div id="Header_MonthlyPlan" class="header">
+        <div id="Tab_Months" class="tab">
+            <span data-month="jan"><$ generic month_january_short /></span>
+            <span data-month="feb"><$ generic month_february_short /></span>
+            <span data-month="mar"><$ generic month_march_short /></span>
+            <span data-month="apr"><$ generic month_april_short /></span>
+            <span data-month="may"><$ generic month_may_short /></span>
+            <span data-month="jun"><$ generic month_june_short /></span>
+            <span data-month="jul"><$ generic month_july_short /></span>
+            <span data-month="aug"><$ generic month_august_short /></span>
+            <span data-month="sep"><$ generic month_september_short /></span>
+            <span data-month="oct"><$ generic month_october_short /></span>
+            <span data-month="nov"><$ generic month_november_short /></span>
+            <span data-month="dec"><$ generic month_december_short /></span>
+        </div>
+        <select id="Select_Years"></select>
+    </div>
+    <div id="List_MonthlyPlan" class="cards">
+    </div>
+</div>
+
+<script>
+    
+
+    const DUMMY_CATEGORIES = [
+        {
+            "id": "category1",
+            "name": "Food & Drink",
+            "allocated": 250000,
+            "status": "normal",
+            "usage": 90203,
+            "balance": 159797
+        },
+        {
+            "id": "category2",
+            "name": "Education",
+            "allocated": 15000000,
+            "status": "normal",
+            "usage": 8500000,
+            "balance": 6500000
+        }
+    ]
+
+    const DUMMY_YEARS = [2024, 2025]
+
+    const DUMMY_MONTHLY_PLAN = {
+        "month": "November",      
+        "year": 2025,             
+        "allocated": 2000000,  
+        "stuffs": [
+            {
+                "id": "ggasfakjfha",
+                "name": "Bawang",
+                "price": 15000,
+                "amount": 2,
+                "category_id": "category2"
+            },
+            {
+                "id": "ggasfakjfha",
+                "name": "Makan siang",
+                "price": 25000,
+                "amount": 20,
+                "category_id": "category2"
+            },
+            {
+                "id": "ggasfakjfha",
+                "name": "Bayar SKS",
+                "price": 150000,
+                "amount": 1,
+                "category_id": "category1"
+            },
+        ]
+    };
+
+
+    initializePlanList();
+
+    function initializePlanList() {
+        for (const tab of Tab_Months.children) {
+            tab.onclick = function() {
+                fetchPlanList(tab.dataset.month, Select_Years.value);
+            }
+        }
+        
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const currentMonth = months[new Date().getMonth()];
+        const currentYear = new Date().getFullYear();
+        fetchPlanList(currentMonth, currentYear);
+        
+        const years = DUMMY_YEARS || $.get("/client/cashflow/transactions/years");
+        for (const year of years) {
+            const optionElement = document.createElement("option");
+            optionElement.value = year;
+            optionElement.innerText = year;
+            if (currentYear == year)
+                optionElement.selected = true;
+            Select_Years.append(optionElement);
+        }
+    }
+
+    function fetchPlanList(month, year) {
+        let activeTab;
+
+        for (const tab of Tab_Months.children) {
+            if (tab.dataset.month == month) {
+                tab.classList.add("active");
+                activeTab = tab;
+            }
+            else {
+                tab.classList.remove("active");
+            }
+        }
+            
+        if (activeTab) {
+            console.log(activeTab.nextElement)
+            const x = activeTab.getBoundingClientRect().x;
+            if (x < 20)
+                Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
+            else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50)
+                Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
+        }
+
+        const plans = DUMMY_MONTHLY_PLAN.stuffs || $("/client/budgetplan/data/?month=" + month + "&year=" + year);
+        
+        List_MonthlyPlan.innerHTML = null;
+
+        for (const plan of plans) {
+            appendPlanList(plan);
+        }
+    }
+
+    function appendPlanList(plan) {
+        const thumbnailElement = document.createElement("img");
+        thumbnailElement.classList.add("thumbnail");
+        thumbnailElement.src = "/client/categories/thumbnail/" + plan.category_id;
+
+        const nameElement = document.createElement("span");
+        nameElement.classList.add("name");
+        nameElement.innerText = plan.name;
+
+        const priceElement = document.createElement("span");
+        priceElement.classList.add("price");
+        priceElement.innerText = formatCurrency(plan.price);
+
+        const descriptionGroupElement = document.createElement("div");
+        descriptionGroupElement.classList.add("description");
+        descriptionGroupElement.append(nameElement);
+        descriptionGroupElement.append(priceElement);
+
+        const amountElement = document.createElement("span");
+        amountElement.classList.add("amount");
+        amountElement.innerText = "x" + plan.amount;
+        const chevronElement = document.createElement("span");
+        chevronElement.classList.add("icon");
+        chevronElement.innerText = "\uef4a";
+
+        const navigateElement = document.createElement("div");
+        navigateElement.classList.add("navigate");
+        navigateElement.append(amountElement);
+        navigateElement.append(chevronElement);
+
+        const containerElement = document.createElement("div");
+        containerElement.classList.add("stack");
+        containerElement.classList.add("iconed");
+        containerElement.classList.add("clickable");
+        containerElement.append(thumbnailElement);
+        containerElement.append(descriptionGroupElement);
+        containerElement.append(navigateElement);
+        
+        const categoryGroupElements = [...List_MonthlyPlan.children];
+        let categoryGroupMatches = categoryGroupElements.find(o => o.dataset.category == plan.category_id);
+
+        if (categoryGroupMatches == null) {
+            categoryGroupMatches = document.createElement("div");
+            categoryGroupMatches.classList.add("list");
+            categoryGroupMatches.dataset.category = plan.category_id;
+            categoryGroupMatches.setAttribute("ad-header", plan.category_id);
+            List_MonthlyPlan.append(categoryGroupMatches);
+        }
+
+        categoryGroupMatches.append(containerElement);
+    }
+</script>
