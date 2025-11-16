@@ -1,9 +1,355 @@
 <ad-title><$ assistant title /></ad-title>
 
-<div class="header">
+<div class="header cascaded">
     <div class="title"><$ assistant title /></div>
 </div>
 
+<style>
+    .main > .activity
+    {
+        grid-auto-rows: max-content auto;
+        --titleopacity: -1 !important;
+    }
+    .main > .activity > .content
+    {
+        display: grid;
+        grid-auto-rows: auto max-content;
+        grid-template-areas: "messages" "inputs";
+    }
+    .main > .activity > .content > .container
+    {
+        position: relative;
+    }
+
+    .inputs
+    {
+        grid-area: inputs;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 0 auto;
+    }
+        .inputs .text
+        {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: auto max-content;    
+            grid-auto-rows: minmax(max-content, 44px);
+            background: var(--background-input);    
+            border-radius: 22px;    
+            align-items: end;
+        }
+            .inputs .text #Input_Message
+            {
+                --lines: 1;
+                height: calc((1.25em * var(--lines)) + 24px);
+                max-height: calc((1.25em * 7) + 24px);
+                padding: 12px 1em;    
+                border: 0;
+            }
+            .inputs .text button
+            {
+                width: 30px;
+                height: 30px;
+                border-radius: 20px;
+                font-weight: bold;
+                margin: 0 7px 7px 0;
+                font-size: 0.9em;
+                grid-auto-columns: 100%;
+                grid-auto-rows: 100%;
+                align-items: center;
+                justify-items: center;
+            }
+
+    .messages
+    {
+        display: grid;
+        position: absolute;
+        left: calc(var(--padding)* -1);
+        right: calc(var(--padding)* -1);
+        bottom: 0;
+        max-height: 100%;
+        overflow: hidden;
+        overflow-y: auto;
+        padding: var(--padding);
+        grid-auto-rows: max-content;    
+        gap: 10px;
+        scroll-behavior: smooth;
+        user-select: text;
+    }
+    .messages.typing:after
+    {
+        content: "\f153";
+        display: block;
+        background: var(--gray-6);
+        padding: 0.225em 0.7em;
+        border-radius: 16px;
+        line-height: 1;
+        font-size: 1.5em;
+        font-family: var(--font-icon);
+        font-weight: bold;
+        justify-self: start;
+        color: var(--foreground-description);
+    }
+        .messages .time
+        {
+            text-align: center;
+            font-size: 0.75em;
+            font-family: var(--font-semibold);
+            letter-spacing: 0.05em;
+            color: var(--foreground-description);    
+            margin-top: 2em;
+        }
+        .messages .group
+        {
+            display: grid;
+            gap: 2px;
+            user-select: text;
+        }
+            .messages .group.read:after
+            {
+                content: "Seen";
+                font-size: 0.8em;
+                text-align: right;
+                margin: 0.4em 0 0;
+                color: var(--foreground-description);
+            }
+        .messages .message
+        {
+            display: grid;
+            padding: 0.4em 0.65em;
+            border-radius: 16px;
+            transition: var(--animation) transform, 0.15s opacity;
+            max-width: min(max(320px, 70%), 500px);
+            white-space: pre-line;
+            transform: scale(1.01);
+        }
+        .messages .message.received
+        {
+            position: relative;
+            background: var(--gray-6);
+            justify-self: start;
+            transform-origin: left;
+        }   
+            .messages .message.received:last-child:after
+            {
+                content: "";
+                position: absolute;
+                display: block;
+                height: 20px;
+                aspect-ratio: 1 / 1;
+                background: var(--gray-6);
+                left: -12px;
+                bottom: -2px;
+                mask-image: url("https://assets.agapedimas.com/ui/v3/cutouts/bubble-left.svg");
+                mask-repeat: no-repeat;    
+                mask-position: right;
+            }
+        .messages .message.sent
+        {
+            position: relative;
+            background: var(--accent);
+            color: white;
+            justify-self: end;
+            transform-origin: right;
+        }
+            .messages .message.sent:last-child:after
+            {
+                content: "";
+                position: absolute;
+                display: block;
+                height: 20px;
+                aspect-ratio: 1 / 1;
+                background: var(--accent);
+                right: -12px;
+                bottom: -2px;
+                mask-image: url("https://assets.agapedimas.com/ui/v3/cutouts/bubble-right.svg");
+                mask-repeat: no-repeat;    
+                mask-position: left;
+            }
+        .messages .message.active:not(:has(> .text > a:active))
+        {
+            transform: scale(0.97);
+            opacity: 0.8;
+        }
+            .messages .message .text
+            {
+                user-select: text;
+            }
+            .messages .message.sent .text::selection,
+            .messages .message.sent .link::selection
+            {
+                background: white;
+                color: var(--accent);
+            }
+            .messages .message a.link
+            {
+                color: inherit;
+                text-decoration: underline;
+                user-select: text;
+            }
+            .messages .message a.link:hover
+            {
+                opacity: 0.75;
+                text-decoration: none;
+            }
+            .messages .message a.link:active
+            {
+                opacity: 0.55;
+                text-decoration: none;
+            }
+</style>
+
 <div class="content">
-    
+    <div class="container">
+        <div class="messages" id="Grid_Messages"></div>
+    </div>
+    <div class="inputs">
+        <div class="media"></div>
+        <div class="text">
+            <textarea id="Input_Message" placeholder="Message" class="plain"></textarea>
+            <button id="Button_SendMessage" class="accent" disabled>
+                <span class="icon">&#xebd7;</span>
+            </button>
+        </div>
+    </div>
 </div>
+
+<script>
+    Input_Message.focus();
+    Input_Message.oninput = function() {
+        checkInput();
+    }
+
+    Input_Message.onkeydown = function(event) {
+        if (event.key == "Enter" && event.shiftKey == false) {
+            Button_SendMessage.click();
+            event.preventDefault();
+        }
+    }
+
+    Button_SendMessage.onclick = function() {
+        sendMessage();
+    }
+
+    function checkInput() {
+        const lines = getTextAreaNumberOfLines(Input_Message) - 1;
+        Input_Message.style.setProperty("--lines", lines || 1);
+        Input_Message.style.height = "";
+
+        if (Input_Message.value.trim() == "") {
+            Button_SendMessage.disabled = true;
+        }
+        else {
+            Button_SendMessage.disabled = false;
+        }
+    }
+
+    let lastMessageTime = 0;
+    let lastSender = "";
+
+    function appendMessage(data) {
+        if (data.time - lastMessageTime > 1000 * 60 * 30) {
+            let time = document.createElement("span");
+            time.classList.add("time");
+            time.append(moment(data.time).format("lll"));
+            Grid_Messages.append(time);
+            lastSender = "";
+        }
+
+        lastMessageTime = data.time;
+        
+        let group = document.createElement("div");
+        group.classList.add("group");
+
+        let message = document.createElement("div");
+        message.classList.add("message");
+
+        if (data.author == "user")
+            message.classList.add("sent");
+        else
+            message.classList.add("received");
+
+        let text = document.createElement("span");
+        text.classList.add("text");
+        text.append(data.content);
+        
+        message.data = data;
+        message.append(text);
+        message.oncontextmenu = function(event)
+        {
+            event.target.data = {};
+            event.target.data.author = data.author;
+
+            if (event.target.classList.contains("link"))
+                Components.ContextMenu.Open("Context_Message_Link", event.target, event);
+            else
+                Components.ContextMenu.Open("Context_Message", message, event);
+        }
+        message.onmousedown = function(event)
+        {
+            if (event.target.classList.contains("link"))
+                return;
+            
+            if (event.button == 2)
+                message.classList.add("active");
+        }
+        message.ontouchstart = function(event)
+        {
+            if (event.target.classList.contains("link"))
+                return;
+            
+            event.stopPropagation();
+            message.classList.add("active");
+        }
+
+        window.addEventListener("mouseup", o => message.classList.remove("active"));
+        window.addEventListener("touchend", o => message.classList.remove("active"));
+        
+        if (lastSender == data.author)
+        {
+            group = $(".messages .group").last()[0];
+            group.append(message);
+            group.id = "Group_" + data.id;
+        }
+        else
+        {
+            lastSender = data.author;
+            group.append(message);
+            group.id = "Group_" + data.id;
+            $(".messages").append(group);
+        }
+    }
+
+    function toLatestMessage(force = false) {
+        if (force == true || Grid_Messages.scrollTop + 100 > Grid_Messages.scrollHeight - Grid_Messages.getBoundingClientRect().height)
+            Grid_Messages.scrollTop = Grid_Messages.scrollHeight;
+    }
+
+    async function sendMessage() {
+        Input_Message.disabled = true;
+        Button_SendMessage.disabled = true;
+        await Delay(1);
+        try {
+            const data = { time: Date.now(), author: "user", id: 1, content: Input_Message.value.trim() } //|| await $.post("/...", { ... });
+            Input_Message.value = "";
+            appendMessage(data);
+            toLatestMessage(true);
+            $(".messages .group").removeClass("read");
+        }
+        catch (error) {
+            // handle error
+        }
+        Input_Message.disabled = false;
+        Input_Message.focus();
+        checkInput();
+    }
+
+    // dummy response from AI
+    setInterval(function() {
+        const responses = [ "Haha, you're hilarious", "Anything i can help you with?", "Yo, what's up now?", "What are you guys up to?", "Just chilling, i'm on standby", "Lol, that's true though", "Ohh really, i didn't know that", "Got it, got it", "Roger that, on it", "You're too much", "That's awesome", "Let's go", "Whoa, seriously?", "Don't do that", "Hahaha, gotta laugh", "I'm right here", "Let me know if you need anything", "This is fun", "Totally agree", "Yeah, that's right dude", "Can't argue with that", "Alright, roger that", "Keep it going", "Any other ideas?", "How about this then?", "That's cool", "Hahaha, classic", "Lolol", "What if we do that?", "Whatever you want", "Dying laughing", "Just thinking here", "I'm in for whatever", "What's next?", "Tell me more", "Oh, interesting", "That's a good one", "For sure", "Bored now", "Hahaha, yeah", "Definitely", "I agree", "Can't wait", "No cap", "Just kidding", "Too serious", "Chill out", "Already done", "One sec", "I'm on fire", "That's insane", "Yeah, totally", "Nah, not really", "That's not it", "For real?", "Uh oh, what happened?", "Oof, how about that", "You got this", "Good luck!", "Don't give up", "Try again", "Okay, okay", "Exactly", "Sounds good", "Hahaha, wild", "Here it is", "Told you so", "Kinda scary", "Don't panic", "All good", "You never know", "I think so", "In my opinion", "Anything different?", "That's easy", "It's tough too", "My head hurts", "Relax", "Full throttle", "Let's go!", "You can do it", "Just trust", "I'll help you", "That's a piece of cake", "Lemme do it", "Done", "How's it going?", "Hehehe", "Don't forget"] ;
+        const randomIndex = parseInt(Math.random() * responses.length);
+        const data = { time: Date.now(), author: "model", id: Date.now(), content: responses[randomIndex] };
+        appendMessage(data);
+        toLatestMessage();
+    }, 5000);
+</script>

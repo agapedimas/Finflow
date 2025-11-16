@@ -106,58 +106,7 @@
             {
                 margin: 1em 0 0;
             }
-    #Settings_Accents
-    {
-        display: grid;
-        grid-auto-flow: column;
-        gap: 2px;
-    }
-        #Settings_Accents .color
-        {
-            width: 25px;
-            height: 25px;
-            border-radius: 100%;
-            outline: 2px solid transparent;
-            transition: 0.4s var(--key-animation) outline, 0.4s var(--key-animation) transform;
-        }
-        #Settings_Accents .color:hover
-        {
-            outline: 2px solid var(--text);
-        }
-            #Settings_Accents .color:active
-        {
-            transform: scale(0.8);
-        }
-        
-        #Settings_Accents .color[accent=red]
-        {
-            background: #ff3b30;
-        }
-        #Settings_Accents .color[accent=yellow]
-        {
-            background: #ffcc00;
-        }
-        #Settings_Accents .color[accent=green]
-        {
-            background: #34c759;
-        }
-        #Settings_Accents .color[accent=cyan]
-        {
-            background: #32ade6;
-        }
-        #Settings_Accents .color[accent=blue]
-        {
-            background: #007aff;
-        }
-        #Settings_Accents .color[accent=indigo]
-        {
-            background: #5856d6;
-        }
-        #Settings_Accents .color[accent=purple]
-        {
-            background: #af52de;
-        }
-        
+
     #List_Accounts .stack img
     {
         width: 100%;
@@ -217,18 +166,6 @@
             </select>
         </div>
         <div class="stack">
-            <div><$ settings accent_color /></div>
-            <div id="Settings_Accents">
-                <div class="color" accent="red"></div>
-                <div class="color" accent="yellow"></div>
-                <div class="color" accent="green"></div>
-                <div class="color" accent="cyan"></div>
-                <div class="color" accent="blue"></div>
-                <div class="color" accent="indigo"></div>
-                <div class="color" accent="purple"></div>
-            </div>
-        </div>
-        <div class="stack">
             <div><$ settings language /></div>
             <select class="plain" name="language" id="Select_Language">
                 <option value="en">English</option>
@@ -241,8 +178,8 @@
     <div class="list" ad-header="<$ settings about_app />" ad-footer="">
         <div class="stack">
             <div><$ settings git_repository /></div>
-            <button class="plain" goto="https://github.com/agapedimas/itfairxiv" ad-type="newtab">
-                <span>agapedimas/itfairxiv</span>
+            <button class="plain" goto="https://github.com/agapedimas/finflow" ad-type="newtab">
+                <span>agapedimas/finflow</span>
                 <span class="icon">&#xebad;</span>
             </button>
         </div>
@@ -295,15 +232,8 @@
 
 <script>
     Select_Theme.value = localStorage.getItem("theme");
-    $("#Settings_Accents .color").on("click", function () { Color_Change(this.getAttribute("accent")) });
     Select_Theme.onchange = function () { Theme_Change(this.value) }
     Button_SignOut.onclick = SignOut;
-    
-    function Color_Change(accent)
-    {
-        localStorage.setItem("accent", accent);
-        CheckAccent();
-    }
 
     function Theme_Change(theme)
     {

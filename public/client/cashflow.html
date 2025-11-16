@@ -1,15 +1,870 @@
 <ad-title><$ cashflow title /></ad-title>
 
 <div class="header">
+    <div class="buttons">
+        <button id="Button_NewTransaction"><$ generic new /></button>
+    </div>
     <div class="title"><$ cashflow title /></div>
 </div>
 
+<style>
+    html:not([theme=dark]) .root .main {
+        background: var(--gray-6);
+    }
+    #Cards_Recap {
+        display: grid;
+        grid-template-areas:
+            "total budget"
+            "total category";
+        grid-auto-columns: 450px auto;
+        grid-auto-rows: 140px 100px;
+        gap: 15px;
+        max-width: 800px;
+    }
+        #Cards_Recap .card {
+            background: var(--background-list);
+            border-radius: 15px;
+            padding: 15px;
+        }
+    #Card_SpendingTotal {
+        grid-area: total;
+        display: grid;
+        grid-auto-rows: max-content auto;
+        gap: 1em;
+    }
+        #Card_SpendingTotal .header {
+            display: grid;
+        }
+            #Card_SpendingTotal .header .label {
+                color: var(--foreground-description);
+                font-weight: 600;
+                font-size: 0.85em;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            #Card_SpendingTotal .header #Text_SpendingTotal {
+                font-weight: bold;
+                font-size: 2em;
+            }
+        #Card_SpendingTotal .chart {
+            position: relative;
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: auto max-content;
+            gap: 20px;
+            padding-top: 20px;
+            overflow: hidden;    
+            z-index: 0;
+        }
+            #Card_SpendingTotal .chart .ticks {
+                display: grid;
+                margin: calc(-1.5ch - 20px) 0 calc(1.5ch + 5px);
+                align-items: end;
+                z-index: -1;
+            }
+                #Card_SpendingTotal .chart .ticks .tick {
+                    position: relative;
+                    color: var(--foreground-description);
+                    font-weight: 600;
+                    font-size: 0.7em;
+                    letter-spacing: 0.05em;
+                    transform: translateY(50%);
+                }
+                    #Card_SpendingTotal .chart .ticks .tick::before {
+                        content: "";
+                        display: block;
+                        position: absolute;
+                        bottom: 50%;
+                        transform: translateY(50%);
+                        height: 2px;
+                        left: -100vw;
+                        right: calc(100% + 15px);
+                        background-color: var(--overlay-8);
+                    }
+            #Card_SpendingTotal .chart .days {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: 1fr;
+            }
+                #Card_SpendingTotal .chart .days .day {
+                    display: grid;
+                    position: relative;
+                    grid-auto-rows: auto max-content;
+                    justify-items: center;
+                    align-items: end;
+                }
+                    #Card_SpendingTotal .chart .days .day .bar {
+                        --height: 0%;
+                        background: var(--accent);
+                        height: var(--height);
+                        width: 25px;
+                        border-radius: 3px 3px 0 0;
+                    }
+                    #Card_SpendingTotal .chart .days .day span {
+                        color: var(--foreground-description);
+                        font-weight: 600;
+                        font-size: 0.8em;
+                        letter-spacing: 0.05em;
+                        margin-top: 5px;
+                    }
+    #Card_RemainingBudget {
+        grid-area: budget;
+        display: grid;
+        grid-auto-rows: max-content auto max-content;
+    }
+        #Card_RemainingBudget .header {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: auto max-content;
+        }
+            #Card_RemainingBudget .header .label {
+                color: var(--foreground-description);
+                font-weight: 600;
+                font-size: 0.85em;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            #Card_RemainingBudget .header label:has(select) {
+                gap: 4px;
+            }
+            #Card_RemainingBudget .header select {
+                padding-top: 0;
+                padding-bottom: 0;
+                font-size: 0.85em;
+                letter-spacing: 0.05em;
+            }
+            #Card_RemainingBudget #Text_BudgetRemaining {
+                font-weight: bold;
+                font-size: 2em;
+            }
+            #Card_RemainingBudget #Text_BudgetRemaining.nearlimit {
+                color: #ffd60a;
+            }
+            [theme=dark] 
+            #Card_RemainingBudget #Text_BudgetRemaining.nearlimit {
+                color: #ffd60a;
+            }
+            #Card_RemainingBudget #Text_BudgetRemaining.overlimit  {
+                color: #ff3b30;
+            }
+            [theme=dark] 
+            #Card_RemainingBudget #Text_BudgetRemaining.overlimit {
+                color: #ff453a;
+            }
+            #Card_RemainingBudget .footer {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: auto max-content;
+                gap: 5px;    
+                margin-top: 15px;  
+                align-items: end;  
+                align-self: end;
+            }
+                #Card_RemainingBudget .footer #Button_BudgetAction {
+                    position: relative;
+                    border-radius: 30px;
+                    text-transform: uppercase;
+                    font-size: 0.85em;
+                    letter-spacing: 0.015em;
+                    font-weight: 500;
+                    overflow: hidden;
+                }
+                    #Card_RemainingBudget .footer #Button_BudgetAction::before {
+                        content: "";
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: var(--accent);
+                        opacity: 0.1;
+                    }
+    #Card_SpendingCategories {
+        grid-area: category;
+        display: grid;
+        grid-auto-rows: max-content auto max-content;
+    }
+        #Card_SpendingCategories .label {
+            color: var(--foreground-description);
+            font-weight: 600;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+
+    @media screen and (max-width: 1175px) {
+        #Cards_Recap {
+            grid-auto-columns: 350px auto;
+            grid-auto-rows: 125px 100px;
+            font-size: 0.85em;
+        }
+        #Card_SpendingTotal .chart .days .day .bar {
+            width: 17px;
+            border-radius: 3px 3px 0 0;
+        }
+    }
+    @media screen and (
+        ((max-width: 1050px) and (min-width: 950px))
+        or
+        ((max-width: 730px))
+    ) {
+        #Cards_Recap {
+            grid-template-areas: 
+                "total total"
+                "budget category";
+            grid-auto-columns: 300px auto;
+            grid-auto-rows: 225px 125px;
+        }
+        #Card_SpendingTotal .chart .days .day .bar {
+            width: 35px;
+            border-radius: 5px 5px 0 0;
+        }
+    }
+    @media screen and (
+        ((max-width: 950px) and (min-width: 800px)) 
+        or 
+        (max-width: 575px)) {
+        #Cards_Recap {
+            grid-template-areas: 
+                "total"
+                "budget"
+                "category";
+            grid-auto-columns: auto;
+            grid-auto-rows: 225px 125px 100px;
+        }
+        #Card_SpendingTotal .chart .days .day .bar {
+            width: 20px;
+            border-radius: 3px 3px 0 0;
+        }
+    }
+
+    #Header_MonthlyReport {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: auto max-content;
+        align-items: center;
+        gap: 20px;
+    }
+        #Header_MonthlyReport #Tab_Months {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: max-content;
+            gap: 20px;
+            overflow-x: auto;
+            margin: 0 -20px 0 -30px;
+            padding: 0 20px 0 30px;
+            scrollbar-width: none;
+            scroll-behavior: smooth;
+        }
+            #Header_MonthlyReport #Tab_Months span {
+                font-size: 1.1em;
+                font-weight: 600;
+                opacity: 0.5;
+                transition: 0.075s opacity;
+            }
+            #Header_MonthlyReport #Tab_Months span.active {
+                opacity: 1;
+            }
+            #Header_MonthlyReport #Tab_Months span:hover {
+                opacity: 0.75;
+            }
+            #Header_MonthlyReport #Tab_Months span:active {
+                opacity: 0.35;
+            }
+
+    #Header_MonthlyReport,
+    #List_MonthlyReport {
+        max-width: 800px;
+    }
+        #List_MonthlyReport .stack .thumbnail {
+            width: 35px;
+            height: 35px;
+            border-radius: 100%;
+            background: var(--overlay-8);
+        }
+        #List_MonthlyReport .stack .description {
+            display: grid;
+            grid-auto-flow: row;
+            grid-auto-rows: max-content;
+        }
+            #List_MonthlyReport .stack .description .category {
+                color: var(--foreground-description);
+            }
+        #List_MonthlyReport .stack .navigate {
+            display: grid;
+            grid-auto-flow: column;
+            gap: 0.15em;
+        }
+            #List_MonthlyReport .stack .navigate .price {
+                display: grid;
+                grid-auto-flow: column;
+                align-items: center;
+                gap: 0.75ch;
+            }
+            #List_MonthlyReport .stack .navigate .price.income {
+                color: #34c759;
+            }
+            [theme=dark]
+            #List_MonthlyReport .stack .navigate .price.income {
+                color: #30d158;
+            }
+            #List_MonthlyReport .stack .navigate .price.expenses {
+                color: #ff3b30;
+            }
+            [theme=dark]
+            #List_MonthlyReport .stack .navigate .price.expenses {
+                color: #ff453a;
+            }
+                #List_MonthlyReport .stack .navigate .price.income::before {
+                    content: "\eae9";
+                    font-family: var(--font-icon);
+                    font-size: 0.85em;
+                }
+                #List_MonthlyReport .stack .navigate .price.expenses::before {
+                    content: "\eba9";
+                    font-family: var(--font-icon);
+                    font-size: 0.85em;
+                }
+            #List_MonthlyReport .stack .navigate .icon {
+                color: var(--foreground-description);
+            }
+
+    #PopOver_InputManual {
+    }
+        #PopOver_InputManual .stack {
+            grid-auto-columns: 100px auto;
+        }
+            #PopOver_InputManual .stack > span {
+                font-weight: 600;
+            }
+            #PopOver_InputManual .stack > label:has(select) {
+                display: inline-grid;
+                grid-auto-flow: column;
+                justify-items: start;
+                text-align: left;
+                justify-content: space-between;
+                opacity: 1;
+            }
+            #PopOver_InputManual .stack :where(label:has(select:disabled), input:disabled) {
+                opacity: 0.6 !important;
+                pointer-events: none;
+            }
+        #PopOver_InputManual  #Button_AddNewTransaction {
+            width: 100%;
+            padding: 10px;
+        }
+</style>
+
 <div class="content">
-    <section id="Section_Monthly" ad-header="Pinned Courses">
-        <div></div>
+    <section ad-header="<$ cashflow recap_title />">
+        <div id="Cards_Recap" class="cards">
+            <div class="card" id="Card_SpendingTotal">
+                <div class="header">
+                    <span class="label"><$ cashflow recap_spendingtotal /></span>
+                    <span id="Text_SpendingTotal">&nbsp;</span>
+                </div>
+                <div class="chart">
+                    <div class="days" id="Grid_SpendingDays">
+                        <div class="day" data-day="mon">
+                            <div class="bar"></div>
+                            <span><$ generic day_monday_short/></span>
+                        </div>
+                        <div class="day" data-day="tue">
+                            <div class="bar"></div>
+                            <span><$ generic day_tuesday_short/></span>
+                        </div>
+                        <div class="day" data-day="wed">
+                            <div class="bar"></div>
+                            <span><$ generic day_wednesday_short/></span>
+                        </div>
+                        <div class="day" data-day="thu">
+                            <div class="bar"></div>
+                            <span><$ generic day_thursday_short/></span>
+                        </div>
+                        <div class="day" data-day="fri">
+                            <div class="bar"></div>
+                            <span><$ generic day_friday_short/></span>
+                        </div>
+                        <div class="day" data-day="sat">
+                            <div class="bar"></div>
+                            <span><$ generic day_saturday_short/></span>
+                        </div>
+                        <div class="day" data-day="sun">
+                            <div class="bar"></div>
+                            <span><$ generic day_sunday_short/></span>
+                        </div>    
+                    </div>
+                    <div class="ticks" id="Grid_SpendingTicks"></div>
+                </div>
+            </div>
+            <div class="card" id="Card_RemainingBudget">
+                <div class="header">
+                    <span class="label"><$ cashflow recap_budgetremaining /></span>
+                    <select id="Select_Budgets" class="plain"></select>
+                </div>
+                <span id="Text_BudgetRemaining">&nbsp;</span>
+                <div class="footer">
+                    <span id="Text_BudgetStatus"></span>
+                    <button class="plain" id="Button_BudgetAction"><$ cashflow recap_budgetreadjust/></button>
+                </div>
+            </div>
+            <div class="card" id="Card_SpendingCategories">
+                <span class="label"><$ cashflow recap_spendingcategories /></span>
+            </div>
+        </div>
+    </section>
+    <section ad-header="<$ cashflow monthlyreport_title />">
+        <div id="Header_MonthlyReport" class="header">
+            <div id="Tab_Months" class="tab">
+                <span data-month="jan"><$ generic month_january_short /></span>
+                <span data-month="feb"><$ generic month_february_short /></span>
+                <span data-month="mar"><$ generic month_march_short /></span>
+                <span data-month="apr"><$ generic month_april_short /></span>
+                <span data-month="may"><$ generic month_may_short /></span>
+                <span data-month="jun"><$ generic month_june_short /></span>
+                <span data-month="jul"><$ generic month_july_short /></span>
+                <span data-month="aug"><$ generic month_august_short /></span>
+                <span data-month="sep"><$ generic month_september_short /></span>
+                <span data-month="oct"><$ generic month_october_short /></span>
+                <span data-month="nov"><$ generic month_november_short /></span>
+                <span data-month="dec"><$ generic month_december_short /></span>
+            </div>
+            <select id="Select_Years"></select>
+        </div>
+        <div id="List_MonthlyReport" class="cards">
+        </div>
     </section>
 </div>
 
+<div class="popover" id="PopOver_InputManual" preventDefault="true">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelAddTransaction"><$ generic cancel /></button>
+                <button id="Button_SubmitAddTransaction">
+                    <span><$ generic create /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+            <div class="title"><$ cashflow transaction_add_title /></div>
+        </div>
+        <div class="content">
+            <template id="Template_TransactionForm">
+                <div class="list" ad-header="&nbsp;" ad-action="<$ generic remove />" onaction="removeCurrentTransaction(event)">
+                    <div class="stack name">
+                        <span><$ generic name /></span>
+                        <input type="text" class="plain" placeholder="<$ generic name />"/>
+                    </div>
+                    <div class="stack price">
+                        <span><$ generic price /></span>
+                        <input type="text" class="plain" value="Rp0" placeholder="<$ generic price_placeholder />"/>
+                    </div>
+                    <div class="stack type">
+                        <span><$ generic type /></span>
+                        <select class="plain" value="true">
+                            <option value="true"><$ generic expense /></option>
+                            <option value="false"><$ generic income /></option>
+                        </select>
+                    </div>
+                    <div class="stack time">
+                        <span><$ generic time /></span>
+                        <input type="datetime-local" class="plain"/>
+                    </div>
+                    <div class="stack category">
+                        <span><$ generic category /></span>
+                        <select class="plain" value="true">
+                            <option value="true"><$ generic category /></option>
+                        </select>
+                    </div>
+                </div>
+            </template>
+            <div id="Grid_TransactionList">
+            </div>
+            <button id="Button_AddNewTransaction" class="accent plain"><$ generic add /></button>
+        </div>
+    </div>
+</div>
+
+<div class="popover" id="PopOver_InputCamera">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button>Cancel</button>
+            </div>
+            <div class="title"><$ cashflow transaction_scan_title /></div>
+        </div>
+        <div class="content">
+        </div>
+    </div>
+</div>
+
 <script>
-    Section_Monthly.onheaderclick = function() {}
+    const DUMMY_RECAP = {
+        "type": "weekly",               
+        "spending": {
+            "total": 1960545.23,           
+            "summary": [450123, 250000.23, 120322, 384200, 393000, 213900, 249000]
+        },
+        "categories": [
+            {
+                "id": "category1",
+                "name": "education",
+                "status": "normal",
+                "allocated": 250000,
+                "usage": 90203,
+                "balance": 159797
+            }
+        ],
+        "budgets":
+        [
+            {
+                "id": "123",
+                "name": "Parent",
+                "status": "overlimit",
+                "allocated": 500000,
+                "usage": 241000,
+                "balance": -25000
+            },
+            {
+                "id": "2",          
+                "name": "Scholarship",   
+                "balance": 952000,  
+                "status": "normal",
+                "allocated": 3200000,  
+                "usage": 241000,
+                "balance": 25000
+            }
+        ]
+    }
+
+    const DUMMY_CATEGORIES = [
+        {
+            "id": "category1",
+            "name": "Food & Drink",
+            "allocated": 250000,
+            "status": "normal",
+            "usage": 90203,
+            "balance": 159797
+        },
+        {
+            "id": "category2",
+            "name": "Education",
+            "allocated": 15000000,
+            "status": "normal",
+            "usage": 8500000,
+            "balance": 6500000
+        }
+    ]
+
+    const DUMMY_YEARS = [2024, 2025]
+
+    const DUMMY_MONTHLY_REPORT = [
+        {
+            "id": "ggasfakjfha",
+            "timestamp": 1763139600000,
+            "isExpenses": true,
+            "name": "Pembayaran Biaya SKS",
+            "price": 1500000,
+            "category_id": "category2"
+        },
+        {
+            "id": "aksfhawi2",
+            "timestamp": 1763053200000,
+            "isExpenses": false,
+            "name": "Income from Parent",
+            "price": 2000000,
+            "category_id": null
+        },
+        {
+            "id": "smfnamsa2",
+            "timestamp": 1763053200000,
+            "isExpenses": true,
+            "name": "Ayam Goreng",
+            "price": 12500,
+            "category_id": "category1"
+        },
+        {
+            "id": "ashjjasd",
+            "timestamp": 1762880400000,
+            "isExpenses": true,
+            "name": "Bawang",
+            "price": 25000,
+            "category_id": "category1"
+        }
+    ]
+
+    initializeRecapCards();
+    initializeReportList();
+    
+    Button_NewTransaction.onclick = function(event) {
+        Components.ContextMenu.Open("Transaction_New", Button_NewTransaction, event);
+    }
+
+    Components.ContextMenu.Add("Transaction_New", [
+        {
+            Title: "<$ cashflow transaction_scanbill />",
+            Icon: "fce6",
+            Action: o => {
+                PopOver_InputCamera.open(Button_NewTransaction);
+            }
+        },
+        {
+            Title: "<$ cashflow transaction_addmanual />",
+            Icon: "eef7",
+            Action: o => {
+                Grid_TransactionList.innerHTML = null;
+                Button_CancelAddTransaction.disabled = false;
+                Button_SubmitAddTransaction.disabled = false;
+                Button_AddNewTransaction.disabled = false;
+                Button_AddNewTransaction.click();
+                PopOver_InputManual.open(Button_NewTransaction);
+            }
+        }
+    ]);
+
+    Button_AddNewTransaction.onclick = function() {
+        const listTemplate = Template_TransactionForm.content.children[0].cloneNode(true);
+        const priceInput = listTemplate.querySelector(".price > input");
+        priceInput.onfocus = function() {
+            this.value = this.value.replace(/[^0-9]/g, "");
+        }
+        priceInput.onblur = function() {
+            const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
+            this.value = value.substring(0, value.length - 3);
+        }
+
+        const timeInput = listTemplate.querySelector(".time input");
+        timeInput.value = getLocalISOString().slice(0,16);
+
+        Grid_TransactionList.append(listTemplate);        
+    }
+    Button_CancelAddTransaction.onclick = function() {
+        PopOver_InputManual.close(true);
+    }
+    Button_SubmitAddTransaction.onclick = async function() {
+        PopOver_InputManual.isloading = true;
+        Button_CancelAddTransaction.disabled = true;
+        Button_SubmitAddTransaction.disabled = true;
+        Button_AddNewTransaction.disabled = true;
+
+        const transactions = [...Grid_TransactionList.children].map(function(list) {
+            const nameInput = list.querySelector(".name input");
+            const priceInput = list.querySelector(".price input");
+            const timeInput = list.querySelector(".time input");
+            const typeInput = list.querySelector(".type select");
+            const categoryInput = list.querySelector(".category select");
+
+            return {
+                name: nameInput.value,
+                price: parseInt(priceInput.value.replace(/[^0-9]/g, "")) || 0,
+                timestamp: new Date(timeInput.value) * 1 || 0,
+                isExpenses: typeInput.value == "true",
+                category_id: categoryInput.value 
+            }
+        });
+
+        const inputs = [...Grid_TransactionList.querySelectorAll("input, select, button")];
+        for (const input of inputs)
+            input.disabled = true; 
+
+        await Delay(3000);
+        console.log(transactions);
+        // Post to database
+        PopOver_InputManual.isloading = false;
+        PopOver_InputManual.close(true);
+    }
+
+    function removeCurrentTransaction(event) {
+        event.target.parentNode.remove();
+    }
+
+    Select_Budgets.onchange = function() {
+        const budget = this.selectedOptions[0].data;
+        updateBudgetCard(budget);
+    }
+
+    function initializeRecapCards() {
+        const recap = DUMMY_RECAP || $.get("/client/cashflow/recap");
+        
+        Text_SpendingTotal.innerText = formatCurrency(recap.spending.total);
+        const highestSpending = Math.max(...recap.spending.summary);
+        const highestSpendingMultiple10 = Math.pow(10, parseInt(Math.log10(highestSpending)));
+        const highestSpendingTick = Math.ceil(highestSpending / highestSpendingMultiple10) * highestSpendingMultiple10;
+        
+        // total spending chart
+        for (let i = 0; i < 7; i++) {
+            const bar = Grid_SpendingDays.children[i].children[0];
+            const value = recap.spending.summary[i];
+
+            bar.style.setProperty("--height", (value / highestSpendingTick * 100) + "%");
+        }
+
+        // ticks for chart
+        const valuePerTick = highestSpendingTick / 4;
+        for (let i = 4; i >= 0; i--) {
+            const value = formatCurrency(parseInt(valuePerTick * i));
+            const tick = document.createElement("div");
+            tick.classList.add("tick");
+            tick.innerText = value.substring(0, value.length - 3);
+            Grid_SpendingTicks.append(tick);
+        }
+
+        const budgets = recap.budgets;
+
+        for (const budget of budgets) {
+            const optionElement = document.createElement("option");
+            optionElement.value = budget.id;
+            optionElement.data = budget;
+            optionElement.innerText = budget.name;
+            Select_Budgets.append(optionElement);
+        }
+
+        updateBudgetCard(budgets[0]);
+    }
+
+    function updateBudgetCard(budget) {
+        Text_BudgetRemaining.innerText = formatCurrency(budget.balance);
+        Text_BudgetRemaining.classList.remove("normal");
+        Text_BudgetRemaining.classList.remove("nearlimit");
+        Text_BudgetRemaining.classList.remove("overlimit");
+        
+        if (budget.status == "normal") {
+            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_normal />";
+            Text_BudgetRemaining.classList.add("normal");
+            Button_BudgetAction.classList.add("hidden");
+        }
+        else if (budget.status == "nearlimit") {
+            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_nearlimit />";
+            Text_BudgetRemaining.classList.add("nearlimit");
+            Button_BudgetAction.classList.add("hidden");
+        }
+        else if (budget.status == "overlimit") {
+            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_overlimit />";
+            Text_BudgetRemaining.classList.add("overlimit");
+            Button_BudgetAction.classList.remove("hidden");
+        }
+        else {
+            Text_BudgetStatus.innerText = "\n";
+            Button_BudgetAction.classList.remove("hidden");
+        }
+    }
+
+    function initializeReportList() {
+        for (const tab of Tab_Months.children) {
+            tab.onclick = function() {
+                fetchReportList(tab.dataset.month, Select_Years.value);
+            }
+        }
+        
+        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const currentMonth = months[new Date().getMonth()];
+        const currentYear = new Date().getFullYear();
+        fetchReportList(currentMonth, currentYear);
+        
+        const years = DUMMY_YEARS || $.get("/client/cashflow/transactions/years");
+        for (const year of years) {
+            const optionElement = document.createElement("option");
+            optionElement.value = year;
+            optionElement.innerText = year;
+            if (currentYear == year)
+                optionElement.selected = true;
+            Select_Years.append(optionElement);
+        }
+    }
+
+    function fetchReportList(month, year) {
+        let activeTab;
+
+        for (const tab of Tab_Months.children) {
+            if (tab.dataset.month == month) {
+                tab.classList.add("active");
+                activeTab = tab;
+            }
+            else {
+                tab.classList.remove("active");
+            }
+        }
+            
+        if (activeTab) {
+            console.log(activeTab.nextElement)
+            const x = activeTab.getBoundingClientRect().x;
+            if (x < 20)
+                Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
+            else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50)
+                Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
+        }
+
+        const transactions = DUMMY_MONTHLY_REPORT || $("/client/transactions/?month=" + month + "&year=" + year);
+        
+        List_MonthlyReport.innerHTML = null;
+
+        for (const transaction of transactions) {
+            appendReportList(transaction);
+        }
+    }
+
+    function appendReportList(transaction) {
+        const thumbnailElement = document.createElement("img");
+        thumbnailElement.classList.add("thumbnail");
+        thumbnailElement.src = "/client/categories/thumbnail/" + transaction.category_id;
+
+        const nameElement = document.createElement("span");
+        nameElement.classList.add("name");
+        nameElement.innerText = transaction.name;
+
+        const categoryElement = document.createElement("span");
+        categoryElement.classList.add("category");
+        categoryElement.innerText = transaction.category_id;
+
+        const descriptionGroupElement = document.createElement("div");
+        descriptionGroupElement.classList.add("description");
+        descriptionGroupElement.append(nameElement);
+        descriptionGroupElement.append(categoryElement);
+
+        const priceElement = document.createElement("span");
+        priceElement.classList.add("price");
+        priceElement.classList.add(transaction.isExpenses ? "expenses" : "income");
+        priceElement.innerText = formatCurrency(transaction.price);
+
+        const chevronElement = document.createElement("span");
+        chevronElement.classList.add("icon");
+        chevronElement.innerText = "\uef4a";
+
+        const navigateElement = document.createElement("div");
+        navigateElement.classList.add("navigate");
+        navigateElement.append(priceElement);
+        navigateElement.append(chevronElement);
+
+        const containerElement = document.createElement("div");
+        containerElement.classList.add("stack");
+        containerElement.classList.add("iconed");
+        containerElement.classList.add("clickable");
+        containerElement.append(thumbnailElement);
+        containerElement.append(descriptionGroupElement);
+        containerElement.append(navigateElement);
+        
+        const dateGroupElements = [...List_MonthlyReport.children];
+        let dateGroupMatches = dateGroupElements.find(o => o.dataset.date == new Date(transaction.timestamp).getDate());
+
+        if (dateGroupMatches == null) {
+            dateGroupMatches = document.createElement("div");
+            dateGroupMatches.classList.add("list");
+            dateGroupMatches.dataset.date = new Date(transaction.timestamp).getDate();
+
+            // today
+            const diffTimestamp = Date.now() - transaction.timestamp; 
+            if (diffTimestamp < 1000 * 60 * 60 * 24)
+                dateGroupMatches.setAttribute("ad-header", "<$ generic today />");
+            // yesterday
+            else if (diffTimestamp < 1000 * 60 * 60 * 24 * 2)
+                dateGroupMatches.setAttribute("ad-header", "<$ generic yesterday />");
+            // a long time ago
+            else
+                dateGroupMatches.setAttribute("ad-header", moment(transaction.timestamp).format("ll"));
+            List_MonthlyReport.append(dateGroupMatches);
+        }
+
+        dateGroupMatches.append(containerElement);
+    }
 </script>
