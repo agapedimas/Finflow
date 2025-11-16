@@ -1,5 +1,6 @@
 {
     "delete": "Delete",
+    "remove": "Remove",
     "clear": "Clear",
     "cancel": "Cancel",
     "new": "New",
@@ -25,9 +26,17 @@
     "username": "Username",
     "nickname": "Nickname",
     "password": "Password",
-    "username_placeholder": "e.g: john_smith",
-    "nickname_placeholder": "e.g: John Smith",
+    "username_placeholder": "e.g.: john_smith",
+    "nickname_placeholder": "e.g.: John Smith",
     "password_placeholder": "Strong and memorable",
+
+    "price": "Price",
+    "price_placeholder": "e.g.: Rp25,000",
+    "type": "Type",
+    "income": "Income",
+    "expense": "Expense",
+    "category": "Category",
+    "time": "Time",
 
     "month_january": "January",
     "month_february": "February",

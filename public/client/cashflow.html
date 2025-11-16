@@ -14,7 +14,9 @@
             "total budget"
             "total category";
         grid-auto-columns: 450px auto;
+        grid-auto-rows: 140px 100px;
         gap: 15px;
+        max-width: 800px;
     }
         #Cards_Recap .card {
             background: var(--background-list);
@@ -24,6 +26,7 @@
     #Card_SpendingTotal {
         grid-area: total;
         display: grid;
+        grid-auto-rows: max-content auto;
         gap: 1em;
     }
         #Card_SpendingTotal .header {
@@ -41,9 +44,40 @@
                 font-size: 2em;
             }
         #Card_SpendingTotal .chart {
+            position: relative;
             display: grid;
             grid-auto-flow: column;
+            grid-auto-columns: auto max-content;
+            gap: 20px;
+            padding-top: 20px;
+            overflow: hidden;    
+            z-index: 0;
         }
+            #Card_SpendingTotal .chart .ticks {
+                display: grid;
+                margin: calc(-1.5ch - 20px) 0 calc(1.5ch + 5px);
+                align-items: end;
+                z-index: -1;
+            }
+                #Card_SpendingTotal .chart .ticks .tick {
+                    position: relative;
+                    color: var(--foreground-description);
+                    font-weight: 600;
+                    font-size: 0.7em;
+                    letter-spacing: 0.05em;
+                    transform: translateY(50%);
+                }
+                    #Card_SpendingTotal .chart .ticks .tick::before {
+                        content: "";
+                        display: block;
+                        position: absolute;
+                        bottom: 50%;
+                        transform: translateY(50%);
+                        height: 2px;
+                        left: -100vw;
+                        right: calc(100% + 15px);
+                        background-color: var(--overlay-8);
+                    }
             #Card_SpendingTotal .chart .days {
                 display: grid;
                 grid-auto-flow: column;
@@ -53,20 +87,9 @@
                     display: grid;
                     position: relative;
                     grid-auto-rows: auto max-content;
-                    height: 150px;
                     justify-items: center;
                     align-items: end;
                 }
-                    #Card_SpendingTotal .chart .days .day::before {
-                        content: "";
-                        position: absolute;
-                        display: block;
-                        bottom: calc(1.5ch + 5px);
-                        left: 0;
-                        right: 0;
-                        height: 1px;
-                        background-color: var(--overlay-8);
-                    }
                     #Card_SpendingTotal .chart .days .day .bar {
                         --height: 0%;
                         background: var(--accent);
@@ -81,6 +104,137 @@
                         letter-spacing: 0.05em;
                         margin-top: 5px;
                     }
+    #Card_RemainingBudget {
+        grid-area: budget;
+        display: grid;
+        grid-auto-rows: max-content auto max-content;
+    }
+        #Card_RemainingBudget .header {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: auto max-content;
+        }
+            #Card_RemainingBudget .header .label {
+                color: var(--foreground-description);
+                font-weight: 600;
+                font-size: 0.85em;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            #Card_RemainingBudget .header label:has(select) {
+                gap: 4px;
+            }
+            #Card_RemainingBudget .header select {
+                padding-top: 0;
+                padding-bottom: 0;
+                font-size: 0.85em;
+                letter-spacing: 0.05em;
+            }
+            #Card_RemainingBudget #Text_BudgetRemaining {
+                font-weight: bold;
+                font-size: 2em;
+            }
+            #Card_RemainingBudget #Text_BudgetRemaining.nearlimit {
+                color: #ffd60a;
+            }
+            [theme=dark] 
+            #Card_RemainingBudget #Text_BudgetRemaining.nearlimit {
+                color: #ffd60a;
+            }
+            #Card_RemainingBudget #Text_BudgetRemaining.overlimit  {
+                color: #ff3b30;
+            }
+            [theme=dark] 
+            #Card_RemainingBudget #Text_BudgetRemaining.overlimit {
+                color: #ff453a;
+            }
+            #Card_RemainingBudget .footer {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: auto max-content;
+                gap: 5px;    
+                margin-top: 15px;  
+                align-items: end;  
+                align-self: end;
+            }
+                #Card_RemainingBudget .footer #Button_BudgetAction {
+                    position: relative;
+                    border-radius: 30px;
+                    text-transform: uppercase;
+                    font-size: 0.85em;
+                    letter-spacing: 0.015em;
+                    font-weight: 500;
+                    overflow: hidden;
+                }
+                    #Card_RemainingBudget .footer #Button_BudgetAction::before {
+                        content: "";
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background-color: var(--accent);
+                        opacity: 0.1;
+                    }
+    #Card_SpendingCategories {
+        grid-area: category;
+        display: grid;
+        grid-auto-rows: max-content auto max-content;
+    }
+        #Card_SpendingCategories .label {
+            color: var(--foreground-description);
+            font-weight: 600;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+
+    @media screen and (max-width: 1175px) {
+        #Cards_Recap {
+            grid-auto-columns: 350px auto;
+            grid-auto-rows: 125px 100px;
+            font-size: 0.85em;
+        }
+        #Card_SpendingTotal .chart .days .day .bar {
+            width: 17px;
+            border-radius: 3px 3px 0 0;
+        }
+    }
+    @media screen and (
+        ((max-width: 1050px) and (min-width: 950px))
+        or
+        ((max-width: 730px))
+    ) {
+        #Cards_Recap {
+            grid-template-areas: 
+                "total total"
+                "budget category";
+            grid-auto-columns: 300px auto;
+            grid-auto-rows: 225px 125px;
+        }
+        #Card_SpendingTotal .chart .days .day .bar {
+            width: 35px;
+            border-radius: 5px 5px 0 0;
+        }
+    }
+    @media screen and (
+        ((max-width: 950px) and (min-width: 800px)) 
+        or 
+        (max-width: 575px)) {
+        #Cards_Recap {
+            grid-template-areas: 
+                "total"
+                "budget"
+                "category";
+            grid-auto-columns: auto;
+            grid-auto-rows: 225px 125px 100px;
+        }
+        #Card_SpendingTotal .chart .days .day .bar {
+            width: 20px;
+            border-radius: 3px 3px 0 0;
+        }
+    }
 
     #Header_MonthlyReport {
         display: grid;
@@ -172,6 +326,31 @@
             #List_MonthlyReport .stack .navigate .icon {
                 color: var(--foreground-description);
             }
+
+    #PopOver_InputManual {
+    }
+        #PopOver_InputManual .stack {
+            grid-auto-columns: 100px auto;
+        }
+            #PopOver_InputManual .stack > span {
+                font-weight: 600;
+            }
+            #PopOver_InputManual .stack > label:has(select) {
+                display: inline-grid;
+                grid-auto-flow: column;
+                justify-items: start;
+                text-align: left;
+                justify-content: space-between;
+                opacity: 1;
+            }
+            #PopOver_InputManual .stack :where(label:has(select:disabled), input:disabled) {
+                opacity: 0.6 !important;
+                pointer-events: none;
+            }
+        #PopOver_InputManual  #Button_AddNewTransaction {
+            width: 100%;
+            padding: 10px;
+        }
 </style>
 
 <div class="content">
@@ -211,12 +390,25 @@
                         <div class="day" data-day="sun">
                             <div class="bar"></div>
                             <span><$ generic day_sunday_short/></span>
-                        </div>
+                        </div>    
                     </div>
+                    <div class="ticks" id="Grid_SpendingTicks"></div>
                 </div>
             </div>
-            <div class="card" id="Card_RemainingBudget"></div>
-            <div class="card" id="Card_SpendingCategories"></div>
+            <div class="card" id="Card_RemainingBudget">
+                <div class="header">
+                    <span class="label"><$ cashflow recap_budgetremaining /></span>
+                    <select id="Select_Budgets" class="plain"></select>
+                </div>
+                <span id="Text_BudgetRemaining">&nbsp;</span>
+                <div class="footer">
+                    <span id="Text_BudgetStatus"></span>
+                    <button class="plain" id="Button_BudgetAction"><$ cashflow recap_budgetreadjust/></button>
+                </div>
+            </div>
+            <div class="card" id="Card_SpendingCategories">
+                <span class="label"><$ cashflow recap_spendingcategories /></span>
+            </div>
         </div>
     </section>
     <section ad-header="<$ cashflow monthlyreport_title />">
@@ -245,17 +437,80 @@
     </section>
 </div>
 
+<div class="popover" id="PopOver_InputManual" preventDefault="true">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelAddTransaction"><$ generic cancel /></button>
+                <button id="Button_SubmitAddTransaction">
+                    <span><$ generic create /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+            <div class="title"><$ cashflow transaction_add_title /></div>
+        </div>
+        <div class="content">
+            <template id="Template_TransactionForm">
+                <div class="list" ad-header="&nbsp;" ad-action="<$ generic remove />" onaction="removeCurrentTransaction(event)">
+                    <div class="stack name">
+                        <span><$ generic name /></span>
+                        <input type="text" class="plain" placeholder="<$ generic name />"/>
+                    </div>
+                    <div class="stack price">
+                        <span><$ generic price /></span>
+                        <input type="text" class="plain" value="Rp0" placeholder="<$ generic price_placeholder />"/>
+                    </div>
+                    <div class="stack type">
+                        <span><$ generic type /></span>
+                        <select class="plain" value="true">
+                            <option value="true"><$ generic expense /></option>
+                            <option value="false"><$ generic income /></option>
+                        </select>
+                    </div>
+                    <div class="stack time">
+                        <span><$ generic time /></span>
+                        <input type="datetime-local" class="plain"/>
+                    </div>
+                    <div class="stack category">
+                        <span><$ generic category /></span>
+                        <select class="plain" value="true">
+                            <option value="true"><$ generic category /></option>
+                        </select>
+                    </div>
+                </div>
+            </template>
+            <div id="Grid_TransactionList">
+            </div>
+            <button id="Button_AddNewTransaction" class="accent plain"><$ generic add /></button>
+        </div>
+    </div>
+</div>
+
+<div class="popover" id="PopOver_InputCamera">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button>Cancel</button>
+            </div>
+            <div class="title"><$ cashflow transaction_scan_title /></div>
+        </div>
+        <div class="content">
+        </div>
+    </div>
+</div>
+
 <script>
     const DUMMY_RECAP = {
         "type": "weekly",               
         "spending": {
             "total": 1960545.23,           
-            "summary": [450123, 250000.23, 120322, 384200, 393000, 213900, 149000]
+            "summary": [450123, 250000.23, 120322, 384200, 393000, 213900, 249000]
         },
         "categories": [
             {
                 "id": "category1",
                 "name": "education",
+                "status": "normal",
                 "allocated": 250000,
                 "usage": 90203,
                 "balance": 159797
@@ -266,9 +521,19 @@
             {
                 "id": "123",
                 "name": "Parent",
+                "status": "overlimit",
                 "allocated": 500000,
                 "usage": 241000,
-                "balance": 259000
+                "balance": -25000
+            },
+            {
+                "id": "2",          
+                "name": "Scholarship",   
+                "balance": 952000,  
+                "status": "normal",
+                "allocated": 3200000,  
+                "usage": 241000,
+                "balance": 25000
             }
         ]
     }
@@ -278,6 +543,7 @@
             "id": "category1",
             "name": "Food & Drink",
             "allocated": 250000,
+            "status": "normal",
             "usage": 90203,
             "balance": 159797
         },
@@ -285,6 +551,7 @@
             "id": "category2",
             "name": "Education",
             "allocated": 15000000,
+            "status": "normal",
             "usage": 8500000,
             "balance": 6500000
         }
@@ -338,27 +605,148 @@
         {
             Title: "<$ cashflow transaction_scanbill />",
             Icon: "fce6",
-            Action: o => {}
+            Action: o => {
+                PopOver_InputCamera.open(Button_NewTransaction);
+            }
         },
         {
             Title: "<$ cashflow transaction_addmanual />",
             Icon: "eef7",
-            Action: o => {}
+            Action: o => {
+                Grid_TransactionList.innerHTML = null;
+                Button_CancelAddTransaction.disabled = false;
+                Button_SubmitAddTransaction.disabled = false;
+                Button_AddNewTransaction.disabled = false;
+                Button_AddNewTransaction.click();
+                PopOver_InputManual.open(Button_NewTransaction);
+            }
         }
     ]);
+
+    Button_AddNewTransaction.onclick = function() {
+        const listTemplate = Template_TransactionForm.content.children[0].cloneNode(true);
+        const priceInput = listTemplate.querySelector(".price > input");
+        priceInput.onfocus = function() {
+            this.value = this.value.replace(/[^0-9]/g, "");
+        }
+        priceInput.onblur = function() {
+            const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
+            this.value = value.substring(0, value.length - 3);
+        }
+
+        const timeInput = listTemplate.querySelector(".time input");
+        timeInput.value = getLocalISOString().slice(0,16);
+
+        Grid_TransactionList.append(listTemplate);        
+    }
+    Button_CancelAddTransaction.onclick = function() {
+        PopOver_InputManual.close(true);
+    }
+    Button_SubmitAddTransaction.onclick = async function() {
+        PopOver_InputManual.isloading = true;
+        Button_CancelAddTransaction.disabled = true;
+        Button_SubmitAddTransaction.disabled = true;
+        Button_AddNewTransaction.disabled = true;
+
+        const transactions = [...Grid_TransactionList.children].map(function(list) {
+            const nameInput = list.querySelector(".name input");
+            const priceInput = list.querySelector(".price input");
+            const timeInput = list.querySelector(".time input");
+            const typeInput = list.querySelector(".type select");
+            const categoryInput = list.querySelector(".category select");
+
+            return {
+                name: nameInput.value,
+                price: parseInt(priceInput.value.replace(/[^0-9]/g, "")) || 0,
+                timestamp: new Date(timeInput.value) * 1 || 0,
+                isExpenses: typeInput.value == "true",
+                category_id: categoryInput.value 
+            }
+        });
+
+        const inputs = [...Grid_TransactionList.querySelectorAll("input, select, button")];
+        for (const input of inputs)
+            input.disabled = true; 
+
+        await Delay(3000);
+        console.log(transactions);
+        // Post to database
+        PopOver_InputManual.isloading = false;
+        PopOver_InputManual.close(true);
+    }
+
+    function removeCurrentTransaction(event) {
+        event.target.parentNode.remove();
+    }
+
+    Select_Budgets.onchange = function() {
+        const budget = this.selectedOptions[0].data;
+        updateBudgetCard(budget);
+    }
 
     function initializeRecapCards() {
         const recap = DUMMY_RECAP || $.get("/client/cashflow/recap");
         
-        Text_SpendingTotal.innerText = "Rp" + recap.spending.total.toLocaleString(document.documentElement.lang);
+        Text_SpendingTotal.innerText = formatCurrency(recap.spending.total);
         const highestSpending = Math.max(...recap.spending.summary);
+        const highestSpendingMultiple10 = Math.pow(10, parseInt(Math.log10(highestSpending)));
+        const highestSpendingTick = Math.ceil(highestSpending / highestSpendingMultiple10) * highestSpendingMultiple10;
         
         // total spending chart
         for (let i = 0; i < 7; i++) {
             const bar = Grid_SpendingDays.children[i].children[0];
             const value = recap.spending.summary[i];
 
-            bar.style.setProperty("--height", (value / highestSpending * 100) + "%");
+            bar.style.setProperty("--height", (value / highestSpendingTick * 100) + "%");
+        }
+
+        // ticks for chart
+        const valuePerTick = highestSpendingTick / 4;
+        for (let i = 4; i >= 0; i--) {
+            const value = formatCurrency(parseInt(valuePerTick * i));
+            const tick = document.createElement("div");
+            tick.classList.add("tick");
+            tick.innerText = value.substring(0, value.length - 3);
+            Grid_SpendingTicks.append(tick);
+        }
+
+        const budgets = recap.budgets;
+
+        for (const budget of budgets) {
+            const optionElement = document.createElement("option");
+            optionElement.value = budget.id;
+            optionElement.data = budget;
+            optionElement.innerText = budget.name;
+            Select_Budgets.append(optionElement);
+        }
+
+        updateBudgetCard(budgets[0]);
+    }
+
+    function updateBudgetCard(budget) {
+        Text_BudgetRemaining.innerText = formatCurrency(budget.balance);
+        Text_BudgetRemaining.classList.remove("normal");
+        Text_BudgetRemaining.classList.remove("nearlimit");
+        Text_BudgetRemaining.classList.remove("overlimit");
+        
+        if (budget.status == "normal") {
+            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_normal />";
+            Text_BudgetRemaining.classList.add("normal");
+            Button_BudgetAction.classList.add("hidden");
+        }
+        else if (budget.status == "nearlimit") {
+            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_nearlimit />";
+            Text_BudgetRemaining.classList.add("nearlimit");
+            Button_BudgetAction.classList.add("hidden");
+        }
+        else if (budget.status == "overlimit") {
+            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_overlimit />";
+            Text_BudgetRemaining.classList.add("overlimit");
+            Button_BudgetAction.classList.remove("hidden");
+        }
+        else {
+            Text_BudgetStatus.innerText = "\n";
+            Button_BudgetAction.classList.remove("hidden");
         }
     }
 
@@ -437,7 +825,7 @@
         const priceElement = document.createElement("span");
         priceElement.classList.add("price");
         priceElement.classList.add(transaction.isExpenses ? "expenses" : "income");
-        priceElement.innerText = "Rp" + transaction.price.toLocaleString(document.documentElement.lang);
+        priceElement.innerText = formatCurrency(transaction.price);
 
         const chevronElement = document.createElement("span");
         chevronElement.classList.add("icon");

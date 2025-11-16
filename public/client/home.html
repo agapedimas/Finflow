@@ -146,12 +146,12 @@
             nameElement.classList.add("name");
             nameElement.innerText = budget.name;
 
-            let balanceFormat = "Rp" + budget.balance.toLocaleString(document.documentElement.lang);
+            let balanceFormat = formatCurrency(budget.balance);
             const balanceElement = document.createElement("span");
             balanceElement.classList.add("balance");
             balanceElement.innerText = balanceFormat;
             
-            let allocatedFormat = "Rp" + budget.allocated.toLocaleString(document.documentElement.lang);
+            let allocatedFormat = formatCurrency(budget.allocated);
             const allocatedElement = document.createElement("span");
             allocatedElement.classList.add("allocated");
             allocatedElement.innerText = "<$ home budgets_allocatedfor />".format(allocatedFormat);
