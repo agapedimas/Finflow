@@ -5,6 +5,7 @@ const Accounts = require("./accounts");
 const Functions = require("./functions");
 const Language = require("./language");
 const FileIO = require("fs");
+const Gemini = require("./gemini");
 
 /**
  * @param { import("express").Application } Server Express instance
@@ -235,6 +236,27 @@ function Route(Server)
             res.send();
         else
             res.status(500).send();
+    });
+
+    // ROUTE FOR GEMINI CHATS
+    let dumpHistory = [];
+    Server.post("/client/assistant/send", async function(req, res) 
+    {
+        // retrieve chat history
+        const history = dumpHistory || await SQL.Query("");
+        const message = req.body.message;
+        const response = await Gemini.Chat.Send(message, 1, history);
+        
+        // response with no error
+        if (response.finish.code == 0) {
+            res.send(response.text);
+            dumpHistory = response.history;
+        }
+        // something went wrong
+        else {
+            console.error(response.finish.code);
+            res.send("ERROR").status(500);
+        }
     });
 
     Map(Server);
