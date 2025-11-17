@@ -5,6 +5,7 @@ const Accounts = require("./accounts");
 const Functions = require("./functions");
 const Language = require("./language");
 const FileIO = require("fs");
+const Gemini = require("./gemini");
 
 /**
  * @param { import("express").Application } Server Express instance
@@ -186,6 +187,31 @@ function Route(Server)
     }
 
     // CUSTOM ROUTE HERE
+    
+    const ApiAuthMiddleware = async (req, res, next) => {
+        try {
+            const hasAccess = await Authentication.HasAccess(req.session.account);
+            if (!hasAccess) {
+                return res.status(401).send({ error: "Sesi tidak valid atau Anda belum login." });
+            }
+
+            // Sukses, tambahkan data user ke 'req' agar bisa dipakai di endpoint
+            const id = await Authentication.GetAccountId(req.session.account);
+            const account = (await Accounts.Get({ id })).at(0);
+
+            if (!account) {
+                return res.status(404).send({ error: "Akun tidak ditemukan." });
+            }
+
+            req.user = account; // Kita buat 'req.user' agar lebih standar
+            next();
+
+        } catch (error) {
+            console.error("Auth Middleware Error:", error);
+            res.status(500).send({ error: "Terjadi kesalahan server saat otentikasi" });
+        }
+    };
+    
     Server.get("/avatar/*", async function(req, res)
     {
         // Set cache of avatar to 1 year, because it can be refreshed with banner version query
@@ -235,6 +261,27 @@ function Route(Server)
             res.send();
         else
             res.status(500).send();
+    });
+
+    // ROUTE FOR GEMINI CHATS
+    let dumpHistory = [];
+    Server.post("/client/assistant/send", async function(req, res) 
+    {
+        // retrieve chat history
+        const history = dumpHistory || await SQL.Query("");
+        const message = req.body.message;
+        const response = await Gemini.Chat.Send(message, 1, history);
+        
+        // response with no error
+        if (response.finish.code == 0) {
+            res.send(response.text);
+            dumpHistory = response.history;
+        }
+        // something went wrong
+        else {
+            console.error(response.finish.code);
+            res.send("ERROR").status(500);
+        }
     });
 
     Map(Server);
