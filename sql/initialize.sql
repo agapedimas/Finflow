@@ -32,7 +32,7 @@ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 CREATE TABLE IF NOT EXISTS `accounts_funder` 
     (
         `id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
-        'type' int UNSIGNED NOT NULL DEFAULT,   -- 0: beasiswa, 1: parent
+        'type' int UNSIGNED NOT NULL,   -- 0: beasiswa, 1: parent
             PRIMARY KEY (`id`), 
             CONSTRAINT `fk_accounts_funder` 
                 FOREIGN KEY (`id`) REFERENCES `accounts`(`id`) 
