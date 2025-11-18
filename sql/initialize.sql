@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS `accounts`
         `url` varchar(1000) CHARACTER SET ascii COLLATE ascii_bin, 
         `password` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
         `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, 
+        `current_balance` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
         `avatarversion` int UNSIGNED NOT NULL DEFAULT 1,
             PRIMARY KEY (`id`), 
             UNIQUE KEY `username` (`username`)

@@ -53,7 +53,12 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     `receipt_image_path` VARCHAR(255) NULL,
     
     FOREIGN KEY (`student_id`) REFERENCES `accounts`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (`funding_id`) REFERENCES `funding`(`funding_id`) ON DELETE SET NULL ON UPDATE CASCADE
+    FOREIGN KEY (`funding_id`) REFERENCES `funding`(`funding_id`) ON DELETE SET NULL ON UPDATE CASCADE,
+
+    -- INDEKS BARU UNTUK RAG DAN PERFORMA LAPORAN
+    INDEX `idx_student_date_type` (`student_id`, `transaction_date`, `type`),
+    INDEX `idx_category_allocation` (`category`, `allocation_type`)
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 -- =======================================================
