@@ -22,7 +22,7 @@ const Accounts =
      */
     Get: async function(details)
     {
-        let query = "SELECT id, username, nickname, created, avatarversion FROM accounts";
+        let query = "SELECT id, username, displayname, created, avatarversion FROM accounts";
         let params = [];
 
         if (details?.id)
@@ -48,7 +48,7 @@ const Accounts =
     Add: async function(username, nickname, password)
     {
         const id = (Date.now() * 50 + 321).toString(36);
-        await SQL.Query("INSERT INTO accounts (id, username, nickname, password) VALUES (?,?,?,?)", [id, username, nickname, password]);
+        await SQL.Query("INSERT INTO accounts (id, username, displayname, password) VALUES (?,?,?,?)", [id, username, nickname, password]);
 
         return id;
     },

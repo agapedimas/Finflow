@@ -113,6 +113,22 @@ const SQL =
                         break;
                 }
 
+                // menjalankan seed_data.sql
+                // const seedFile = await FileIO.readFileSync("./sql/seed_data.sql");
+                // const seedQueries = seedFile.toString().split(/(?<!\\);/g).map(o => o.replace(/\\;/g, ";").trim()).filter(o => o != "");
+
+                // console.log("Menjalankan seed data untuk pengujian...");
+
+                // for (const query of seedQueries)
+                // {
+                //     const result = await SQL.Query(query);
+                //     if (result.success == false) {
+                //         console.error("Gagal menjalankan seed query:", query);
+                //         break;
+                //     }
+                // }
+                //console.log("Seed data berhasil diisi.");``
+
                 resolve();
             });
         });

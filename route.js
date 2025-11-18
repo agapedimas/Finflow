@@ -7,364 +7,282 @@ const Language = require("./language");
 const FileIO = require("fs");
 const Gemini = require("./gemini");
 
+const transactionController = require("./controllers/transactionController");
+
 /**
  * @param { import("express").Application } Server Express instance
  * @returns { void }
  */
-function Route(Server) 
-{      
-    // DEFAULT ROUTE
-    {
-        Server.post("/ping", function(req, res)
-        {
-            res.send();
+function Route(Server) {
+  // DEFAULT ROUTE
+  {
+    Server.post("/ping", function (req, res) {
+      res.send();
+    });
+
+    Server.post("/client/signin", async function (req, res) {
+      const valid = await Authentication.CheckCredentials(req.body.username, req.body.password);
+
+      if (valid) {
+        const account = (await Accounts.Get({ username: req.body.username })).at(0);
+        const sessionId = await Authentication.Add(account.id, req.ip, true);
+        req.session.account = sessionId;
+        res.send();
+      } else {
+        res.status(401).send();
+      }
+    });
+
+    Server.get("/client/signout", async function (req, res) {
+      if (req.session.account) {
+        await Authentication.Remove(req.session.account);
+        delete req.session["client"];
+      }
+
+      res.redirect("/client/signin");
+    });
+
+    Server.get("/client*", async function (req, res, next) {
+      const path = req.url;
+      const hasAccess = await Authentication.HasAccess(req.session.account);
+
+      if (hasAccess == false && path != "/client/signin" && path != "/client/manifest.json") {
+        if (path.endsWith(".js") || path.endsWith(".css")) {
+          res.setHeader("Cache-Control", "no-store");
+          return res.status(403).send();
+        } else {
+          req.session.redirect = req.url;
+          return res.redirect("/client/signin");
+        }
+      } else if (hasAccess == true) {
+        if (path == "/client" || path == "/client/signin") {
+          const redirect = req.session.redirect;
+          req.session.redirect = null;
+
+          if (redirect) return res.redirect(redirect);
+          else return res.redirect("/client" + Variables.WebHomepage);
+        }
+
+        const id = await Authentication.GetAccountId(req.session.account);
+        const account = await Accounts.Get({ id });
+
+        Object.assign(req.variables, {
+          activeuser: JSON.stringify(account[0]),
+          "activeuser.id": account[0].id,
+          "activeuser.nickname": account[0].nickname || account[0].username,
+          "activeuser.username": account[0].username,
+          "activeuser.url": account[0].url,
+          "activeuser.avatarversion": account[0].avatarversion,
         });
+      }
 
-        Server.post("/client/signin", async function(req, res)
-        {
-            const valid = await Authentication.CheckCredentials(req.body.username, req.body.password);
+      next();
+    });
 
-            if (valid)
-            {
-                const account = (await Accounts.Get({ username: req.body.username })).at(0);
-                const sessionId = await Authentication.Add(account.id, req.ip, true);
-                req.session.account = sessionId;
-                res.send();
-            }
-            else
-            {
-                res.status(401).send();
-            }
-        });
+    Server.post("/client*", async function (req, res, next) {
+      const path = req.url;
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+      } else {
+        next();
+      }
+    });
 
-        Server.get("/client/signout", async function(req, res)
-        {
-            if (req.session.account)
-            {
-                await Authentication.Remove(req.session.account);
-                delete req.session["client"];
-            }
+    Server.put("/client*", async function (req, res, next) {
+      const path = req.url;
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+      } else {
+        next();
+      }
+    });
 
-            res.redirect("/client/signin");
-        });
+    Server.patch("/client*", async function (req, res, next) {
+      const path = req.url;
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+      } else {
+        next();
+      }
+    });
 
-        Server.get("/client*", async function(req, res, next)
-        {
-            const path = req.url;
-            const hasAccess = await Authentication.HasAccess(req.session.account);
+    Server.delete("/client*", async function (req, res, next) {
+      const path = req.url;
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+      } else {
+        next();
+      }
+    });
 
-            if (hasAccess == false && path != "/client/signin" && path != "/client/manifest.json")
-            {
-                if (path.endsWith(".js") || path.endsWith(".css"))
-                {
-                    res.setHeader("Cache-Control", "no-store");
-                    return res.status(403).send();
-                }
-                else
-                {
-                    req.session.redirect = req.url;
-                    return res.redirect("/client/signin");
-                }
-            }
-            else if (hasAccess == true)
-            {
-                if (path == "/client" || path == "/client/signin")
-                {
-                    const redirect = req.session.redirect;
-                    req.session.redirect = null;
+    Server.post("/language/", async function (req, res) {
+      if (Language.Available.includes(req.body.language)) {
+        req.session.language = req.body.language;
+        res.send();
+      } else {
+        res.status(404).send("Language '" + req.body.language + "' is not available.");
+      }
+    });
 
-                    if (redirect)
-                        return res.redirect(redirect);
-                    else
-                        return res.redirect("/client" + Variables.WebHomepage);
-                }
+    Server.get("/:language/*", function (req, res, next) {
+      if (Language.Available.includes(req.params.language)) {
+        req.session.language = req.params.language;
 
-                const id = await Authentication.GetAccountId(req.session.account);
-                const account = await Accounts.Get({ id });
-                
-                Object.assign(req.variables, 
-                    {
-                        "activeuser": JSON.stringify(account[0]),
-                        "activeuser.id": account[0].id,
-                        "activeuser.nickname": account[0].nickname || account[0].username,
-                        "activeuser.username": account[0].username,
-                        "activeuser.url": account[0].url,
-                        "activeuser.avatarversion": account[0].avatarversion
-                    }
-                );
-            }
+        if (req.path.endsWith(".js") == false && req.path.endsWith(".css") == false) return res.redirect("/" + req.params[0]);
 
-            next();
-        });
+        req.filepath = "./public/" + req.params[0];
+      }
 
-        Server.post("/client*", async function(req, res, next)
-        {
-            const path = req.url;
-            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
-            {
-                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-            }
-            else
-            {
-                next();
-            }
-        });
+      next();
+    });
 
-        Server.put("/client*", async function(req, res, next)
-        {
-            const path = req.url;
-            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
-            {
-                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-            }
-            else
-            {
-                next();
-            }
-        });
+    Server.get("*", function (req, res, next) {
+      if (req.query.contentOnly == "true") req.contentOnly = true;
 
-        Server.patch("/client*", async function(req, res, next)
-        {
-            const path = req.url;
-            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
-            {
-                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-            }
-            else
-            {
-                next();
-            }
-        });
+      next();
+    });
+  }
 
-        Server.delete("/client*", async function(req, res, next)
-        {
-            const path = req.url;
-            if (await Authentication.HasAccess(req.session.account) == false && path != "/client/signin")
-            {
-                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-            }
-            else
-            {
-                next();
-            }
-        });
+  // CUSTOM ROUTE HERE
+  Server.get("/avatar/*", async function (req, res) {
+    // Set cache of avatar to 1 year, because it can be refreshed with banner version query
+    res.header("Cache-Control", "public, max-age=31536000");
+    res.header("Content-Type", "image/webp");
 
-        Server.post("/language/", async function(req, res)
-        {
-            if (Language.Available.includes(req.body.language))
-            {
-                req.session.language = req.body.language;
-                res.send();
-            }
-            else
-            {
-                res.status(404).send("Language '" + req.body.language + "' is not available.");
-            }
-        });
+    const paths = req.path.split("/").filter((o) => o != "");
+    const avatarPath = "./src/avatars/" + paths[1];
 
-        Server.get("/:language/*", function(req, res, next) 
-        {
-            if (Language.Available.includes(req.params.language))
-            {
-                req.session.language = req.params.language;
+    if (FileIO.existsSync(avatarPath)) res.sendFile(avatarPath, { root: "./" });
+    else res.sendFile("./src/avatar.webp", { root: "./" });
+  });
 
-                if (req.path.endsWith(".js") == false && req.path.endsWith(".css") == false)
-                    return res.redirect("/" + req.params[0]);
+  Server.post("/accounts/setavatar", async function (req, res) {
+    const id = req.session.account;
+    const account = await Authentication.GetAccountId(id);
 
-                req.filepath = "./public/" + req.params[0];
-            }
+    if (!id || !account) return res.status(403).send();
 
-            next();
-        });
-        
-        Server.get("*", function(req, res, next)
-        {
-            if (req.query.contentOnly == "true")
-                req.contentOnly = true;
+    const buffer = req.files.file.data;
 
-            next();
-        });
+    if (buffer.length > 2000000) return res.status(400).send(language.Data[req.session.language]["accounts"]["error_avatar_toobig"]);
+
+    const success = await Accounts.Avatars.Save(account, buffer);
+
+    if (success) res.send();
+    else res.status(500).send();
+  });
+
+  Server.post("/accounts/clearavatar", async function (req, res) {
+    const id = req.session.account;
+
+    if (id == null) return res.status(403).send();
+
+    const success = Accounts.Avatars.Delete(id);
+
+    if (success) res.send();
+    else res.status(500).send();
+  });
+
+  // ROUTE FOR GEMINI CHATS
+  let dumpHistory = [];
+  Server.get("/client/assistant/history", async function (req, res) {
+    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [req.session.account])).data?.at(0)?.content || "[]");
+    res.send(history);
+  });
+  Server.post("/client/assistant/send", async function (req, res) {
+    // retrieve chat history
+    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [req.session.account])).data?.at(0)?.content || "[]");
+    const message = req.body.message;
+    const response = await Gemini.Chat.Send(message, 1, history);
+
+    // response with no error
+    if (response.finish.code == 0) {
+      res.send(response.text);
+      await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [req.session.account, JSON.stringify(response.history)]);
     }
+    // something went wrong
+    else {
+      console.error(response.finish.code);
+      res.send("ERROR").status(500);
+    }
+  });
 
-    // CUSTOM ROUTE HERE
-    Server.get("/avatar/*", async function(req, res)
-    {
-        // Set cache of avatar to 1 year, because it can be refreshed with banner version query
-        res.header("Cache-Control", "public, max-age=31536000");
-        res.header("Content-Type", "image/webp");
-        
-        const paths = req.path.split("/").filter(o => o != "");
-        const avatarPath = "./src/avatars/" + paths[1];
-
-        if (FileIO.existsSync(avatarPath))
-            res.sendFile(avatarPath, { root: "./" });
-        else
-            res.sendFile("./src/avatar.webp", { root: "./" });
-    });
-
-    Server.post("/accounts/setavatar", async function(req, res)
-    {
-        const id = req.session.account;
-        const account = await Authentication.GetAccountId(id);
-
-        if (!id || !account)
-            return res.status(403).send();
-        
-        const buffer = req.files.file.data;
-
-        if (buffer.length > 2000000)
-            return res.status(400).send(language.Data[req.session.language]["accounts"]["error_avatar_toobig"]);
-        
-        const success = await Accounts.Avatars.Save(account, buffer);
-        
-        if (success)
-            res.send();
-        else
-            res.status(500).send();
-    });
-
-    Server.post("/accounts/clearavatar", async function(req, res)
-    {
-        const id = req.session.account;
-
-        if (id == null)
-            return res.status(403).send();
-        
-        const success = Accounts.Avatars.Delete(id);
-        
-        if (success)
-            res.send();
-        else
-            res.status(500).send();
-    });
-
-    // ROUTE FOR GEMINI CHATS
-    let dumpHistory = [];
-    Server.post("/client/assistant/send", async function(req, res) 
-    {
-        // retrieve chat history
-        const history = dumpHistory || await SQL.Query("");
-        const message = req.body.message;
-        const response = await Gemini.Chat.Send(message, 1, history);
-        
-        // response with no error
-        if (response.finish.code == 0) {
-            res.send(response.text);
-            dumpHistory = response.history;
-        }
-        // something went wrong
-        else {
-            console.error(response.finish.code);
-            res.send("ERROR").status(500);
-        }
-    });
-
-    Map(Server);
+  Map(Server);
 }
 
-function Map(Server)
-{
-    Server.get("*", async function(req, res)
-    {
-        const prettyPath = PrettifyPath(req);
-        const path = prettyPath.result;
-        
-        if (prettyPath.refresh)
-        {
-            res.redirect("/" + prettyPath.result);
-            return;
-        }
-        
-        const rootPath = req.filepath ? "" : "./public/";
-        const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
-        const isJS = path.endsWith(".js") && FileIO.existsSync(rootPath + path);
-        const isCSS = path.endsWith(".css") && FileIO.existsSync(rootPath + path);
-        const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
-        const isImage = /(\.png|\.webp|\.jpg|\.bmp|\.jpeg)$/g.test(path);
-        const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
+function Map(Server) {
+  Server.get("*", async function (req, res) {
+    const prettyPath = PrettifyPath(req);
+    const path = prettyPath.result;
 
-        if (isHTML)
-        {
-            let data;
-            if (isIndex)
-                data = FileIO.readFileSync(rootPath + path + "/index.html");
-            else
-                data = FileIO.readFileSync(rootPath + path + ".html");
+    if (prettyPath.refresh) {
+      res.redirect("/" + prettyPath.result);
+      return;
+    }
 
-            data = data.toString();
-            data = Functions.Page_Compile(pageType, data, req.session?.language, path, req.contentOnly == true);
-            
-            if (req.variables)
-                for (const variable of Object.keys(req.variables))
-                    data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
-            
-            res.send(data);
-        }
-        else if (isJS || isCSS)
-        {
-            if (isJS)
-                res.header("Content-Type", "text/javascript; charset=utf-8");
-            else if (isCSS)
-                res.header("Content-Type", "text/css");
-            
-            let data = FileIO.readFileSync(rootPath + path).toString();
-            data = Language.Compile(data, req.session.language);
-            res.send(data);
-        }
-        else
-        {
-            if (FileIO.existsSync(rootPath + path))
-            {
-                res.sendFile(rootPath + path, { root: "./" });
-            }
-            else
-            {
-                if (isImage)
-                    res.status(404).sendFile("./src/blank.png", { root: "./" });
-                else
-                    res.status(404).sendFile("./public/404.shtml", { root: "./" });
-            }
-        }
-    });
-    
-    Server.post("*", async function(req, res, next)
-    {
-        let path = PrettifyPath(req).result;
-        
-        const rootPath = req.filepath ? "" : "./public/";
-        const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
-        const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
-        const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
+    const rootPath = req.filepath ? "" : "./public/";
+    const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
+    const isJS = path.endsWith(".js") && FileIO.existsSync(rootPath + path);
+    const isCSS = path.endsWith(".css") && FileIO.existsSync(rootPath + path);
+    const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
+    const isImage = /(\.png|\.webp|\.jpg|\.bmp|\.jpeg)$/g.test(path);
+    const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
 
-        if (isHTML)
-        {
-            let data;
-            if (isIndex)
-                data = FileIO.readFileSync(rootPath + path + "/index.html");
-            else
-                data = FileIO.readFileSync(rootPath + path + ".html");
+    if (isHTML) {
+      let data;
+      if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
+      else data = FileIO.readFileSync(rootPath + path + ".html");
 
-            data = data.toString();
-            data = Functions.Page_Compile(pageType, data, req.session?.language, path, true);
-            
-            if (req.variables)
-                for (const variable of Object.keys(req.variables))
-                    data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
-            
-            res.send(data);
-        }
-        else
-        {
-            if (FileIO.existsSync(rootPath + path))
-            {
-                res.sendFile(rootPath + path, { root: "./" });
-            }
-            else
-            {
-                res.status(404).send();
-            }
-        }
-    });
+      data = data.toString();
+      data = Functions.Page_Compile(pageType, data, req.session?.language, path, req.contentOnly == true);
+
+      if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
+
+      res.send(data);
+    } else if (isJS || isCSS) {
+      if (isJS) res.header("Content-Type", "text/javascript; charset=utf-8");
+      else if (isCSS) res.header("Content-Type", "text/css");
+
+      let data = FileIO.readFileSync(rootPath + path).toString();
+      data = Language.Compile(data, req.session.language);
+      res.send(data);
+    } else {
+      if (FileIO.existsSync(rootPath + path)) {
+        res.sendFile(rootPath + path, { root: "./" });
+      } else {
+        if (isImage) res.status(404).sendFile("./src/blank.png", { root: "./" });
+        else res.status(404).sendFile("./public/404.shtml", { root: "./" });
+      }
+    }
+  });
+
+  Server.post("*", async function (req, res, next) {
+    let path = PrettifyPath(req).result;
+
+    const rootPath = req.filepath ? "" : "./public/";
+    const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
+    const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
+    const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
+
+    if (isHTML) {
+      let data;
+      if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
+      else data = FileIO.readFileSync(rootPath + path + ".html");
+
+      data = data.toString();
+      data = Functions.Page_Compile(pageType, data, req.session?.language, path, true);
+
+      if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
+
+      res.send(data);
+    } else {
+      if (FileIO.existsSync(rootPath + path)) {
+        res.sendFile(rootPath + path, { root: "./" });
+      } else {
+        res.status(404).send();
+      }
+    }
+  });
 }
 
 /**
@@ -373,51 +291,43 @@ function Map(Server)
  * @returns { {
  *      refresh: boolean,
  *      result: string
- * }} 
+ * }}
  */
-function PrettifyPath(req)
-{
-    if (req.filepath)
-        return {
-            refresh: false,
-            result: req.filepath
-        };
-
-    let path = req.path;
-    let refresh = false;
-
-    if (path.startsWith("//"))
-        refresh = true;
-
-    while (path.startsWith("/"))
-        path = path.substring(1);
-
-    if (path.includes("//"))
-    {
-        refresh = true;
-        path = path.replaceAll("//", "/");
-    }
-    if (path.endsWith("/"))
-    {
-        refresh = true;
-        path = path.substring(0, path.length - 1);
-    }
-    if (path.endsWith(".html"))
-    {
-        refresh = true;
-        path = path.substring(0, path.length - 5);
-    }
-    if (path.endsWith(".shtml"))
-    {
-        refresh = true;
-        path = path.substring(0, path.length - 6);
-    }
-    
+function PrettifyPath(req) {
+  if (req.filepath)
     return {
-        refresh: refresh, 
-        result: path
-    }
-}
+      refresh: false,
+      result: req.filepath,
+    };
 
+  let path = req.path;
+  let refresh = false;
+
+  if (path.startsWith("//")) refresh = true;
+
+  while (path.startsWith("/")) path = path.substring(1);
+
+  if (path.includes("//")) {
+    refresh = true;
+    path = path.replaceAll("//", "/");
+  }
+  if (path.endsWith("/")) {
+    refresh = true;
+    path = path.substring(0, path.length - 1);
+  }
+  if (path.endsWith(".html")) {
+    refresh = true;
+    path = path.substring(0, path.length - 5);
+  }
+  if (path.endsWith(".shtml")) {
+    refresh = true;
+    path = path.substring(0, path.length - 6);
+  }
+
+  return {
+    refresh: refresh,
+    result: path,
+  };
+}
 
 module.exports = Route;
