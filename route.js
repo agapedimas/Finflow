@@ -242,17 +242,22 @@ function Route(Server)
 
     // ROUTE FOR GEMINI CHATS
     let dumpHistory = [];
+    Server.get("/client/assistant/history", async function(req, res) 
+    {
+        dumpHistory = [];
+        res.send();
+    });
     Server.post("/client/assistant/send", async function(req, res) 
     {
         // retrieve chat history
-        const history = dumpHistory || await SQL.Query("");
+        const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [req.session.account])).data?.at(0)?.content || "[]");
         const message = req.body.message;
         const response = await Gemini.Chat.Send(message, 1, history);
         
         // response with no error
         if (response.finish.code == 0) {
             res.send(response.text);
-            dumpHistory = response.history;
+            await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [req.session.account, JSON.stringify(response.history)])
         }
         // something went wrong
         else {

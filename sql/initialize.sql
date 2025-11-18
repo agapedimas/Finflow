@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS `accounts`
         `avatarversion` int UNSIGNED NOT NULL DEFAULT 1,
             PRIMARY KEY (`id`), 
             UNIQUE KEY `username` (`username`),
-            UNIQUE KEY 'email' ('email')
+            UNIQUE KEY `email` (`email`)
             -- konek ke parent dan funder
     ) 
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
@@ -32,7 +32,7 @@ ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 CREATE TABLE IF NOT EXISTS `accounts_funder` 
     (
         `id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
-        'type' int UNSIGNED NOT NULL,   -- 0: beasiswa, 1: parent
+        `type` int UNSIGNED NOT NULL,   -- 0: beasiswa, 1: parent
             PRIMARY KEY (`id`), 
             CONSTRAINT `fk_accounts_funder` 
                 FOREIGN KEY (`id`) REFERENCES `accounts`(`id`) 
@@ -60,21 +60,15 @@ ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;
 -- CHAT_HISTORY (Riwayat Percakapan Single Session)
 -- =======================================================
 CREATE TABLE IF NOT EXISTS `chat_history` (
-    `id` BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,  -- ID unik untuk setiap pesan
-    `student_id` VARCHAR(128) NOT NULL,               -- ID Student yang melakukan percakapan
-    
-    `role` ENUM('user', 'model', 'tool') NOT NULL,   -- Peran: 'user', 'model', atau 'tool'
-    `content` TEXT NOT NULL,                          -- Isi pesan atau respons
-    `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Waktu pesan
-    
-    -- Foreign Key: Mereferensi tabel account_students
+    `student_id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `content` TEXT NOT NULL, 
+            
+    PRIMARY KEY (`student_id`),
+
+    -- Foreign Key: Mereferensi tabel accounts_student
     FOREIGN KEY (`student_id`) 
-        REFERENCES `account_students`(`id`) 
+        REFERENCES `accounts_student`(`id`) 
         ON DELETE CASCADE 
-        ON UPDATE CASCADE,
-    
-    -- Indeks Kunci: Mempercepat pengambilan riwayat dan pembersihan konteks
-    UNIQUE KEY `uk_student_id_sequence` (`student_id`, `id`), 
-    INDEX `idx_student_timestamp` (`student_id`, `timestamp`)
+        ON UPDATE CASCADE
 ) 
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

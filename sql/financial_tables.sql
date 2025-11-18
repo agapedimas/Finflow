@@ -92,9 +92,9 @@ CREATE TABLE IF NOT EXISTS `budget_plan` (
     `month` INT UNSIGNED NOT NULL, -- Bulan (1-12)
     `year` YEAR NOT NULL,          -- Tahun (YYYY)
     
-    -- Foreign Key: Mereferensi tabel account_students
+    -- Foreign Key: Mereferensi tabel accounts_student
     FOREIGN KEY (`planner_id`) 
-        REFERENCES `account_students`(`id`) 
+        REFERENCES `accounts_student`(`id`) 
         ON DELETE CASCADE 
         ON UPDATE CASCADE,
     FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`) ON UPDATE CASCADE,

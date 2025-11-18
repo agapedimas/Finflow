@@ -216,6 +216,7 @@ const Chat = {
 
                 console.log(response)
 
+
                 let queries = [];
                 let text = "";
 
@@ -316,6 +317,7 @@ const Chat = {
                 }
 
                 history = chat.getHistory();
+                console.log(history);
                 let token = response.usageMetadata?.totalTokenCount | 0;
 
                 return resolve({
