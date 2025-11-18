@@ -55,3 +55,26 @@ CREATE TABLE IF NOT EXISTS `authentication`
                 ON UPDATE CASCADE
     ) 
 ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;
+
+-- =======================================================
+-- CHAT_HISTORY (Riwayat Percakapan Single Session)
+-- =======================================================
+CREATE TABLE IF NOT EXISTS `chat_history` (
+    `id` BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,  -- ID unik untuk setiap pesan
+    `student_id` VARCHAR(128) NOT NULL,               -- ID Student yang melakukan percakapan
+    
+    `role` ENUM('user', 'model', 'tool') NOT NULL,   -- Peran: 'user', 'model', atau 'tool'
+    `content` TEXT NOT NULL,                          -- Isi pesan atau respons
+    `timestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, -- Waktu pesan
+    
+    -- Foreign Key: Mereferensi tabel account_students
+    FOREIGN KEY (`student_id`) 
+        REFERENCES `account_students`(`id`) 
+        ON DELETE CASCADE 
+        ON UPDATE CASCADE,
+    
+    -- Indeks Kunci: Mempercepat pengambilan riwayat dan pembersihan konteks
+    UNIQUE KEY `uk_student_id_sequence` (`student_id`, `id`), 
+    INDEX `idx_student_timestamp` (`student_id`, `timestamp`)
+) 
+ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
