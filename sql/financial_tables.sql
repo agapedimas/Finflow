@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS `transactions` (
 
     -- INDEKS BARU UNTUK RAG DAN PERFORMA LAPORAN
     INDEX `idx_student_date_type` (`student_id`, `transaction_date`, `type`),
-    INDEX `idx_category_allocation` (`id`, `allocation_categories`)
+    INDEX `idx_category_allocation` (`transaction_id`, `category_id`)
 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS `smart_contracts` (
 -- =======================================================
 CREATE TABLE IF NOT EXISTS `budget_plan` (
     `id` VARCHAR(128) PRIMARY KEY NOT NULL,
-    `planner_id` VARCHAR(128) NOT NULL,
+    `planner_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     
     `item_name` VARCHAR(255) NOT NULL,
     `category_id` INT UNSIGNED NOT NULL,
@@ -125,6 +125,6 @@ CREATE TABLE IF NOT EXISTS `allocation_categories` (
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 
-    -- Add default categories
-    INSERT IGNORE INTO `allocation_categories` (id, category_name) VALUES (0, 'wants'), (1, 'needs'), (2, 'education');
+-- Add default categories
+INSERT IGNORE INTO `allocation_categories` (id, category_name) VALUES (0, 'wants'), (1, 'needs'), (2, 'education');
 

@@ -1,70 +1,113 @@
--- file ini berisi query INSERT untuk mengisi data awal pada database.
-
--- Hapus data yang ada untuk pengujian berulang
-DELETE FROM smart_contracts;
-DELETE FROM funding_allocation;
-DELETE FROM funding;
-DELETE FROM transactions;
-DELETE FROM accounts;
+-- =======================================================
+-- RESET DATA (Hapus data lama biar bersih saat testing)
+-- =======================================================
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE chat_history;
+TRUNCATE TABLE transactions;
+TRUNCATE TABLE budget_plan;
+TRUNCATE TABLE smart_contracts;
+TRUNCATE TABLE funding_allocation;
+TRUNCATE TABLE funding;
+TRUNCATE TABLE accounts_funder;
+TRUNCATE TABLE accounts_student;
+TRUNCATE TABLE accounts;
+TRUNCATE TABLE allocation_categories;
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- =======================================================
--- 1. ACCOUNTS (1 Funder dan 1 Student)
+-- 1. CATEGORIES (Master Data)
 -- =======================================================
-
--- Funder A: ID 12345 (Digunakan untuk membuat perjanjian dana)
-INSERT INTO accounts (id, username, nickname, password, avatarversion) VALUES
-('funder-12345', 'funder.a', 'Bapak Funder', '$2b$10$XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX', 1);
-
--- Student B: ID 54321 (Student utama yang akan diuji)
-INSERT INTO accounts (id, username, nickname, password, avatarversion) VALUES
-('student-54321', 'student.b', 'Budi Santoso', '$2b$10$YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY', 1);
-
--- Catatan: Ganti nilai '$2b$10$...' dengan hash password yang benar untuk pengujian.
+INSERT INTO allocation_categories (id, category_name) VALUES 
+(0, 'Wants'),      -- Keinginan (Kopi, Nonton)
+(1, 'Needs'),      -- Kebutuhan (Makan, Transport)
+(2, 'Education');  -- Pendidikan (Buku, Kursus) - Vault
 
 -- =======================================================
--- 2. FUNDING (Perjanjian Pendanaan Aktif)
+-- 2. ACCOUNTS (User Login via Privy)
 -- =======================================================
 
--- Perjanjian antara Funder A dan Student B
-INSERT INTO funding (funding_id, funder_id, student_id, total_monthly_fund, start_date, status) VALUES
-('fund-001', 'funder-12345', 'student-54321', 5000000.00, '2025-10-01', 'Active');
+-- A. FUNDER (Yayasan Finflow)
+-- FIX: Menambahkan 'password' dan 'phonenumber'
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, wallet_address, created) VALUES 
+('funder_01', 'yayasan_finflow', 'Yayasan Finflow Indonesia', '123456', '08111111111', 'admin@finflow.id', '0x_funder_wallet_address_123', NOW());
+
+INSERT INTO accounts_funder (id, type) VALUES ('funder_01', 0);
+
+-- B. STUDENT 1 (Budi - The Good Student)
+-- FIX: Menambahkan 'password' dan 'phonenumber'
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, wallet_address, created) VALUES 
+('student_01', 'budi_santoso', 'Budi Santoso', '123456', '08122222222', 'budi@student.com', '0x_budi_wallet_address_456', NOW());
+
+INSERT INTO accounts_student (id, balance) VALUES ('student_01', 1500000.00);
+
+-- C. STUDENT 2 (Siti - The Edge Case/Boros)
+-- FIX: Menambahkan 'password' dan 'phonenumber'
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, wallet_address, created) VALUES 
+('student_02', 'siti_aminah', 'Siti Aminah', '123456', '08133333333', 'siti@student.com', '0x_siti_wallet_address_789', NOW());
+
+INSERT INTO accounts_student (id, balance) VALUES ('student_02', 200000.00);
 
 -- =======================================================
--- 3. FUNDING_ALLOCATION (Aturan Budget Funder)
+-- 3. FUNDING & CONTRACTS (Blockchain Simulation)
 -- =======================================================
 
--- Total 5.000.000 dialokasikan
-INSERT INTO funding_allocation (allocation_id, funding_id, category_type, monthly_budget, drip_frequency, drip_amount) VALUES
-('alloc-001-needs', 'fund-001', 'Needs', 3000000.00, 'Monthly', 3000000.00), -- 60%
-('alloc-001-wants', 'fund-001', 'Wants', 1000000.00, 'Monthly', 1000000.00), -- 20%
-('alloc-001-edu', 'fund-001', 'Education', 1000000.00, 'Monthly', 1000000.00); -- 20%
+-- Setup Beasiswa Budi (6 Juta Rupiah)
+INSERT INTO funding (funding_id, funder_id, student_id, total_monthly_fund, start_date, end_date, status) VALUES 
+('fund_budi_01', 'funder_01', 'student_01', 6000000.00, '2025-01-01', '2025-06-30', 'Active');
+
+-- Link ke Smart Contract (Polygon Amoy)
+INSERT INTO smart_contracts (contract_id, funding_id, contract_address, usdc_token_address, is_locked_education) VALUES 
+('sc_budi_01', 'fund_budi_01', '0xContractAddressBudiOnPolygon', '0xUSDCAddress', TRUE);
+
+-- Aturan Alokasi Budi (Drip Weekly)
+INSERT INTO funding_allocation (allocation_id, funding_id, category_id, monthly_budget, drip_frequency, drip_amount) VALUES 
+('alloc_budi_needs', 'fund_budi_01', 1, 2000000.00, 'Weekly', 500000.00),
+('alloc_budi_wants', 'fund_budi_01', 0, 1000000.00, 'Weekly', 250000.00),
+('alloc_budi_edu',   'fund_budi_01', 2, 3000000.00, 'Locked', 0.00);
+
+
+-- Setup Beasiswa Siti (4 Juta Rupiah)
+INSERT INTO funding (funding_id, funder_id, student_id, total_monthly_fund, start_date, end_date, status) VALUES 
+('fund_siti_01', 'funder_01', 'student_02', 4000000.00, '2025-01-01', '2025-06-30', 'Active');
+
+INSERT INTO funding_allocation (allocation_id, funding_id, category_id, monthly_budget, drip_frequency, drip_amount) VALUES 
+('alloc_siti_needs', 'fund_siti_01', 1, 2000000.00, 'Weekly', 500000.00);
 
 -- =======================================================
--- 4. TRANSACTIONS (Data Keuangan)
+-- 4. BUDGET_PLAN (Validasi AI)
 -- =======================================================
 
--- Pemasukan (Gaji Personal - Tidak terkait Funder)
-INSERT INTO transactions (transaction_id, student_id, transaction_date, amount, type, category, allocation_type, raw_description) VALUES
-('trx-inc-001', 'student-54321', '2025-11-01 10:00:00', 1000000.00, 'Income', 'Gaji Sampingan', 'Personal', 'Pembayaran project freelance');
-
--- Pengeluaran NEEDS (Dana Funder)
-INSERT INTO transactions (transaction_id, student_id, funding_id, transaction_date, amount, type, category, allocation_type, raw_description) VALUES
-('trx-exp-001', 'student-54321', 'fund-001', '2025-11-02 12:30:00', 500000.00, 'Expense', 'Grocery', 'Needs', 'Belanja bulanan di Supermarket');
-
--- Pengeluaran WANTS (Dana Funder, sesuai Aturan: dialokasikan ke PERSONAL)
-INSERT INTO transactions (transaction_id, student_id, funding_id, transaction_date, amount, type, category, allocation_type, raw_description) VALUES
-('trx-exp-002', 'student-54321', 'fund-001', '2025-11-03 15:00:00', 150000.00, 'Expense', 'Hiburan', 'Personal', 'Tiket bioskop nonton film baru');
-
--- Pengeluaran EDUCATION (Dana Funder)
-INSERT INTO transactions (transaction_id, student_id, funding_id, transaction_date, amount, type, category, allocation_type, raw_description, is_verified_by_ai) VALUES
-('trx-exp-003', 'student-54321', 'fund-001', '2025-11-04 09:00:00', 600000.00, 'Expense', 'Edukasi', 'Education', 'Pembayaran Course Data Science', TRUE);
-
--- Pengeluaran PERSONAL (Dana Pribadi)
-INSERT INTO transactions (transaction_id, student_id, transaction_date, amount, type, category, allocation_type, raw_description) VALUES
-('trx-exp-004', 'student-54321', '2025-11-05 08:00:00', 35000.00, 'Expense', 'Makanan', 'Personal', 'Kopi susu di Starbuck');
+INSERT INTO budget_plan (id, planner_id, item_name, category_id, price, quantity, month, year, status, ai_feedback) VALUES 
+('plan_budi_1', 'student_01', 'Paket Data Belajar', 1, 100000.00, 1, 11, 2025, 'approved', 'Valid.'),
+('plan_budi_2', 'student_01', 'Buku Ekonomi Makro', 2, 250000.00, 1, 11, 2025, 'approved', 'Valid.'),
+('plan_budi_3', 'student_01', 'Langganan Spotify', 0, 55000.00, 1, 11, 2025, 'approved', 'Valid.'),
+('plan_siti_1', 'student_02', 'Makan Siang Kantin', 1, 600000.00, 1, 11, 2025, 'approved', 'Valid.'),
+('plan_siti_2', 'student_02', 'Tiket Konser VIP', 0, 1500000.00, 1, 11, 2025, 'rejected', 'Ditolak.');
 
 -- =======================================================
--- 5. SMART_CONTRACTS (Hanya Sebagai Placeholder)
+-- 5. TRANSACTIONS (History Data)
 -- =======================================================
-INSERT INTO smart_contracts (contract_id, funding_id, contract_address, usdc_token_address, last_drip_date, total_drip_count) VALUES
-('sc-001', 'fund-001', '0x2A62961d6eF64C5A8c9aF9F2418eF83A0E5c4a52', '0x...TokenUSDC...', '2025-10-01', 1);
+
+-- A. PENERIMAAN DANA BUDI (Drip Weekly Needs + Wants)
+INSERT INTO transactions (transaction_id, student_id, transaction_date, amount, type, category_id, is_verified_by_ai, raw_description, blockchain_tx_hash) VALUES 
+('tx_in_01', 'student_01', '2025-11-01 08:00:00', 750000.00, 'Income', 1, TRUE, 'Pencairan Mingguan (Needs+Wants)', '0xTxHash123456'),
+('tx_in_02', 'student_01', '2025-11-08 08:00:00', 750000.00, 'Income', 1, TRUE, 'Pencairan Mingguan (Needs+Wants)', '0xTxHash789012');
+
+-- B. PENGELUARAN BUDI (Sehat)
+INSERT INTO transactions (transaction_id, student_id, transaction_date, amount, type, category_id, raw_description) VALUES 
+('tx_out_01', 'student_01', '2025-11-02 12:30:00', 25000.00, 'Expense', 1, 'Makan Siang Ayam Geprek'),
+('tx_out_02', 'student_01', '2025-11-02 18:00:00', 15000.00, 'Expense', 1, 'Ojek Online ke Kampus'),
+('tx_out_03', 'student_01', '2025-11-03 20:00:00', 30000.00, 'Expense', 0, 'Nongkrong Kopi Kenangan');
+
+-- C. PENGELUARAN PENDIDIKAN (Dengan Bukti Struk & Validasi AI)
+INSERT INTO transactions (transaction_id, student_id, transaction_date, amount, type, category_id, is_verified_by_ai, raw_description, proof_image_url) VALUES 
+('tx_edu_01', 'student_01', '2025-11-05 10:00:00', 250000.00, 'Expense', 2, TRUE, 'Beli Buku Gramedia', 'https://dummyimage.com/600x800/000/fff&text=Struk+Buku+Ekonomi');
+
+-- D. PENGELUARAN SITI (Boros -> Untuk trigger Notifikasi Warning)
+INSERT INTO transactions (transaction_id, student_id, transaction_date, amount, type, category_id, raw_description) VALUES 
+('tx_out_siti_1', 'student_02', '2025-11-01 10:00:00', 500000.00, 'Expense', 0, 'Belanja Skin Care (Boros)');
+-- =======================================================
+-- 6. CHAT HISTORY
+-- =======================================================
+INSERT INTO chat_history (student_id, content) VALUES 
+('student_01', '[]');
