@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS `accounts`
         `password` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
         `phonenumber` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
         `email` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
+        -- Untuk keperluan Privy: wSaat frontend login pakai Privy, privy akan mengembalikan 0x123.... (wallet address).
+        -- Backend harus mencari user berdasarkan kolom ini. Dibutuhkan untuk login Privy
+        `wallet_address` varchar(255) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NULL,
         `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, 
         `avatarversion` int UNSIGNED NOT NULL DEFAULT 1,
             PRIMARY KEY (`id`), 

@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     `is_verified_by_ai` BOOLEAN DEFAULT FALSE, -- Untuk dana 'Education'
     `raw_description` VARCHAR(255) NULL,
     
+    -- Fitur AI Scan & Blockchain Log 
+    `proof_image_url` TEXT NULL, -- Tempat untuk menyimpan link gambarnya
+    `blockchain_tx_hash` VARCHAR(100) NULL, -- Setiap kali ada pencairan dana (Drip), idealnya menyimpan hash transaksi sebagai bukti audit
+
     FOREIGN KEY (`student_id`) REFERENCES `accounts`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`) ON UPDATE CASCADE,
 
@@ -92,6 +96,10 @@ CREATE TABLE IF NOT EXISTS `budget_plan` (
     `month` INT UNSIGNED NOT NULL, -- Bulan (1-12)
     `year` YEAR NOT NULL,          -- Tahun (YYYY)
     
+    -- Tambahan Status Approval AI dan saran AI untuk budget plan
+    `status` ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    `ai_feedback` TEXT NULL,
+
     -- Foreign Key: Mereferensi tabel accounts_student
     FOREIGN KEY (`planner_id`) 
         REFERENCES `accounts_student`(`id`) 
