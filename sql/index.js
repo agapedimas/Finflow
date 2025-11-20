@@ -79,36 +79,18 @@ const SQL = {
           }
         }
 
-        await SQL.Query("SET FOREIGN_KEY_CHECKS = 0");
+        const file = await FileIO.readFileSync("./sql/initialize.sql");
+        const queries = file
+          .toString()
+          .split(/(?<!\\);/g)
+          .map((o) => o.replace(/\\;/g, ";").trim())
+          .filter((o) => o != "");
 
-        const sqlFiles = ["./sql/initialize.sql", "./sql/financial_tables.sql", "./sql/seed_data.sql"];
-
-        for (const filePath of sqlFiles) {
-          if (FileIO.existsSync(filePath)) {
-            console.log(`   📂 Mengeksekusi: ${filePath}`);
-
-            // BACA FILE UTUH
-            const fileContent = FileIO.readFileSync(filePath, "utf-8");
-
-            // KIRIM FILE UTUH KE MYSQL (Biarkan MySQL yang memprosesnya)
-            const result = await SQL.Query(fileContent);
-
-            if (!result.success) {
-              console.error(`      ❌ GAGAL DI FILE INI!`);
-              console.error(`      Pesan: ${result.error.sqlMessage}`);
-              // Jangan lanjut jika ada error fatal di struktur tabel
-              process.exit(1);
-            } else {
-              console.log(`      ✅ Berhasil dieksekusi.`);
-            }
-          } else {
-            console.warn(`      ⚠️ File tidak ditemukan: ${filePath}`);
-          }
+        for (const query of queries) {
+          const result = await SQL.Query(query);
+          if (result.success == false) break;
         }
 
-        await SQL.Query("SET FOREIGN_KEY_CHECKS = 1");
-
-        console.log("🎉 [DATABASE] Inisialisasi Database Selesai.\n");
         resolve();
       });
     });
