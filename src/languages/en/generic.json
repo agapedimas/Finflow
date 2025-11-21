@@ -38,6 +38,7 @@
     "email_placeholder": "e.g.: john.smith@mail.com",
     "password_placeholder": "Strong and memorable",
 
+    "balance": "Balance",
     "price": "Price",
     "price_placeholder": "e.g.: Rp25,000",
     "type": "Type",

@@ -1,8 +1,14 @@
 {
     "title": "Home",
 
-    "budgets_title": "Budgets",
-    "budgets_allocatedfor": "Allocated for {0}",
+    "program_title": "Joined Program",
+    "program_status_notjoined_title": "You haven't joined any programs yet.",
+    "program_status_notjoined_description": "Register to any scholarship program and you'll be invited via email linked to this account.",
+    "program_status_joined_title": "Current Program",
+    "program_status_joined_description": "Active until {0}.",
+    "program_learnmore_link": "Learn more",
+
+    "wallet_title": "Wallet",
 
     "recommendations_title": "Recommended For You"
 }

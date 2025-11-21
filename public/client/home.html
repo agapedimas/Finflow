@@ -5,35 +5,115 @@
 </div>
 
 <style>
-    #Cards_Budgets {
+    #Cards_ProgramInfo {
         display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: 300px;
-        gap: 10px;
-        overflow: auto;
-        margin: 0 -30px;
-        padding: 0 30px;
-        scrollbar-width: none;
+        background: var(--overlay-7);
+        border-radius: 15px;
+        padding: 17px;
+        max-width: 600px;
     }
-        #Cards_Budgets .card {
+        #Cards_ProgramInfo > div {
             display: grid;
-            background: var(--overlay-7);
-            border-radius: 15px;
-            padding: 15px;
+            grid-template-areas: 
+                "subtitle subtitle img"
+                "title title img"
+                "description description img"
+                "status status img";
+            grid-auto-columns: auto auto max-content;
+            grid-auto-rows: max-content;
         }
-            #Cards_Budgets .card .name {
+            #Cards_ProgramInfo > div .subtitle {
+                grid-area: subtitle;
                 color: var(--foreground-description);
-                letter-spacing: 0.025em;
-                font-weight: 500;
-            }
-            #Cards_Budgets .card .balance {
-                font-size: 2em;
-                font-weight: bold;
-                margin-bottom: 20px;
-            }
-            #Cards_Budgets .card .allocated {
                 font-weight: 600;
+                font-size: 0.85em;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
             }
+            #Cards_ProgramInfo > div .title {
+                grid-area: title;
+                font-size: 1.15em;
+                font-weight: bold;
+            }
+            #Cards_ProgramInfo > div #Text_ProgramCurrentlyJoined_Name {
+                grid-area: title;
+                font-size: 1.75em;
+            }
+            #Cards_ProgramInfo > div .description {
+                grid-area: description;
+                color: var(--foreground-description);    
+                margin: 0.25em 0;
+                align-self: end;
+            }
+            #Cards_ProgramInfo > div .status {
+                grid-area: status;
+                color: var(--foreground-description);    
+                align-self: end;
+            }
+            #Cards_ProgramInfo > div button {
+                grid-area: status;
+                position: relative;
+                border-radius: 30px;
+                text-transform: uppercase;
+                font-size: 0.85em;
+                letter-spacing: 0.015em;
+                font-weight: 500;
+                overflow: hidden;
+                margin-top: 0.5em;
+                justify-self: right;
+            }
+                #Cards_ProgramInfo > div button::before {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-color: var(--accent);
+                    opacity: 0.1;
+                }
+            #Cards_ProgramInfo > div img {
+                grid-area: img;
+                width: 100px;
+                height: 100px;
+                border-radius: 100%;
+            }
+
+    #Cards_Wallet {
+        display: grid;
+        background: var(--overlay-7);
+        border-radius: 15px;
+        padding: 17px;
+        max-width: 600px;
+    }
+        #Cards_Wallet > .label {
+            color: var(--foreground-description);
+            font-weight: 600;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        #Cards_Wallet > #Text_WalletBalance {
+            font-weight: bold;
+            font-size: 1.75em;
+        }
+        #Cards_Wallet > #Grid_WalletCategories {
+            display: flex;
+            flex-flow: wrap;
+            grid-auto-flow: column;
+            gap: 1.5em 2em;    
+            margin-top: 1em;
+            border-top: 1px solid var(--background-input);
+            padding-top: 1em;
+        }
+            #Cards_Wallet > #Grid_WalletCategories .category {
+                display: grid;
+            }
+                #Cards_Wallet > #Grid_WalletCategories .category > .name {    
+                    color: var(--foreground-description);
+                    letter-spacing: 0.025em;
+                    font-weight: 500;
+                }
 
     #Cards_Recommendations {
         display: grid;
@@ -79,11 +159,30 @@
                         background-color: var(--accent);
                         opacity: 0.1;
                     }
-        </style>
+</style>
 
 <div class="content">
-    <section ad-header="<$ home budgets_title />">
-        <div id="Cards_Budgets" class="cards"></div>
+    <section ad-header="<$ home program_title />">
+        <div id="Cards_ProgramInfo" class="cards">
+            <div id="Grid_ProgramNotJoined" class="hidden">
+                <span class="title"><$ home program_status_notjoined_title /></span>
+                <span class="description"><$ home program_status_notjoined_description /></span>
+                <button class="plain"><$ home program_learnmore_link /></button>
+            </div>
+            <div id="Grid_ProgramCurrentlyJoined" class="hidden">
+                <span class="subtitle"><$ home program_status_joined_title /></span>
+                <span class="title" id="Text_ProgramCurrentlyJoined_Name"></span>
+                <span class="status" id="Text_ProgramCurrentlyJoined_Status"></span>
+                <img id="Image_ProgramCurrentlyJoined"/>
+            </div>
+        </div>
+    </section>
+    <section ad-header="<$ home wallet_title />">
+        <div id="Cards_Wallet" class="cards">
+            <span class="label"><$ generic balance /></span>
+            <span id="Text_WalletBalance">&nbsp;</span>
+            <div id="Grid_WalletCategories"></div>
+        </div>
     </section>
     <section ad-header="<$ home recommendations_title />">
         <div id="Cards_Recommendations" class="cards"></div>
@@ -91,20 +190,33 @@
 </div>
 
 <script>
-    const DUMMY_CARDSBUDGETS = [
-        {
-            "id": "1",          
-            "name": "Parent",   
-            "balance": 259000,  
-            "allocated": 50000  
-        },
-        {
-            "id": "2",          
-            "name": "Scholarship",   
-            "balance": 952000,  
-            "allocated": 3200000  
-        }
-    ]
+    const DUMMY_CURRENTPROGRAM = {
+        "is_joined": true,
+        "funder_id": "fund1",
+        "display_name": "Djarum Super",
+        "active_until": 1767225600000
+    }
+
+    const DUMMY_WALLET = {
+        "balance": 3400000,
+        "allocations": [
+            {
+                "category_id": "0",
+                "category_name": "Education",
+                "balance": 2500000 
+            },
+            {
+                "category_id": "1",
+                "category_name": "Wants",
+                "balance": 500000 
+            },
+            {
+                "category_id": "2",
+                "category_name": "Needs",
+                "balance": 400000 
+            }
+        ]
+    }
 
     const DUMMY_RECOMMENDATIONS = [
         {
@@ -133,37 +245,48 @@
         }
     ]
 
-    initializeBudgetCards();
+    initializeProgramInfoCards();
+    initializeWalletCards();
     initializeRecommendationCards();
 
-    async function initializeBudgetCards() {
-        // fetch data from '/client/budgets'
-        const budgets = DUMMY_CARDSBUDGETS || await $.get("/client/budgets");
+    async function initializeProgramInfoCards() {
+        // fetch data from /api/currentprogram
+        const program = DUMMY_CURRENTPROGRAM || await $.get("/api/currentprogram");
+        
+        if (program.is_joined == false) {
+            Grid_ProgramNotJoined.classList.remove("hidden");
+            Grid_ProgramCurrentlyJoined.remove();
+        }
+        else {
+            Text_ProgramCurrentlyJoined_Name.innerText = program.display_name;
+            Text_ProgramCurrentlyJoined_Status.innerText = "<$ home program_status_joined_description />".format(moment(program.active_until).format("ll"));
+            Grid_ProgramCurrentlyJoined.classList.remove("hidden");
+            Image_ProgramCurrentlyJoined.src = "/avatar/" + program.funder_id;
+            Grid_ProgramNotJoined.remove();
+        }
+    }
 
-        // create card for each budget
-        for (const budget of budgets) {
-            const nameElement = document.createElement("span");
-            nameElement.classList.add("name");
-            nameElement.innerText = budget.name;
+    async function initializeWalletCards() {
+        // fetch data from /api/wallet
+        const wallet = DUMMY_WALLET || await $.get("/api/wallet");
 
-            let balanceFormat = formatCurrency(budget.balance);
-            const balanceElement = document.createElement("span");
-            balanceElement.classList.add("balance");
-            balanceElement.innerText = balanceFormat;
-            
-            let allocatedFormat = formatCurrency(budget.allocated);
-            const allocatedElement = document.createElement("span");
-            allocatedElement.classList.add("allocated");
-            allocatedElement.innerText = "<$ home budgets_allocatedfor />".format(allocatedFormat);
+        Text_WalletBalance.innerText = formatCurrency(wallet.balance);
 
-            const containerElement = document.createElement("div");
-            containerElement.classList.add("card");
-            containerElement.append(nameElement);
-            containerElement.append(balanceElement);
-            containerElement.append(allocatedElement);
+        for (const allocation of wallet.allocations) {
+            const name = document.createElement("span");
+            name.classList.add("name");
+            name.innerText = allocation.category_name;
 
-            // append to cards container
-            Cards_Budgets.append(containerElement);
+            const balance = document.createElement("span");
+            balance.classList.add("balance");
+            balance.innerText = formatCurrency(allocation.balance);
+
+            const container = document.createElement("div");
+            container.classList.add("category");
+            container.append(name);
+            container.append(balance);
+
+            Grid_WalletCategories.append(container);
         }
     }
 
