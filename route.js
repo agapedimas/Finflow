@@ -6,8 +6,7 @@ const Functions = require("./functions");
 const Language = require("./language");
 const FileIO = require("fs");
 const Gemini = require("./gemini");
-
-const transactionController = require("./controllers/transactionController");
+const ApiFinflow = require("./src/controllers/api_finflow");
 
 /**
  * @param { import("express").Application } Server Express instance
@@ -206,6 +205,11 @@ function Route(Server) {
       res.send("ERROR").status(500);
     }
   });
+
+
+  // Module 4: Transactions
+
+  Server.post("/api/transaction/add", ApiFinflow.addTransaction);
 
   Map(Server);
 }

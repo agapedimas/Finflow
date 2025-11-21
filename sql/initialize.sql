@@ -155,6 +155,21 @@ CREATE TABLE IF NOT EXISTS `smart_contracts` (
     FOREIGN KEY (`funding_id`) REFERENCES `funding`(`funding_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+-- 8. AUTHENTICATION
+CREATE TABLE IF NOT EXISTS `authentication` 
+    (
+        `id` int(11) NOT NULL AUTO_INCREMENT, 
+        `user` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
+        `ip` varchar(45) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+        `time` varchar(25) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
+            PRIMARY KEY (`id`),
+            CONSTRAINT `fk_authentication_user` 
+                FOREIGN KEY (`user`) REFERENCES `accounts`(`id`) 
+                ON DELETE CASCADE
+                ON UPDATE CASCADE
+    ) 
+ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;
+
 -- 1. INSERT KATEGORI
 INSERT IGNORE INTO allocation_categories (id, category_name) VALUES 
 (0, 'Wants'), (1, 'Needs'), (2, 'Education');
