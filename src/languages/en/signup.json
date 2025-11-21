@@ -1,0 +1,26 @@
+{
+    "title": "Sign Up",
+    "title_student": "Sign Up as Student",
+    "title_parent": "Sign Up as Parent",
+    "title_scholarshipfunder": "Sign Up as Scholarship Funder",
+    "description": "Create an account to manage financial for brighter future.",
+    "description_role": "I’m a...",
+    
+    "offer_signin_title": "Already have an account?",
+    "offer_signin_link": "Sign in",
+
+    "role_student": "Student",
+    "role_parent": "Parent",
+    "role_scholarshipfunder": "Scholarship Funder",
+
+    "error_email_invalid": "Please enter a valid email.",
+    "error_phonenumber_invalid": "Please enter a valid phone number.",
+    "error_username_taken": "Username is already taken.",
+    "error_password_criteria": "Password must contain at least 8 characters, including letters, numbers, and symbols.",
+    "error_password_space": "Password can't end or begin with space.",
+
+    "error_generic": "Something went wrong",
+    "error_incorrect": "Username or password is incorrect",
+    "error_nointernet": "Connect to internet",
+    "error_server": "We're having trouble right now. Please try again later."
+}

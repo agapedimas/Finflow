@@ -1,6 +1,6 @@
 <ad-title><$ signin title /></ad-title>
 
-<div class="panel" theme="light" accent="red">
+<div class="panel" theme="light" accent="blue">
     <img src="/assets/logo_text.png"/>
     <div class="title"><$ signin title /></div>
     <div class="subtitle"><$ signin description /></div>
@@ -12,6 +12,12 @@
             <div class="progressring"></div>
             <span><$ signin title /></span>
         </button>
+        <div class="offersignup">
+            <span><$ signin offer_signup_title /></span>
+            <a class="link" id="Button_SignUp" goto="/signup">
+                <span><$ signin offer_signup_link /></span>
+            </a>
+        </div>
     </div>
 </div>
 
@@ -83,6 +89,11 @@
                 {
                     display: none;
                 }
+            .panel .inputs .offersignup 
+            {
+                margin-top: 1em;
+                justify-self: center;
+            }
 </style>
 
 <script>

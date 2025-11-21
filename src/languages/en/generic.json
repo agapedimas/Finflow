@@ -25,9 +25,17 @@
     "name": "Name",
     "username": "Username",
     "nickname": "Nickname",
+    "phonenumber": "Phone Number",
+    "displayname": "Display Name",
+    "picname": "Name of Person in Charge",
+    "organizationname": "Organization Name",
+    "email": "Email",
     "password": "Password",
+    
     "username_placeholder": "e.g.: john_smith",
     "nickname_placeholder": "e.g.: John Smith",
+    "displayname_placeholder": "e.g.: John Smith",
+    "email_placeholder": "e.g.: john.smith@mail.com",
     "password_placeholder": "Strong and memorable",
 
     "price": "Price",
