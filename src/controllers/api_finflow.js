@@ -15,38 +15,61 @@ module.exports = {
     // Mengurangi saldo balance user secara otomatis
     // ============================================================
 
+    // A. SMART SCAN (OCR Service) - Auto fill Form
+    // Frontend memanggil ini saat user upload foto di menu "Catat Pengeluaran"
+    // Outputnya hanya JSON data, BELUM disimpan ke database
+    scanReceipt: async (req, res) => {
+        try {
+            const { image_url } = req.body;
+
+            if(!image_url) return error(res, "Image URL required", 400);
+
+            // AI LOGIC
+            // Simulasi Output AI (Supaya Frontend bisa demo)
+            // Di real implementation ini hasil return dari Gemini API
+            const aiExtractedData = {
+                amount: "150000",
+                merchant: "Warung Tegal Bahari",
+                date: new Date().toISOString().split('T')[0],
+                category_id: 1,
+                description: "Makan Siang Nasi Rames"
+            }
+
+            return success(res, aiExtractedData, "Scan Berhasil");
+        } catch (e) {
+            return error(res, "Gagal memindai struk");
+        }
+    },
+
+    // B. SAVE TRANSACTION (Simpan ke Database)
+    // Dipanggil setelah user review hasil scan, atau input manual
     addTransaction: async (req, res) => {
         try {
-            const { wallet_address, amount, category_id, description, proof_image_url } = req.body;
+            const { wallet_address, amount, category_id, description, merchant_name, transaction_date, proof_image_url } = req.body;
 
             // 1. Cek User & Saldo
             const uRes = await SQL.Query("SELECT a.id, s.balance FROM accounts a JOIN accounts_student s ON a.id = s.id WHERE a.wallet_address=?", [wallet_address]);
             const user = uRes.data?.[0];
 
-            console.log(uRes.data);
-            
             if(!user) return error(res, "User not found", 404);
+
+            // Validasi Saldo (hanya jika expense, bukan income)
+            // Asumsi addTransaction ini khusus expense
             if(Number(user.balance) < Number(amount)) return error(res, "Saldo tidak mencukupi!", 400);
 
-            // 2. Mock AI Vision (Jika ada upload gambar)
-            let is_verified = false;
-            if(proof_image_url) {
-                // Simulasi pemanggilan AI Vision untuk verifikasi struk
-                // Dalam implementasi nyata, panggil layanan AI di sini
-                is_verified = true; // Asumsikan selalu terverifikasi untuk demo
-            }
+            // 2. Tentukan Tanggal (Pakai input user ATAU waktu sekarang)
+            const finalDate = transaction_date ? transaction_date : new Date();
 
-            // 3. Database Transaction (Atomic Operation Simulation)
-            // A. Catat History
+            // 2. Simpan Transaksi 
             const txId = generateId("tx");
             const qTx = `
                 INSERT INTO transactions 
-                (transaction_id, student_id, amount, type, category_id, raw_description, proof_image_url, is_verified_by_ai, transaction_date) 
-                VALUES (?, ?, ?, 'Expense', ?, ?, ?, ?, NOW())
+                (transaction_id, student_id, amount, type, category_id, merchant_name, raw_description, proof_image_url, is_verified_by_ai, transaction_date) 
+                VALUES (?, ?, ?, 'Expense', ?, ?, ?, ?, FALSE, NOW())
             `;
-            await SQL.Query(qTx, [txId, user.id, amount, category_id, description, proof_image_url, is_verified]);
+            await SQL.Query(qTx, [txId, user.id, amount, category_id, merchant_name || '', description, proof_image_url || null, finalDate]);
 
-            // B. Potong Saldo
+            // 3. Potong Saldo Student
             await SQL.Query("UPDATE accounts_student SET balance = balance - ? WHERE id=?", [amount, user.id]);
 
             return success(res, { tx_id: txId, new_balance: user.balance - amount }, "Transaksi Berhasil Disimpan");
@@ -54,7 +77,7 @@ module.exports = {
             console.error(e);
             return error(res, "Gagal memproses transaksi");
         }
-    }
+    },
 
     // ============================================================
     // MODULE 7: AI CHATBOT (RAG Context Provider)
@@ -63,4 +86,5 @@ module.exports = {
     // Backend mengirim Pesan User + Context Data ke Logic RAG
     // Balasan disimpan di chat history
     // ============================================================
+    
 }

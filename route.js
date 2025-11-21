@@ -182,6 +182,7 @@ function Route(Server) {
     else res.status(500).send();
   });
 
+
   // ROUTE FOR GEMINI CHATS
   let dumpHistory = [];
   Server.get("/client/assistant/history", async function (req, res) {
@@ -208,7 +209,10 @@ function Route(Server) {
 
 
   // Module 4: Transactions
+  // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
+  Server.post("/api/scan/receipt", ApiFinflow.scanReceipt);
 
+  // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
   Server.post("/api/transaction/add", ApiFinflow.addTransaction);
 
   Map(Server);

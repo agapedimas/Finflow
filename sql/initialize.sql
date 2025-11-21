@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS `accounts` (
     CONSTRAINT `fk_parent_link` FOREIGN KEY (`parent_id`) REFERENCES `accounts`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+ALTER TABLE `accounts`
+ADD COLUMN `password` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL AFTER `displayname`;
+
 CREATE TABLE IF NOT EXISTS `accounts_student` (
     `id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `balance` DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
@@ -104,6 +107,8 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+ALTER TABLE `transactions`
+ADD COLUMN `merchant_name` VARCHAR(100) NULL AFTER `category_id`;
 -- =======================================================
 -- 5. BUDGET PLAN & CHAT
 -- =======================================================
@@ -196,6 +201,9 @@ INSERT INTO accounts (id, username, displayname, email, wallet_address) VALUES
 -- LINK Parent ke Budi
 UPDATE accounts SET parent_id = 'parent_01' WHERE id = 'student_01';
 
+-- Set password dummy '123456' (Harusnya di-hash, tapi untuk dummy plain dulu ok)
+UPDATE accounts SET password = '123456' WHERE id = 'funder_01';
+UPDATE accounts SET password = '123456' WHERE id = 'student_01';
 
 -- 3. INSERT FUNDING & RULES
 -- Funding Budi (6 Juta)
