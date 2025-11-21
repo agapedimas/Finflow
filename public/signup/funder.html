@@ -174,18 +174,21 @@
     Input_PhoneNumber.oninput = PhoneNumberCheck;
     Input_Password.oninput = PasswordCheck;
 
-    if (funderType == "parent") {
-        Input_DisplayName_Parent.oninput = InputCheck;
-    }
-    else {
-        Input_DisplayName_ScholarshipFunder.oninput = InputCheck;
-        Input_PICName.oninput = InputCheck;
-    }
-
     Input_Email.onkeydown = InputEnter;
     Input_Username.onkeydown = InputEnter;
     Input_PhoneNumber.onkeydown = InputEnter;
     Input_Password.onkeydown = InputEnter;
+
+    if (funderType == "parent") {
+        Input_DisplayName_Parent.oninput = InputCheck;
+        Input_DisplayName_Parent.onkeydown = InputEnter;
+    }
+    else {
+        Input_DisplayName_ScholarshipFunder.oninput = InputCheck;
+        Input_PICName.oninput = InputCheck;
+        Input_DisplayName_ScholarshipFunder.onkeydown = InputEnter;
+        Input_PICName.onkeydown = InputEnter;
+    }
 
     function EmailCheck()
     {
@@ -330,11 +333,22 @@
     }
     function InputEnter(e)
     {
-        if (e.key == "Enter")
-        {
+        if (e.key == "Enter") {
             if (this == Input_Email)
                 Input_Username.focus();
-            else if (this == Input_Username)
+            else if (this == Input_Username) {
+                if (funderType == "parent")
+                    Input_DisplayName_Parent.focus();
+                else
+                    Input_DisplayName_ScholarshipFunder.focus();
+            }
+            else if (funderType == "parent" && this == Input_DisplayName_Parent)
+                Input_PhoneNumber.focus();
+            else if (funderType == "scholarshipfunder" && this == Input_DisplayName_ScholarshipFunder)
+                Input_PICName.focus();
+            else if (funderType == "scholarshipfunder" && this == Input_PICName)
+                Input_PhoneNumber.focus();
+            else if (this == Input_PhoneNumber)
                 Input_Password.focus();
             else if (this == Input_Password)
                 Button_SignUp.click();
