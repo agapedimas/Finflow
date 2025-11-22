@@ -130,21 +130,27 @@ const DUMMY_MONTHLY_PLAN = {
             "id": "ggasfakjfha",
             "name": "Bawang",
             "price": 15000,
-            "amount": 2,
+            "quantity": 2,
+            "status": "pending",
+            "feedback": null,
             "categoryId": "1"
         },
         {
             "id": "ggasfakjfha",
             "name": "Makan siang",
             "price": 25000,
-            "amount": 20,
+            "quantity": 20,
+            "status": "approved",
+            "feedback": "Sangat bagus untuk kebutuhan sehari-hari",
             "categoryId": "1"
         },
         {
             "id": "ggasfakjfha",
             "name": "Bayar SKS",
             "price": 150000,
-            "amount": 1,
+            "quantity": 1,
+            "status": "rejected",
+            "feedback": "Harga melebihi 50% total budget bulanan kamu.",
             "categoryId": "0"
         },
     ]

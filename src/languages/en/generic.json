@@ -46,6 +46,10 @@
     "expense": "Expense",
     "category": "Category",
     "time": "Time",
+    "quantity": "Quantity",
+    "status": "Status",
+    "feedback": "Feedback",
+    "ai_feedback": "AI Feedback",
 
     "month_january": "January",
     "month_february": "February",

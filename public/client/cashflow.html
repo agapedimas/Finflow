@@ -3,7 +3,7 @@
 <div class="header">
     <div class="buttons">
         <div></div>
-        <button id="Button_NewTransaction" class="icon">&#xf8dd;</button>
+        <button id="Button_NewTransaction" class="icon" ad-tooltip="<$ cashflow transaction_add_title />">&#xf8dd;</button>
     </div>
     <div class="title"><$ cashflow title /></div>
 </div>
@@ -612,6 +612,10 @@
         priceInput.onfocus = function() {
             this.value = this.value.replace(/[^0-9]/g, "");
         }
+        priceInput.oninput = function() {
+            PopOver_InputManual.isinputchanged = true;
+            this.value = this.value.replace(/[^0-9]/g, "");
+        }
         priceInput.onblur = function() {
             const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
             this.value = value.substring(0, value.length - 3);
@@ -625,9 +629,10 @@
         }
 
         for (const input of listTemplate.querySelectorAll("input"))
-            input.oninput = function() {
-                PopOver_InputManual.isinputchanged = true;
-            }
+            if (!input.oninput)
+                input.oninput = function() {
+                    PopOver_InputManual.isinputchanged = true;
+                }
         for (const select of listTemplate.querySelectorAll("select"))
             select.onchange = function() {
                 PopOver_InputManual.isinputchanged = true;
@@ -944,6 +949,10 @@
         const thumbnailElement = document.createElement("img");
         thumbnailElement.classList.add("thumbnail");
         thumbnailElement.src = "/api/categories/thumbnail/" + transaction.categoryId;
+        thumbnailElement.onerror = function() {
+            this.src = ".png";
+            this.onerror = null;
+        }
 
         const nameElement = document.createElement("span");
         nameElement.classList.add("name");
