@@ -207,7 +207,7 @@ function Route(Server) {
     // response with no error
     if (response.finish.code == 0) {
       res.send(response.text);
-      await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [req.session.account, JSON.stringify(response.history)]);
+      await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [accountId, JSON.stringify(response.history)]);
     }
     // something went wrong
     else {
