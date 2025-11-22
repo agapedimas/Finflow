@@ -7,6 +7,8 @@ const Language = require("./language");
 const FileIO = require("fs");
 const Gemini = require("./gemini");
 
+const RAGService = require("./services/ragService"); // <<< BARIS BARU: Import file yang berisi implementasi get_budget_compliance dkk.
+
 const transactionController = require("./controllers/transactionController");
 
 /**
@@ -190,21 +192,77 @@ function Route(Server) {
     res.send(history);
   });
   Server.post("/client/assistant/send", async function (req, res) {
-    // retrieve chat history
-    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [req.session.account])).data?.at(0)?.content || "[]");
-    const message = req.body.message;
-    const response = await Gemini.Chat.Send(message, 1, history);
+      // 1. Ambil History dan Variabel Penting
+      const historyData = await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [req.session.account]);
+      let history = JSON.parse(historyData.data?.at(0)?.content || "[]");
+      
+      // Variabel ini akan kita set ke NULL setelah iterasi pertama
+      let userMessage = req.body.message; 
+      const studentId = req.session.account; 
+      console.log(studentId);
+      let response;
 
-    // response with no error
-    if (response.finish.code == 0) {
-      res.send(response.text);
-      await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [req.session.account, JSON.stringify(response.history)]);
-    }
-    // something went wrong
-    else {
-      console.error(response.finish.code);
-      res.send("ERROR").status(500);
-    }
+      // --- START: LOOP UNTUK FUNCTION CALL (RAG) ---
+      for (let i = 0; i < 3; i++) { 
+          
+          // 2. Panggil Gemini: Kirim userMessage di iterasi 0, lalu NULL di iterasi berikutnya
+          // Catatan: Asumsi gemini/index.js sudah memvalidasi dan mengabaikan message=null/""
+          response = await Gemini.Chat.Send(userMessage, 1, history);
+          
+          // 3. Cek apakah Gemini meminta pemanggilan fungsi
+          if (response.function_call && response.function_call.name) {
+              
+              const funcName = response.function_call.name;
+              const funcArgs = response.function_call.args;
+              let funcResult;
+
+              // 4. HAPUS TURN USER JIKA FUNCTION CALL TERJADI DI ITERASI PERTAMA
+              if (i === 0) {
+                  // **Tindakan Kritis:** Hapus turn user yang baru saja ditambahkan oleh Gemini.Chat.Send
+                  history.pop(); 
+              }
+
+              // 5. Simpan Function Call ke history (Role: 'model')
+              history.push({ role: 'model', parts: [{ functionCall: response.function_call }] });
+
+              // 6. Eksekusi fungsi nyata (Mapping Function)
+              if (funcName === 'get_budget_compliance') {
+                  funcResult = await RAGService.get_budget_compliance(studentId); 
+              } else if (funcName === 'get_top_spending_categories') {
+                  funcResult = await RAGService.get_top_spending_categories(studentId, funcArgs.time_frame); 
+              } else {
+                  funcResult = { success: false, message: "Fungsi RAG tidak ditemukan." };
+              }
+
+              // 7. Simpan Hasil Fungsi (functionResponse) ke history (Role: 'function')
+              history.push({ 
+                  role: 'function', 
+                  parts: [{ 
+                      functionResponse: { name: funcName, response: funcResult } 
+                  }] 
+              });
+              
+              // 8. Set userMessage ke NULL setelah iterasi pertama
+              // Ini adalah kunci untuk mencegah duplikasi di panggilan API berikutnya
+              userMessage = null; 
+
+          } else {
+              // 9. Jika tidak ada function call, keluar dari loop (Jawaban Teks Akhir Diterima)
+              break; 
+          }
+      }
+
+      // 10. Respons Akhir dan Penyimpanan History
+      if (response.finish.code == 0) {
+          res.send(response.text);
+          
+          // Simpan history yang sudah diperbarui.
+          await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(response.history || history)]);
+      }
+      else {
+          console.error(response.finish.code);
+          res.status(500).send("Terjadi kesalahan pada proses asisten virtual.");
+      }
   });
 
   Map(Server);
