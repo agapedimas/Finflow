@@ -559,6 +559,8 @@ module.exports = {
         }
     },
 
+    
+
     // ============================================================
     // MODULE 4: TRANSACTIONS (Action & Vision)
     // Mencatat Pengeluaran, Menyimpan URL foto struk (untuk fitur AI Vision)
@@ -630,6 +632,55 @@ module.exports = {
     },
 
     // ============================================================
+    // MODULE 6: INSIGHTS & VISUALIZATION (Dashboard Data)
+    // ============================================================
+    getInsights: async (req, res) => {
+        try {
+            const { wallet_address } = req.query;
+
+            if (!wallet_address) return error(res, "Wallet address required", 400);
+
+            // Validasi User: Memastikan wallet terdaftar
+            const uRes = await SQL.Query("SELECT id, displayname FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const user = uRes.data?.[0];
+            if (!user) return error(res, "User not found", 404);
+
+            // Ambil data Statistik secara Paralel
+            // Menggnakan Promise.all karena query query ini tidak saling tunggu
+            const [balanceData, spendingData, trendData, historyData] = await Promise.all([
+                _getBalanceInfo(user.id),       // Saldo & Sisa Hari
+                _getSpendingBreakdown(user.id), // Data Pie Chart
+                _getWeeklyTrend(user.id),       // Data Bar Chart
+                _getTransactionHistory(user.id) // Data List
+            ]);
+
+            // Jalankan Logika AI (Pure Logic, no DB)
+            const aiAnalysis = _analyzeHealth(balanceData.current_balance, balanceData.days_until_drip);
+
+            // Susun Response
+            return success(res, {
+                summary: {
+                    balance: balanceData.current_balance,
+                    days_until_drip: balanceData.days_until_drip,
+                    health_indicator: aiAnalysis.status // 'green' / 'yellow' / 'red'
+                },
+                charts: {
+                    pie: spendingData, 
+                    bar: trendData 
+                },
+                ai_coach: {
+                    message: aiAnalysis.message
+                },
+                history: historyData
+            }, "Data Insight Siap");
+
+        } catch (e) {
+            console.error("[INSIGHT ERROR]", e);
+            return error(res, "Gagal memuat insight");
+        }
+    },
+
+    // ============================================================
     // MODULE 7: AI CHATBOT (RAG Context Provider)
     // Frontend kirim pesan
     // Backend mengambil Context Data dari database
@@ -637,4 +688,89 @@ module.exports = {
     // Balasan disimpan di chat history
     // ============================================================
     
+}
+
+// ============================================================
+// PRIVATE HELPER FUNCTIONS (Logika Terpisah)
+// Taruh ini di bagian paling bawah file (di luar module.exports)
+// ============================================================
+
+// Info Saldo & Waktu
+async function _getBalanceInfo(userId) {
+    const res = await SQL.Query("SELECT balance FROM accounts_student WHERE id=?", [userId]);
+    const balance = Number(res.data?.[0]?.balance || 0);
+
+    // Hitung hari menuju Senin
+    const today = new Date();
+    const day = today.getDay(); 
+    const daysLeft = day === 1 ? 7 : (8 - day) % 7;
+
+    return { current_balance: balance, days_until_drip: daysLeft };
+}
+
+// Data Pie Chart (Grouping Kategori)
+async function _getSpendingBreakdown(userId) {
+    const query = `
+        SELECT category_id, SUM(amount) as total 
+        FROM transactions 
+        WHERE student_id = ? AND type = 'Expense'
+        GROUP BY category_id
+    `;
+    const res = await SQL.Query(query, [userId]);
+    
+    // Mapping biar rapi
+    let map = { needs: 0, wants: 0, education: 0 };
+    res.data.forEach(r => {
+        if (r.category_id === 1) map.needs = Number(r.total);
+        if (r.category_id === 0) map.wants = Number(r.total);
+        if (r.category_id === 2) map.education = Number(r.total);
+    });
+    return map;
+}
+
+// Data Bar Chart (Tren Mingguan)
+async function _getWeeklyTrend(userId) {
+    const query = `
+        SELECT DAYNAME(transaction_date) as day, SUM(amount) as total
+        FROM transactions
+        WHERE student_id = ? AND type = 'Expense' AND transaction_date >= DATE(NOW()) - INTERVAL 7 DAY
+        GROUP BY DAYNAME(transaction_date)
+    `;
+    const res = await SQL.Query(query, [userId]);
+    return res.data || [];
+}
+
+// List History
+async function _getTransactionHistory(userId) {
+    const query = `
+        SELECT transaction_id, raw_description, amount, transaction_date, category_id, type 
+        FROM transactions 
+        WHERE student_id = ? 
+        ORDER BY transaction_date DESC LIMIT 10
+    `;
+    const res = await SQL.Query(query, [userId]);
+    return res.data || [];
+}
+
+// Otak AI (Pure Logic)
+function _analyzeHealth(balance, daysLeft) {
+    const dailyCost = 30000; // Asumsi
+    const safeLimit = daysLeft * dailyCost;
+
+    if (balance < safeLimit) {
+        return { 
+            status: 'red', 
+            message: `⚠️ PERINGATAN: Sisa uang (Rp ${balance}) KURANG dari estimasi makan (${daysLeft} hari x 30rb). Hemat Rp ${safeLimit - balance} segera!`
+        };
+    } 
+    if (balance < (safeLimit + 50000)) {
+        return { 
+            status: 'yellow', 
+            message: "Waspada. Uang pas-pasan. Stop jajan kopi mahal minggu ini."
+        };
+    }
+    return { 
+        status: 'green', 
+        message: "Keuangan sehat! Pertahankan gaya hidup hemat ini."
+    };
 }
