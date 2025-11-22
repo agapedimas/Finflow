@@ -17,12 +17,18 @@ CREATE TABLE IF NOT EXISTS `accounts` (
     `displayname` text COLLATE utf8mb4_bin,
     `email` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `wallet_address` varchar(255) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NULL,
+    `password` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
     `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, 
     `avatarversion` int UNSIGNED NOT NULL DEFAULT 1,
     
-    -- [FIXED] Tambahan untuk fitur Invite & Parent
-    `invite_code` VARCHAR(20) UNIQUE NULL, 
-    `parent_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NULL, -- Jika user ini Student, siapa parent-nya?
+    -- Info Profil Tambahan
+    `organization_name` VARCHAR(255) NULL,
+    `bank_name` VARCHAR(50) NULL,
+    `bank_account_number` VARCHAR(50) NULL,
+
+    -- Relasi Keluarga
+    `invite_code` VARCHAR(20) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NULL, 
+    `parent_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NULL,
 
     PRIMARY KEY (`id`), 
     UNIQUE KEY `username` (`username`),
@@ -30,8 +36,6 @@ CREATE TABLE IF NOT EXISTS `accounts` (
     CONSTRAINT `fk_parent_link` FOREIGN KEY (`parent_id`) REFERENCES `accounts`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-ALTER TABLE `accounts`
-ADD COLUMN `password` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL AFTER `displayname`;
 
 CREATE TABLE IF NOT EXISTS `accounts_student` (
     `id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
@@ -174,6 +178,19 @@ CREATE TABLE IF NOT EXISTS `authentication`
                 ON UPDATE CASCADE
     ) 
 ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;
+
+-- Tabel Undangan (Penting untuk Flow Funder -> Student -> Parent)
+-- 4. UNDANGAN (INVITATIONS) - PENTING BUAT FLOW
+CREATE TABLE IF NOT EXISTS `invitations` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `token` VARCHAR(100) NOT NULL UNIQUE,
+    `inviter_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `invitee_email` VARCHAR(255) NOT NULL,
+    `role` ENUM('student', 'parent') NOT NULL,
+    `status` ENUM('pending', 'used') DEFAULT 'pending',
+    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
 
 -- 1. INSERT KATEGORI
 INSERT IGNORE INTO allocation_categories (id, category_name) VALUES 

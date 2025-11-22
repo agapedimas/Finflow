@@ -208,6 +208,13 @@ function Route(Server) {
   });
 
 
+  // API AUTH ROUTES
+  Server.post("/api/auth/register/funder", ApiFinflow.registerFunder);
+  Server.post("/api/auth/register/student", ApiFinflow.registerStudent);
+  Server.post("/api/auth/register/parent", ApiFinflow.registerParent);
+  Server.post("/api/auth/invite/create", ApiFinflow.createInvite);
+  Server.post("/api/auth/login", ApiFinflow.login);
+  
   // Module 4: Transactions
   // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
   Server.post("/api/scan/receipt", ApiFinflow.scanReceipt);

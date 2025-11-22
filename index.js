@@ -15,6 +15,15 @@ const MySQLStore = require("express-mysql-session")(Session);
 const BodyParser = require("body-parser");
 const FileUpload = require("express-fileupload");
 
+/*
+const Cors = require("cors"); // Pastikan sudah npm install cors
+
+// Taruh ini TEPAT setelah inisialisasi Server = Express()
+Server.use(Cors({
+    origin: true, // Boleh diakses dari mana saja (Frontend Testing)
+    credentials: true
+})); */
+
 Configure();
 
 async function Configure()
