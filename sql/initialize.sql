@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
     `username` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `displayname` text COLLATE utf8mb4_bin,
     `email` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
+    `password` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
     `wallet_address` varchar(255) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NULL,
     `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, 
     `avatarversion` int UNSIGNED NOT NULL DEFAULT 1,
@@ -29,9 +30,6 @@ CREATE TABLE IF NOT EXISTS `accounts` (
     UNIQUE KEY `email` (`email`),
     CONSTRAINT `fk_parent_link` FOREIGN KEY (`parent_id`) REFERENCES `accounts`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
-
-ALTER TABLE `accounts`
-ADD COLUMN `password` VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL AFTER `displayname`;
 
 CREATE TABLE IF NOT EXISTS `accounts_student` (
     `id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
@@ -92,6 +90,7 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     `type` ENUM('Income', 'Expense', 'Drip_In') NOT NULL,
     
     `category_id` INT UNSIGNED NULL, 
+    `merchant_name` VARCHAR(100) NULL,
     `raw_description` VARCHAR(255) NULL,
     
     -- Fitur AI & Blockchain
@@ -107,8 +106,6 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-ALTER TABLE `transactions`
-ADD COLUMN `merchant_name` VARCHAR(100) NULL AFTER `category_id`;
 -- =======================================================
 -- 5. BUDGET PLAN & CHAT
 -- =======================================================

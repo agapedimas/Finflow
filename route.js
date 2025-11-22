@@ -193,12 +193,14 @@ function Route(Server) {
   // ROUTE FOR GEMINI CHATS
   let dumpHistory = [];
   Server.get("/client/assistant/history", async function (req, res) {
-    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [req.session.account])).data?.at(0)?.content || "[]");
+    const accountId = await Authentication.GetAccountId(req.session.account);
+    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId])).data?.at(0)?.content || "[]");
     res.send(history);
   });
   Server.post("/client/assistant/send", async function (req, res) {
     // retrieve chat history
-    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [req.session.account])).data?.at(0)?.content || "[]");
+    const accountId = await Authentication.GetAccountId(req.session.account);
+    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId])).data?.at(0)?.content || "[]");
     const message = req.body.message;
     const response = await Gemini.Chat.Send(message, 1, history);
 
