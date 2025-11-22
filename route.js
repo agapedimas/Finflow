@@ -224,6 +224,12 @@ function Route(Server) {
   Server.post("/api/auth/invite/create", ApiFinflow.createInvite);
   Server.post("/api/auth/login", ApiFinflow.login);
   
+  // API FUNDING AGREEMENT
+  Server.post("/api/funding/init", ApiFinflow.initiateFunding);
+  Server.post("/api/funding/topup", ApiFinflow.parentTopup);
+  Server.post("/api/funding/finalize", ApiFinflow.finalizeAgreement);
+  Server.post("/api/funding/pay", ApiFinflow.confirmTransfer);
+
   // Module 4: Transactions
   // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
   Server.post("/api/scan/receipt", ApiFinflow.scanReceipt);

@@ -68,6 +68,19 @@ CREATE TABLE IF NOT EXISTS `funding` (
     FOREIGN KEY (`student_id`) REFERENCES `accounts_student`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
+-- Mengganti nama kolom 'total_monthly_fund' menjadi 'total_period_fund'
+ALTER TABLE `funding` 
+CHANGE COLUMN `total_monthly_fund` `total_period_fund` DECIMAL(15, 2) NOT NULL;
+
+-- Tambah Kolom untuk melacak uang masuk
+ALTER TABLE `funding` 
+ADD COLUMN `collected_amount` DECIMAL(15, 2) DEFAULT 0;
+
+ALTER TABLE `funding` 
+MODIFY COLUMN `status` 
+ENUM('Open_For_Parent', 'Waiting_Allocation', 'Ready_To_Fund', 'Partially_Funded', 'Active', 'Completed', 'Canceled') 
+NOT NULL DEFAULT 'Open_For_Parent';
+
 CREATE TABLE IF NOT EXISTS `funding_allocation` (
     `allocation_id` VARCHAR(128) PRIMARY KEY NOT NULL,
     `funding_id` VARCHAR(128) NOT NULL,
@@ -83,6 +96,9 @@ CREATE TABLE IF NOT EXISTS `funding_allocation` (
     FOREIGN KEY (`funding_id`) REFERENCES `funding`(`funding_id`) ON DELETE CASCADE,
     FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+ALTER TABLE `funding_allocation` 
+CHANGE COLUMN `monthly_budget` `total_allocation` DECIMAL(15, 2) NOT NULL;
 
 -- =======================================================
 -- 4. TRANSACTIONS (Modified for Urgent & Drip_In)
