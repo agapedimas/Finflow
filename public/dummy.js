@@ -93,7 +93,7 @@ const DUMMY_MONTHLY_REPORT = [
         "isExpenses": true,
         "name": "Pembayaran Biaya SKS",
         "price": 1500000,
-        "categoryId": "category2"
+        "categoryId": "0"
     },
     {
         "id": "aksfhawi2",
@@ -109,7 +109,7 @@ const DUMMY_MONTHLY_REPORT = [
         "isExpenses": true,
         "name": "Ayam Goreng",
         "price": 12500,
-        "categoryId": "category1"
+        "categoryId": "2"
     },
     {
         "id": "ashjjasd",
@@ -117,7 +117,7 @@ const DUMMY_MONTHLY_REPORT = [
         "isExpenses": true,
         "name": "Bawang",
         "price": 25000,
-        "categoryId": "category1"
+        "categoryId": "2"
     }
 ]
 

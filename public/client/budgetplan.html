@@ -126,60 +126,14 @@
 </div>
 
 <script>
-    
+    let categories = [];
 
-    const DUMMY_CATEGORIES = [
-        {
-            "id": "category1",
-            "name": "Food & Drink",
-            "allocated": 250000,
-            "status": "normal",
-            "usage": 90203,
-            "balance": 159797
-        },
-        {
-            "id": "category2",
-            "name": "Education",
-            "allocated": 15000000,
-            "status": "normal",
-            "usage": 8500000,
-            "balance": 6500000
-        }
-    ]
-
-    const DUMMY_YEARS = [2024, 2025]
-
-    const DUMMY_MONTHLY_PLAN = {
-        "month": "November",      
-        "year": 2025,             
-        "allocated": 2000000,  
-        "stuffs": [
-            {
-                "id": "ggasfakjfha",
-                "name": "Bawang",
-                "price": 15000,
-                "amount": 2,
-                "category_id": "category2"
-            },
-            {
-                "id": "ggasfakjfha",
-                "name": "Makan siang",
-                "price": 25000,
-                "amount": 20,
-                "category_id": "category2"
-            },
-            {
-                "id": "ggasfakjfha",
-                "name": "Bayar SKS",
-                "price": 150000,
-                "amount": 1,
-                "category_id": "category1"
-            },
-        ]
-    };
-
-
+    initializeCategories();
     initializePlanList();
+
+    async function initializeCategories() {
+        categories = DUMMY_CATEGORIES || await $.get("/api/categories");
+    }
 
     function initializePlanList() {
         for (const tab of Tab_Months.children) {
@@ -238,7 +192,7 @@
     function appendPlanList(plan) {
         const thumbnailElement = document.createElement("img");
         thumbnailElement.classList.add("thumbnail");
-        thumbnailElement.src = "/client/categories/thumbnail/" + plan.category_id;
+        thumbnailElement.src = "/client/categories/thumbnail/" + plan.categoryId;
 
         const nameElement = document.createElement("span");
         nameElement.classList.add("name");
@@ -274,13 +228,14 @@
         containerElement.append(navigateElement);
         
         const categoryGroupElements = [...List_MonthlyPlan.children];
-        let categoryGroupMatches = categoryGroupElements.find(o => o.dataset.category == plan.category_id);
+        let categoryGroupMatches = categoryGroupElements.find(o => o.dataset.category == plan.categoryId);
 
         if (categoryGroupMatches == null) {
+            const category = categories.find(o => o.id == plan.categoryId);
             categoryGroupMatches = document.createElement("div");
             categoryGroupMatches.classList.add("list");
-            categoryGroupMatches.dataset.category = plan.category_id;
-            categoryGroupMatches.setAttribute("ad-header", plan.category_id);
+            categoryGroupMatches.dataset.category = plan.categoryId;
+            categoryGroupMatches.setAttribute("ad-header", category.name);
             List_MonthlyPlan.append(categoryGroupMatches);
         }
 

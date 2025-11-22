@@ -523,8 +523,7 @@
                     </div>
                     <div class="stack category">
                         <span><$ generic category /></span>
-                        <select class="plain" value="true">
-                            <option value="true"><$ generic category /></option>
+                        <select class="plain" id="Select_Category">
                         </select>
                     </div>
                 </div>
@@ -572,6 +571,9 @@
 </div>
 
 <script>
+    let categories = [];
+
+    initializeCategories();
     initializeOverviewCards();
     initializeReportList();
     
@@ -613,6 +615,13 @@
         priceInput.onblur = function() {
             const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
             this.value = value.substring(0, value.length - 3);
+        }
+        const categorySelect = listTemplate.querySelector(".category > select");
+        for (const category of categories) {
+            const optionElement = document.createElement("option");
+            optionElement.value = category.id;
+            optionElement.innerText = category.name;
+            categorySelect.append(optionElement);
         }
 
         for (const input of listTemplate.querySelectorAll("input"))
@@ -658,9 +667,18 @@
         for (const input of inputs)
             input.disabled = true; 
 
-        await Delay(3000);
-        console.log(transactions);
+        {
+            // DUMMY ACTION
+            await Delay(500);
+            for (const transaction of transactions) {
+                DUMMY_MONTHLY_REPORT.push(transaction);
+            }
+            const activeMonth = [...Tab_Months.children].find(o => o.classList.contains("active"))?.dataset?.month;
+            const activeYear = Select_Years.value;
+            fetchReportList(activeMonth, activeYear);
+        }
         // Post to database
+        // await $.post("/api/cashflow/transactions/", { transactions: transactions });
         PopOver_InputManual.isloading = false;
         PopOver_InputManual.close(true);
     }
@@ -800,6 +818,9 @@
         initializeWalletCard();
     }
 
+    async function initializeCategories() {
+        categories = DUMMY_CATEGORIES || await $.get("/api/categories");
+    }
     async function initalizeExpensesCard() {
         // fetch data from /api/expenses
         const expenses = DUMMY_EXPENSES || await $.get("/api/expenses");
@@ -854,7 +875,6 @@
     }
 
     async function initializeFeedbackCard() {
-        
         // fetch data from /api/cashflow/feedback
         const feedback = DUMMY_FEEDBACK || await $.get("/api/cashflow/feedback");
 
@@ -879,7 +899,7 @@
         const currentYear = new Date().getFullYear();
         fetchReportList(currentMonth, currentYear);
         
-        const years = DUMMY_YEARS || $.get("/client/cashflow/transactions/years");
+        const years = DUMMY_YEARS || $.get("/api/cashflow/transactions/years");
         for (const year of years) {
             const optionElement = document.createElement("option");
             optionElement.value = year;
@@ -904,7 +924,6 @@
         }
             
         if (activeTab) {
-            console.log(activeTab.nextElement)
             const x = activeTab.getBoundingClientRect().x;
             if (x < 20)
                 Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
@@ -912,7 +931,7 @@
                 Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
         }
 
-        const transactions = DUMMY_MONTHLY_REPORT || $("/client/transactions/?month=" + month + "&year=" + year);
+        const transactions = DUMMY_MONTHLY_REPORT || $("/api/transactions/?month=" + month + "&year=" + year);
         
         List_MonthlyReport.innerHTML = null;
 
@@ -924,15 +943,17 @@
     function appendReportList(transaction) {
         const thumbnailElement = document.createElement("img");
         thumbnailElement.classList.add("thumbnail");
-        thumbnailElement.src = "/client/categories/thumbnail/" + transaction.categoryId;
+        thumbnailElement.src = "/api/categories/thumbnail/" + transaction.categoryId;
 
         const nameElement = document.createElement("span");
         nameElement.classList.add("name");
         nameElement.innerText = transaction.name;
 
+        const category = categories.find(o => o.id == transaction.categoryId);
+
         const categoryElement = document.createElement("span");
         categoryElement.classList.add("category");
-        categoryElement.innerText = transaction.categoryId;
+        categoryElement.innerText = category?.name || "";
 
         const descriptionGroupElement = document.createElement("div");
         descriptionGroupElement.classList.add("description");
