@@ -190,61 +190,6 @@
 </div>
 
 <script>
-    const DUMMY_CURRENTPROGRAM = {
-        "is_joined": true,
-        "funder_id": "fund1",
-        "display_name": "Djarum Super",
-        "active_until": 1767225600000
-    }
-
-    const DUMMY_WALLET = {
-        "balance": 3400000,
-        "allocations": [
-            {
-                "category_id": "0",
-                "category_name": "Education",
-                "balance": 2500000 
-            },
-            {
-                "category_id": "1",
-                "category_name": "Wants",
-                "balance": 500000 
-            },
-            {
-                "category_id": "2",
-                "category_name": "Needs",
-                "balance": 400000 
-            }
-        ]
-    }
-
-    const DUMMY_RECOMMENDATIONS = [
-        {
-            "id": "1",
-            "text": "Plan your budget before the October ends.",
-            "cta": "Go",
-            "url": "/client/budgetplan/"
-        },
-        {
-            "id": "2",
-            "text": "Overbudget? Ask assistant with no worries.",
-            "cta": "Ask",
-            "url": "/client/assistant/"
-        },
-        {
-            "id": "3",
-            "text": "Need comfy food? Find places to eat.",
-            "cta": "Check",
-            "url": "https://maps.google.com"
-        },
-        {
-            "id": "4",
-            "text": "Activate 2FA to enhance security.",
-            "cta": "Begin",
-            "url": "/client/settings"
-        }
-    ]
-
     initializeProgramInfoCards();
     initializeWalletCards();
     initializeRecommendationCards();
@@ -253,15 +198,15 @@
         // fetch data from /api/currentprogram
         const program = DUMMY_CURRENTPROGRAM || await $.get("/api/currentprogram");
         
-        if (program.is_joined == false) {
+        if (program.isJoined == false) {
             Grid_ProgramNotJoined.classList.remove("hidden");
             Grid_ProgramCurrentlyJoined.remove();
         }
         else {
-            Text_ProgramCurrentlyJoined_Name.innerText = program.display_name;
-            Text_ProgramCurrentlyJoined_Status.innerText = "<$ home program_status_joined_description />".format(moment(program.active_until).format("ll"));
+            Text_ProgramCurrentlyJoined_Name.innerText = program.displayName;
+            Text_ProgramCurrentlyJoined_Status.innerText = "<$ home program_status_joined_description />".format(moment(program.activeUntil).format("ll"));
             Grid_ProgramCurrentlyJoined.classList.remove("hidden");
-            Image_ProgramCurrentlyJoined.src = "/avatar/" + program.funder_id;
+            Image_ProgramCurrentlyJoined.src = "/avatar/" + program.funderId;
             Grid_ProgramNotJoined.remove();
         }
     }
@@ -275,7 +220,7 @@
         for (const allocation of wallet.allocations) {
             const name = document.createElement("span");
             name.classList.add("name");
-            name.innerText = allocation.category_name;
+            name.innerText = allocation.categoryName;
 
             const balance = document.createElement("span");
             balance.classList.add("balance");
