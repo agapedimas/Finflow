@@ -1,3 +1,19 @@
 {
-    "title": "Budget Plan"
+    "title": "Budget Plan",
+
+    "newplan_title": "New Plan",
+    "newplan_discard_title": "Discard Creating New Plan?",
+    "newplan_discard_description": "You can create your new plan later, anytime.",
+    "newplan_discard_confirm": "Discard",
+    "newplan_discard_cancel": "Keep Creating",
+
+    "editplan_title": "Edit Plan",
+    "editplan_discard_title": "Discard Editing New Plan?",
+    "editplan_discard_description": "Your changes won't be saved.",
+    "editplan_discard_confirm": "Discard",
+    "editplan_discard_cancel": "Keep Editing",
+
+    "plan_status_approved": "Approved",
+    "plan_status_rejected": "Rejected",
+    "plan_status_pending": "Pending"
 }
