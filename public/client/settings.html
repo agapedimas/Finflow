@@ -151,7 +151,7 @@
             <img id="Image_Avatar" src="/avatar/<#? activeuser.id ?#>?v=<#? activeuser.avatarversion ?#>"/>
         </div>
         <div class="details">
-            <div class="name"><#? activeuser.nickname ?#></div>
+            <div class="name"><#? activeuser.displayname ?#></div>
             <div class="description">@<#? activeuser.username ?#></div>
             <button id="Button_SignOut" class="critical plain"><$ settings signout /></button>
         </div>
@@ -254,7 +254,7 @@
                     {
                         return new Promise(function()
                         {
-                            window.location.href = "/client/signout";
+                            window.location.href = "/signout";
                         });
                     }
                 },

@@ -2,7 +2,8 @@
 
 <div class="header">
     <div class="buttons">
-        <button id="Button_NewTransaction"><$ generic new /></button>
+        <div></div>
+        <button id="Button_NewTransaction" class="icon">&#xf8dd;</button>
     </div>
     <div class="title"><$ cashflow title /></div>
 </div>
@@ -11,42 +12,42 @@
     html:not([theme=dark]) .root .main {
         background: var(--gray-6);
     }
-    #Cards_Recap {
+    #Cards_Overview {
         display: grid;
         grid-template-areas:
-            "total budget"
-            "total category";
-        grid-auto-columns: 450px auto;
-        grid-auto-rows: 140px 100px;
+            "total wallet"
+            "total feedback";
+        grid-auto-columns: 425px auto;
+        grid-auto-rows: 155px max-content;
         gap: 15px;
-        max-width: 800px;
+        max-width: 900px;
     }
-        #Cards_Recap .card {
+        #Cards_Overview .card {
             background: var(--background-list);
             border-radius: 15px;
             padding: 15px;
         }
-    #Card_SpendingTotal {
+    #Card_ExpensesTotal {
         grid-area: total;
         display: grid;
         grid-auto-rows: max-content auto;
         gap: 1em;
     }
-        #Card_SpendingTotal .header {
+        #Card_ExpensesTotal .header {
             display: grid;
         }
-            #Card_SpendingTotal .header .label {
+            #Card_ExpensesTotal .header .label {
                 color: var(--foreground-description);
                 font-weight: 600;
                 font-size: 0.85em;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
             }
-            #Card_SpendingTotal .header #Text_SpendingTotal {
+            #Card_ExpensesTotal .header #Text_ExpensesTotal {
                 font-weight: bold;
                 font-size: 2em;
             }
-        #Card_SpendingTotal .chart {
+        #Card_ExpensesTotal .chart {
             position: relative;
             display: grid;
             grid-auto-flow: column;
@@ -56,13 +57,13 @@
             overflow: hidden;    
             z-index: 0;
         }
-            #Card_SpendingTotal .chart .ticks {
+            #Card_ExpensesTotal .chart .ticks {
                 display: grid;
                 margin: calc(-1.5ch - 20px) 0 calc(1.5ch + 5px);
                 align-items: end;
                 z-index: -1;
             }
-                #Card_SpendingTotal .chart .ticks .tick {
+                #Card_ExpensesTotal .chart .ticks .tick {
                     position: relative;
                     color: var(--foreground-description);
                     font-weight: 600;
@@ -70,7 +71,7 @@
                     letter-spacing: 0.05em;
                     transform: translateY(50%);
                 }
-                    #Card_SpendingTotal .chart .ticks .tick::before {
+                    #Card_ExpensesTotal .chart .ticks .tick::before {
                         content: "";
                         display: block;
                         position: absolute;
@@ -81,125 +82,122 @@
                         right: calc(100% + 15px);
                         background-color: var(--overlay-8);
                     }
-            #Card_SpendingTotal .chart .days {
+            #Card_ExpensesTotal .chart .days {
                 display: grid;
                 grid-auto-flow: column;
                 grid-auto-columns: 1fr;
             }
-                #Card_SpendingTotal .chart .days .day {
+                #Card_ExpensesTotal .chart .days .day {
                     display: grid;
                     position: relative;
                     grid-auto-rows: auto max-content;
                     justify-items: center;
                     align-items: end;
                 }
-                    #Card_SpendingTotal .chart .days .day .bar {
+                    #Card_ExpensesTotal .chart .days .day .bar {
                         --height: 0%;
                         background: var(--accent);
                         height: var(--height);
                         width: 25px;
                         border-radius: 3px 3px 0 0;
                     }
-                    #Card_SpendingTotal .chart .days .day span {
+                    #Card_ExpensesTotal .chart .days .day span {
                         color: var(--foreground-description);
                         font-weight: 600;
                         font-size: 0.8em;
                         letter-spacing: 0.05em;
                         margin-top: 5px;
                     }
-    #Card_RemainingBudget {
-        grid-area: budget;
+    #Card_Wallet {
+        grid-area: wallet;
         display: grid;
-        grid-auto-rows: max-content auto max-content;
+        background: var(--overlay-7);
+        border-radius: 15px;
+        padding: 17px;
+        max-width: 600px;
+        overflow: hidden;
     }
-        #Card_RemainingBudget .header {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: auto max-content;
-        }
-            #Card_RemainingBudget .header .label {
-                color: var(--foreground-description);
-                font-weight: 600;
-                font-size: 0.85em;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-            #Card_RemainingBudget .header label:has(select) {
-                gap: 4px;
-            }
-            #Card_RemainingBudget .header select {
-                padding-top: 0;
-                padding-bottom: 0;
-                font-size: 0.85em;
-                letter-spacing: 0.05em;
-            }
-            #Card_RemainingBudget #Text_BudgetRemaining {
-                font-weight: bold;
-                font-size: 2em;
-            }
-            #Card_RemainingBudget #Text_BudgetRemaining.nearlimit {
-                color: #ffd60a;
-            }
-            [theme=dark] 
-            #Card_RemainingBudget #Text_BudgetRemaining.nearlimit {
-                color: #ffd60a;
-            }
-            #Card_RemainingBudget #Text_BudgetRemaining.overlimit  {
-                color: #ff3b30;
-            }
-            [theme=dark] 
-            #Card_RemainingBudget #Text_BudgetRemaining.overlimit {
-                color: #ff453a;
-            }
-            #Card_RemainingBudget .footer {
-                display: grid;
-                grid-auto-flow: column;
-                grid-auto-columns: auto max-content;
-                gap: 5px;    
-                margin-top: 15px;  
-                align-items: end;  
-                align-self: end;
-            }
-                #Card_RemainingBudget .footer #Button_BudgetAction {
-                    position: relative;
-                    border-radius: 30px;
-                    text-transform: uppercase;
-                    font-size: 0.85em;
-                    letter-spacing: 0.015em;
-                    font-weight: 500;
-                    overflow: hidden;
-                }
-                    #Card_RemainingBudget .footer #Button_BudgetAction::before {
-                        content: "";
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background-color: var(--accent);
-                        opacity: 0.1;
-                    }
-    #Card_SpendingCategories {
-        grid-area: category;
-        display: grid;
-        grid-auto-rows: max-content auto max-content;
-    }
-        #Card_SpendingCategories .label {
+        #Card_Wallet > .label {
             color: var(--foreground-description);
             font-weight: 600;
             font-size: 0.85em;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
+        #Card_Wallet > #Text_WalletBalance {
+            font-weight: bold;
+            font-size: 1.75em;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--background-input);
+        }
+        #Card_Wallet > #Grid_WalletCategories {
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: max-content;
+            gap: 1.5em 2em;
+            overflow: auto;
+            margin: 0 -20px;
+            padding: 0 20px;
+            scrollbar-width: none;
+        }
+            #Card_Wallet > #Grid_WalletCategories .category {
+                display: grid;
+            }
+                #Card_Wallet > #Grid_WalletCategories .category > .name {    
+                    color: var(--foreground-description);
+                    letter-spacing: 0.025em;
+                    font-weight: 500;
+                }
+    #Card_Feedback {
+        grid-area: feedback;
+        display: grid;
+        grid-auto-rows: max-content auto max-content;
+    }
+        #Card_Feedback .label {
+            color: var(--foreground-description);
+            font-weight: 600;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        #Card_Feedback .description {
+            margin: 0.25em 0 0;
+            font-size: 1.2em;
+        }
+        #Card_Feedback.normal button {
+            display: none;
+        }
+        #Card_Feedback button {
+            position: relative;
+            border-radius: 30px;
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 0.015em;
+            font-weight: 500;
+            overflow: hidden;
+            margin-top: 1em;
+            justify-self: right;
+        }
+            #Card_Feedback button::before {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: var(--accent);
+                opacity: 0.1;
+            }
         
 
     @media screen and (max-width: 1175px) {
-        #Cards_Recap {
+        #Cards_Overview {
             grid-auto-columns: 350px auto;
-            grid-auto-rows: 125px 100px;
+            grid-auto-rows: 135px max-content;
             font-size: 0.85em;
         }
-        #Card_SpendingTotal .chart .days .day .bar {
+        #Card_ExpensesTotal .chart .days .day .bar {
             width: 17px;
             border-radius: 3px 3px 0 0;
         }
@@ -209,14 +207,14 @@
         or
         ((max-width: 730px))
     ) {
-        #Cards_Recap {
+        #Cards_Overview {
             grid-template-areas: 
                 "total total"
-                "budget category";
+                "wallet feedback";
             grid-auto-columns: 300px auto;
-            grid-auto-rows: 225px 125px;
+            grid-auto-rows: 225px max-content;
         }
-        #Card_SpendingTotal .chart .days .day .bar {
+        #Card_ExpensesTotal .chart .days .day .bar {
             width: 35px;
             border-radius: 5px 5px 0 0;
         }
@@ -225,15 +223,15 @@
         ((max-width: 950px) and (min-width: 800px)) 
         or 
         (max-width: 575px)) {
-        #Cards_Recap {
+        #Cards_Overview {
             grid-template-areas: 
                 "total"
-                "budget"
-                "category";
+                "wallet"
+                "feedback";
             grid-auto-columns: auto;
-            grid-auto-rows: 225px 125px 100px;
+            grid-auto-rows: 225px 135px max-content;
         }
-        #Card_SpendingTotal .chart .days .day .bar {
+        #Card_ExpensesTotal .chart .days .day .bar {
             width: 20px;
             border-radius: 3px 3px 0 0;
         }
@@ -350,67 +348,119 @@
                 opacity: 0.6 !important;
                 pointer-events: none;
             }
-        #PopOver_InputManual  #Button_AddNewTransaction {
+        #PopOver_InputManual #Button_AddNewTransaction {
             width: 100%;
             padding: 10px;
+        }
+
+    #PopOver_InputCamera {
+        width: 325px;
+    }
+        #PopOver_InputCamera section:has(> .content > #Grid_InputCameraView) {
+            grid-auto-rows: max-content auto;
+        }
+            #PopOver_InputCamera section > .content:has(> #Grid_InputCameraView) {
+                display: grid;
+                padding: 0;
+            }
+        #PopOver_InputCamera #Grid_InputCameraView {
+            display: grid;
+            background: black;
+            align-content: center;
+            justify-items: center;
+        }
+            #PopOver_InputCamera #Grid_InputCameraView video {
+                width: 100%;
+                aspect-ratio: 3 / 4;
+                object-fit: cover;
+            }
+            #PopOver_InputCamera #Grid_InputCameraView .buttons {
+                display: grid;
+                grid-auto-flow: column;
+                grid-auto-columns: 1fr;
+                gap: 50px;  
+                margin: 25px;
+            }
+                #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera {
+                    width: 60px;
+                    height: 60px;
+                    border: 3px solid black;
+                    outline: 3px solid white;
+                    border-radius: 100px;
+                    background: white;
+                    transition: 0.15s opacity;
+                }
+                #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera:hover {
+                    opacity: 0.8;
+                }
+                #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera:active {
+                    opacity: 0.6;
+                }
+                #PopOver_InputCamera #Grid_InputCameraView .buttons button.icon {
+                    color: white;
+                    padding: 0;
+                    font-size: 25px;
+                }
+        #PopOver_InputCamera canvas {
+            display: none;
+        }
+        #PopOver_InputCamera #Image_InputCameraPreview {
+            width: 100%;
         }
 </style>
 
 <div class="content">
-    <section ad-header="<$ cashflow recap_title />">
-        <div id="Cards_Recap" class="cards">
-            <div class="card" id="Card_SpendingTotal">
+    <section ad-header="<$ cashflow overview_title />">
+        <div id="Cards_Overview" class="cards">
+            <div class="card" id="Card_ExpensesTotal">
                 <div class="header">
-                    <span class="label"><$ cashflow recap_spendingtotal /></span>
-                    <span id="Text_SpendingTotal">&nbsp;</span>
+                    <span class="label"><$ cashflow overview_expensesthisweek /></span>
+                    <span id="Text_ExpensesTotal">&nbsp;</span>
                 </div>
                 <div class="chart">
-                    <div class="days" id="Grid_SpendingDays">
+                    <div class="days" id="Grid_ExpensesDays">
                         <div class="day" data-day="mon">
-                            <div class="bar"></div>
+                            <div class="bar" ad-tooltip></div>
                             <span><$ generic day_monday_short/></span>
                         </div>
                         <div class="day" data-day="tue">
-                            <div class="bar"></div>
+                            <div class="bar" ad-tooltip></div>
                             <span><$ generic day_tuesday_short/></span>
                         </div>
                         <div class="day" data-day="wed">
-                            <div class="bar"></div>
+                            <div class="bar" ad-tooltip></div>
                             <span><$ generic day_wednesday_short/></span>
                         </div>
                         <div class="day" data-day="thu">
-                            <div class="bar"></div>
+                            <div class="bar" ad-tooltip></div>
                             <span><$ generic day_thursday_short/></span>
                         </div>
                         <div class="day" data-day="fri">
-                            <div class="bar"></div>
+                            <div class="bar" ad-tooltip></div>
                             <span><$ generic day_friday_short/></span>
                         </div>
                         <div class="day" data-day="sat">
-                            <div class="bar"></div>
+                            <div class="bar" ad-tooltip></div>
                             <span><$ generic day_saturday_short/></span>
                         </div>
                         <div class="day" data-day="sun">
-                            <div class="bar"></div>
+                            <div class="bar" ad-tooltip></div>
                             <span><$ generic day_sunday_short/></span>
                         </div>    
                     </div>
-                    <div class="ticks" id="Grid_SpendingTicks"></div>
+                    <div class="ticks" id="Grid_ExpensesTicks"></div>
                 </div>
             </div>
-            <div class="card" id="Card_RemainingBudget">
-                <div class="header">
-                    <span class="label"><$ cashflow recap_budgetremaining /></span>
-                    <select id="Select_Budgets" class="plain"></select>
-                </div>
-                <span id="Text_BudgetRemaining">&nbsp;</span>
-                <div class="footer">
-                    <span id="Text_BudgetStatus"></span>
-                    <button class="plain" id="Button_BudgetAction"><$ cashflow recap_budgetreadjust/></button>
-                </div>
+            
+            <div class="card" id="Card_Wallet">
+                <span class="label"><$ generic balance /></span>
+                <span id="Text_WalletBalance">&nbsp;</span>
+                <div id="Grid_WalletCategories"></div>
             </div>
-            <div class="card" id="Card_SpendingCategories">
-                <span class="label"><$ cashflow recap_spendingcategories /></span>
+            <div class="card" id="Card_Feedback">
+                <span class="label"><$ cashflow overview_feedback_title /></span>
+                <span class="description" id="Text_Feedback">&nbsp;</span>
+                <button class="plain"><$ cashflow overview_feedback_ask /></button>
             </div>
         </div>
     </section>
@@ -488,113 +538,41 @@
 
 <div class="popover" id="PopOver_InputCamera">
     <div class="activity">
-        <div class="header cascaded">
-            <div class="buttons">
-                <button>Cancel</button>
+        <section>
+            <div class="header cascaded">
+                <div class="buttons">
+                    <button id="Button_CancelScan"><$ generic cancel /></button>
+                </div>
+                <div class="title"><$ cashflow transaction_scan_title /></div>
             </div>
-            <div class="title"><$ cashflow transaction_scan_title /></div>
-        </div>
-        <div class="content">
-        </div>
+            <div class="content">
+                <div id="Grid_InputCameraView" theme="dark">
+                    <video id="Video_InputCamera"></video>
+                    <div class="buttons">
+                        <button id="Button_SwitchCamera" class="icon plain">&#xeb5f;</button>
+                        <button id="Button_CaptureCamera"></button>
+                        <button id="Button_AddFromGallery" ad-tooltip="<$ cashflow transaction_scan_uploadgallery />" class="icon plain">&#xf87f;</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section>
+            <div class="header cascaded">
+                <div class="buttons">
+                    <button id="Button_SubmitScan"><$ generic submit /></button>
+                </div>
+                <div class="title"><$ cashflow transaction_scanbill_preview /></div>
+            </div>
+            <div class="content">
+                <canvas id="Canvas_InputCamera"></canvas>
+                <img id="Image_InputCameraPreview"/>
+            </div>
+        </section>
     </div>
 </div>
 
 <script>
-    const DUMMY_RECAP = {
-        "type": "weekly",               
-        "spending": {
-            "total": 1960545.23,           
-            "summary": [450123, 250000.23, 120322, 384200, 393000, 213900, 249000]
-        },
-        "categories": [
-            {
-                "id": "category1",
-                "name": "education",
-                "status": "normal",
-                "allocated": 250000,
-                "usage": 90203,
-                "balance": 159797
-            }
-        ],
-        "budgets":
-        [
-            {
-                "id": "123",
-                "name": "Parent",
-                "status": "overlimit",
-                "allocated": 500000,
-                "usage": 241000,
-                "balance": -25000
-            },
-            {
-                "id": "2",          
-                "name": "Scholarship",   
-                "balance": 952000,  
-                "status": "normal",
-                "allocated": 3200000,  
-                "usage": 241000,
-                "balance": 25000
-            }
-        ]
-    }
-
-    const DUMMY_CATEGORIES = [
-        {
-            "id": "category1",
-            "name": "Food & Drink",
-            "allocated": 250000,
-            "status": "normal",
-            "usage": 90203,
-            "balance": 159797
-        },
-        {
-            "id": "category2",
-            "name": "Education",
-            "allocated": 15000000,
-            "status": "normal",
-            "usage": 8500000,
-            "balance": 6500000
-        }
-    ]
-
-    const DUMMY_YEARS = [2024, 2025]
-
-    const DUMMY_MONTHLY_REPORT = [
-        {
-            "id": "ggasfakjfha",
-            "timestamp": 1763139600000,
-            "isExpenses": true,
-            "name": "Pembayaran Biaya SKS",
-            "price": 1500000,
-            "category_id": "category2"
-        },
-        {
-            "id": "aksfhawi2",
-            "timestamp": 1763053200000,
-            "isExpenses": false,
-            "name": "Income from Parent",
-            "price": 2000000,
-            "category_id": null
-        },
-        {
-            "id": "smfnamsa2",
-            "timestamp": 1763053200000,
-            "isExpenses": true,
-            "name": "Ayam Goreng",
-            "price": 12500,
-            "category_id": "category1"
-        },
-        {
-            "id": "ashjjasd",
-            "timestamp": 1762880400000,
-            "isExpenses": true,
-            "name": "Bawang",
-            "price": 25000,
-            "category_id": "category1"
-        }
-    ]
-
-    initializeRecapCards();
+    initializeOverviewCards();
     initializeReportList();
     
     Button_NewTransaction.onclick = function(event) {
@@ -606,7 +584,9 @@
             Title: "<$ cashflow transaction_scanbill />",
             Icon: "fce6",
             Action: o => {
+                PopOver_InputCamera.content.navigateTo(0);
                 PopOver_InputCamera.open(Button_NewTransaction);
+                initializeCamera(); 
             }
         },
         {
@@ -619,6 +599,7 @@
                 Button_AddNewTransaction.disabled = false;
                 Button_AddNewTransaction.click();
                 PopOver_InputManual.open(Button_NewTransaction);
+                PopOver_InputManual.isinputchanged = false;
             }
         }
     ]);
@@ -634,13 +615,22 @@
             this.value = value.substring(0, value.length - 3);
         }
 
+        for (const input of listTemplate.querySelectorAll("input"))
+            input.oninput = function() {
+                PopOver_InputManual.isinputchanged = true;
+            }
+        for (const select of listTemplate.querySelectorAll("select"))
+            select.onchange = function() {
+                PopOver_InputManual.isinputchanged = true;
+            }
+
         const timeInput = listTemplate.querySelector(".time input");
         timeInput.value = getLocalISOString().slice(0,16);
 
         Grid_TransactionList.append(listTemplate);        
     }
     Button_CancelAddTransaction.onclick = function() {
-        PopOver_InputManual.close(true);
+        PopOver_InputManual.close();
     }
     Button_SubmitAddTransaction.onclick = async function() {
         PopOver_InputManual.isloading = true;
@@ -660,7 +650,7 @@
                 price: parseInt(priceInput.value.replace(/[^0-9]/g, "")) || 0,
                 timestamp: new Date(timeInput.value) * 1 || 0,
                 isExpenses: typeInput.value == "true",
-                category_id: categoryInput.value 
+                categoryId: categoryInput.value 
             }
         });
 
@@ -674,79 +664,206 @@
         PopOver_InputManual.isloading = false;
         PopOver_InputManual.close(true);
     }
+    PopOver_InputManual.onbeforeclose = function() {
+        if (PopOver_InputManual.isinputchanged == false)
+            return PopOver_InputManual.close(true);
+
+        Components.ActionSheet.Open({
+            Title: "<$ cashflow transaction_addmanual_discard_title />",
+            Description: "<$ cashflow transaction_addmanual_discard_description />",
+            Actions: [
+                {
+                    Type: "Option.Critical",
+                    Title: "<$ cashflow transaction_addmanual_discard_confirm />",
+                    Action: function() {
+                        PopOver_InputManual.close(true);
+                    }
+                },
+                {
+                    Type: "Footer",
+                    Title: "<$ cashflow transaction_addmanual_discard_cancel />"
+                }
+            ]
+        })
+    }
+    PopOver_InputCamera.onclosed = function() {
+        detachCamera();
+    }
+
+    Button_CancelScan.onclick = function() {
+        PopOver_InputCamera.close();
+    }
+
+    let activeCamera;
+    let isFrontCamera = false;
+    Button_SwitchCamera.onclick = async function() {
+        await detachCamera();
+        isFrontCamera = !isFrontCamera;
+        await initializeCamera();
+    }
+    Button_AddFromGallery.onclick = async function() {
+        const result = await getPhotoFromGallery();
+        
+        if (result == true)
+            PopOver_InputCamera.content.navigateTo(1);
+    }
+    Button_CaptureCamera.onclick = async function() {
+        await takeShotCamera();
+        PopOver_InputCamera.content.navigateTo(1);
+    }
 
     function removeCurrentTransaction(event) {
         event.target.parentNode.remove();
     }
 
-    Select_Budgets.onchange = function() {
-        const budget = this.selectedOptions[0].data;
-        updateBudgetCard(budget);
+    async function initializeCamera() {
+        activeCamera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: isFrontCamera ? "user" : "environment" } });
+        Video_InputCamera.srcObject = activeCamera;
+        Video_InputCamera.onloadedmetadata = function() {
+            this.play();
+        }
     }
 
-    function initializeRecapCards() {
-        const recap = DUMMY_RECAP || $.get("/client/cashflow/recap");
-        
-        Text_SpendingTotal.innerText = formatCurrency(recap.spending.total);
-        const highestSpending = Math.max(...recap.spending.summary);
-        const highestSpendingMultiple10 = Math.pow(10, parseInt(Math.log10(highestSpending)));
-        const highestSpendingTick = Math.ceil(highestSpending / highestSpendingMultiple10) * highestSpendingMultiple10;
-        
-        // total spending chart
-        for (let i = 0; i < 7; i++) {
-            const bar = Grid_SpendingDays.children[i].children[0];
-            const value = recap.spending.summary[i];
+    async function detachCamera() {
+        if (activeCamera == null)
+            return;
 
-            bar.style.setProperty("--height", (value / highestSpendingTick * 100) + "%");
+        const tracks = activeCamera.getTracks();
+
+        for (const track of tracks)
+            track.stop();
+
+        Video_InputCamera.srcObject = null;
+    }
+
+    async function takeShotCamera() {
+        const cameraWidth = Video_InputCamera.videoWidth;
+        const cameraHeight = Video_InputCamera.videoHeight;
+
+        let photoWidth = cameraWidth;
+        let photoHeight = cameraHeight;
+        let photoLeft = 0;
+        let photoTop = 0;
+
+        if (cameraWidth > cameraHeight) {
+            photoWidth = cameraHeight / 4 * 3;
+            photoLeft = (cameraWidth / 2) - (photoWidth / 2);
+        }
+        else {
+            photoHeight = cameraWidth / 3 * 4;
+            photoTop = (cameraHeight / 2) - (photoHeight / 2);
+        }
+
+        const context = Canvas_InputCamera.getContext("2d");
+        Canvas_InputCamera.width = photoWidth;
+        Canvas_InputCamera.height = photoHeight;
+        context.drawImage(Video_InputCamera, -photoLeft, -photoTop, cameraWidth, cameraHeight);
+
+        const data = Canvas_InputCamera.toDataURL("image/png");
+        Image_InputCameraPreview.src = data;
+    }
+
+    async function getPhotoFromGallery() {
+        return new Promise(function(resolve) {
+            const file = document.createElement("input");
+            file.type = "file";
+            file.accept = ".png, .jpg, .jpeg, .webp";
+            file.click();
+            
+            file.oninput = function()
+            {
+                file.oninput = null;
+                const files = Array.from(this.files);
+                this.value = null;
+
+                if (files.length == 0)
+                    return resolve(false);
+
+                if (files[0].size > 2000000) {
+                    Components.Notification.Send({ Id: "avatar_failed", Title: "<$ accounts avatar_upload_error_title />", Message: "<$ accounts avatar_upload_error_message />", Icon: "\ufe64", Buttons: [{Text: "<$ generic dismiss />"}] });
+                    return resolve(false);
+                }
+                    
+                const reader = new FileReader();
+                reader.readAsDataURL(files[0]);
+                reader.onload = function() {
+                    Image_InputCameraPreview.src = reader.result;
+                    resolve(true);
+                }
+            }
+        });
+    }
+
+    function initializeOverviewCards() {
+        initalizeExpensesCard();
+        initializeFeedbackCard();
+        initializeWalletCard();
+    }
+
+    async function initalizeExpensesCard() {
+        // fetch data from /api/expenses
+        const expenses = DUMMY_EXPENSES || await $.get("/api/expenses");
+        
+        Text_ExpensesTotal.innerText = formatCurrency(expenses.total);
+        const highestExpenses = Math.max(...expenses.summary);
+        const highestExpensesMultiple10 = Math.pow(10, parseInt(Math.log10(highestExpenses)));
+        const highestExpensesTick = Math.ceil(highestExpenses / highestExpensesMultiple10) * highestExpensesMultiple10;
+        
+        // total expenses chart
+        for (let i = 0; i < 7; i++) {
+            const bar = Grid_ExpensesDays.children[i].children[0];
+            const value = expenses.summary[i];
+
+            bar.style.setProperty("--height", (value / highestExpensesTick * 100) + "%");
+            bar.setAttribute("ad-tooltip", formatCurrency(value));
         }
 
         // ticks for chart
-        const valuePerTick = highestSpendingTick / 4;
+        const valuePerTick = highestExpensesTick / 4;
         for (let i = 4; i >= 0; i--) {
             const value = formatCurrency(parseInt(valuePerTick * i));
             const tick = document.createElement("div");
             tick.classList.add("tick");
             tick.innerText = value.substring(0, value.length - 3);
-            Grid_SpendingTicks.append(tick);
+            Grid_ExpensesTicks.append(tick);
         }
-
-        const budgets = recap.budgets;
-
-        for (const budget of budgets) {
-            const optionElement = document.createElement("option");
-            optionElement.value = budget.id;
-            optionElement.data = budget;
-            optionElement.innerText = budget.name;
-            Select_Budgets.append(optionElement);
-        }
-
-        updateBudgetCard(budgets[0]);
     }
 
-    function updateBudgetCard(budget) {
-        Text_BudgetRemaining.innerText = formatCurrency(budget.balance);
-        Text_BudgetRemaining.classList.remove("normal");
-        Text_BudgetRemaining.classList.remove("nearlimit");
-        Text_BudgetRemaining.classList.remove("overlimit");
+    async function initializeWalletCard() {
+        // fetch data from /api/wallet
+        const wallet = DUMMY_WALLET || await $.get("/api/wallet");
+
+        Text_WalletBalance.innerText = formatCurrency(wallet.balance);
+
+        for (const allocation of wallet.allocations) {
+            const name = document.createElement("span");
+            name.classList.add("name");
+            name.innerText = allocation.categoryName;
+
+            const balance = document.createElement("span");
+            balance.classList.add("balance");
+            balance.innerText = formatCurrency(allocation.balance);
+
+            const container = document.createElement("div");
+            container.classList.add("category");
+            container.append(name);
+            container.append(balance);
+
+            Grid_WalletCategories.append(container);
+        }
+    }
+
+    async function initializeFeedbackCard() {
         
-        if (budget.status == "normal") {
-            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_normal />";
-            Text_BudgetRemaining.classList.add("normal");
-            Button_BudgetAction.classList.add("hidden");
-        }
-        else if (budget.status == "nearlimit") {
-            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_nearlimit />";
-            Text_BudgetRemaining.classList.add("nearlimit");
-            Button_BudgetAction.classList.add("hidden");
-        }
-        else if (budget.status == "overlimit") {
-            Text_BudgetStatus.innerText = "<$ cashflow recap_budgetstatus_overlimit />";
-            Text_BudgetRemaining.classList.add("overlimit");
-            Button_BudgetAction.classList.remove("hidden");
+        // fetch data from /api/cashflow/feedback
+        const feedback = DUMMY_FEEDBACK || await $.get("/api/cashflow/feedback");
+
+        if (feedback.isAvailable == false) {
+            Text_Feedback.innerText = "<$ cashflow overview_feedback_empty />";
         }
         else {
-            Text_BudgetStatus.innerText = "\n";
-            Button_BudgetAction.classList.remove("hidden");
+            Text_Feedback.innerText = feedback.content;
+            Card_Feedback.classList.add(feedback.severity);
         }
     }
 
@@ -807,7 +924,7 @@
     function appendReportList(transaction) {
         const thumbnailElement = document.createElement("img");
         thumbnailElement.classList.add("thumbnail");
-        thumbnailElement.src = "/client/categories/thumbnail/" + transaction.category_id;
+        thumbnailElement.src = "/client/categories/thumbnail/" + transaction.categoryId;
 
         const nameElement = document.createElement("span");
         nameElement.classList.add("name");
@@ -815,7 +932,7 @@
 
         const categoryElement = document.createElement("span");
         categoryElement.classList.add("category");
-        categoryElement.innerText = transaction.category_id;
+        categoryElement.innerText = transaction.categoryId;
 
         const descriptionGroupElement = document.createElement("div");
         descriptionGroupElement.classList.add("description");

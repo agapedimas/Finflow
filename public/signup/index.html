@@ -1,0 +1,81 @@
+<ad-title><$ signup title /></ad-title>
+
+<div class="panel" theme="light" accent="blue">
+    <img src="/assets/logo_text.png"/>
+    <div class="title"><$ signup title /></div>
+    <div class="subtitle"><$ signup description_role /></div>
+    <div class="inputs">
+        <button id="Button_SignUp_Student" goto="/signup/student"><$ signup role_student /></button>
+        <button id="Button_SignUp_Parent" goto="/signup/funder?type=parent"><$ signup role_parent /></button>
+        <button id="Button_SignUp_ScholarshipFunder" goto="/signup/funder?type=scholarshipfunder"><$ signup role_scholarshipfunder /></button>
+
+        <div class="offersignin">
+            <span><$ signup offer_signin_title /></span>
+            <a class="link" id="Button_SignIn" goto="/signin">
+                <span><$ signup offer_signin_link /></span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .root
+    {
+        background: linear-gradient(125deg, #0a84ff, #0067ce);
+    }
+    .panel
+    {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        display: grid;
+        grid-auto-flow: row;
+        transform: translate(-50%, -50%);
+        background: var(--gray-6);
+        padding: 33px 30px;
+        border-radius: 25px;
+        border: 1px solid var(--overlay-6);
+        gap: 0.3em;
+        width: 350px;
+        box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);    
+        max-height: calc(100vh - var(--padding));
+        max-height: calc(100dvh - var(--padding));
+        overflow: auto;
+    }
+        .panel img
+        {
+            height: 1.55em;
+        }
+        .panel .title
+        {
+            font-size: 1.75em;
+            font-family: var(--font-bold);
+            margin: 0.25em 0 0;
+        }
+        .panel .subtitle
+        {
+            font-size: 1.25em;
+            margin: 0 0 25px;
+        }
+        .panel .inputs
+        {
+            display: grid;
+            gap: 7px;
+        }
+            .panel .inputs button
+            {
+                padding: 0.6em 0.8em;
+                border-radius: 10px;
+            }
+            .panel .inputs .offersignin
+            {
+                margin-top: 1em;
+                justify-self: center;
+            }
+</style>
+
+<script>
+    $(".titlebar").remove();
+    $("nav").remove();
+    $(".loading").hide();
+</script>

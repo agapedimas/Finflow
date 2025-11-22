@@ -19,7 +19,7 @@ function Route(Server) {
       res.send();
     });
 
-    Server.post("/client/signin", async function (req, res) {
+    Server.post("/signin", async function (req, res) {
       const valid = await Authentication.CheckCredentials(req.body.username, req.body.password);
 
       if (valid) {
@@ -32,29 +32,34 @@ function Route(Server) {
       }
     });
 
-    Server.get("/client/signout", async function (req, res) {
+    Server.post("/signup", async function(req, res) {
+      // kasih apa gitu
+      res.status(501).send();
+    })
+
+    Server.get("/signout", async function (req, res) {
       if (req.session.account) {
         await Authentication.Remove(req.session.account);
         delete req.session["client"];
       }
 
-      res.redirect("/client/signin");
+      res.redirect("/signin");
     });
 
     Server.get("/client*", async function (req, res, next) {
       const path = req.url;
       const hasAccess = await Authentication.HasAccess(req.session.account);
 
-      if (hasAccess == false && path != "/client/signin" && path != "/client/manifest.json") {
+      if (hasAccess == false && path != "/client/manifest.json") {
         if (path.endsWith(".js") || path.endsWith(".css")) {
           res.setHeader("Cache-Control", "no-store");
           return res.status(403).send();
         } else {
           req.session.redirect = req.url;
-          return res.redirect("/client/signin");
+          return res.redirect("/signin");
         }
       } else if (hasAccess == true) {
-        if (path == "/client" || path == "/client/signin") {
+        if (path == "/client" || path == "/signin") {
           const redirect = req.session.redirect;
           req.session.redirect = null;
 
@@ -68,8 +73,10 @@ function Route(Server) {
         Object.assign(req.variables, {
           activeuser: JSON.stringify(account[0]),
           "activeuser.id": account[0].id,
-          "activeuser.nickname": account[0].nickname || account[0].username,
+          "activeuser.displayname": account[0].displayname || account[0].username,
           "activeuser.username": account[0].username,
+          "activeuser.email": account[0].email,
+          "activeuser.phonenumber": account[0].phonenumber,
           "activeuser.url": account[0].url,
           "activeuser.avatarversion": account[0].avatarversion,
         });
@@ -80,7 +87,7 @@ function Route(Server) {
 
     Server.post("/client*", async function (req, res, next) {
       const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
         res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
       } else {
         next();
@@ -89,7 +96,7 @@ function Route(Server) {
 
     Server.put("/client*", async function (req, res, next) {
       const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
         res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
       } else {
         next();
@@ -98,7 +105,7 @@ function Route(Server) {
 
     Server.patch("/client*", async function (req, res, next) {
       const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
         res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
       } else {
         next();
@@ -107,7 +114,7 @@ function Route(Server) {
 
     Server.delete("/client*", async function (req, res, next) {
       const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/client/signin") {
+      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
         res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
       } else {
         next();

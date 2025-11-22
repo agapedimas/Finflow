@@ -1,0 +1,346 @@
+<ad-title><$ signup title /></ad-title>
+
+<div class="panel" theme="light" accent="blue">
+    <img src="/assets/logo_text.png"/>
+    <div class="title"><$ signup title_student /></div>
+    <div class="subtitle"><$ signup description /></div>
+    <div class="inputs">
+        <input type="email" id="Input_Email" ad-text="<$ generic email />" name="email" autofocus/>
+        <span class="error" id="Text_ErrorEmail"><$ signup error_email_invalid /></span>
+
+        <input type="text" id="Input_Username" ad-text="<$ generic username />" name="username"/>
+        <span class="error" id="Text_ErrorUsername"><$ signup error_username_taken /></span>
+        
+        <input type="text" id="Input_DisplayName" ad-text="<$ generic displayname />" name="displayname"/>
+        
+        <input type="tel" id="Input_PhoneNumber" ad-text="<$ generic phonenumber />" name="phonenumber"/>
+        <span class="error" id="Text_ErrorPhoneNumber"><$ signup error_phonenumber_invalid /></span>
+        
+        <input type="password" id="Input_Password" ad-text="<$ generic password />"/>
+        <span class="error" id="Text_ErrorPassword"><$ signup error_password_criteria /></span>
+        <span class="error" id="Text_ErrorPasswordSpace"><$ signup error_password_space /></span>
+        <span class="error" id="Text_ErrorSignUp"></span>
+
+        <button class="accent" id="Button_SignUp" disabled>
+            <div class="progressring"></div>
+            <span><$ signup title /></span>
+        </button>
+
+        <div class="offersignup">
+            <span><$ signup offer_signin_title /></span>
+            <a class="link" id="Button_SignIn" goto="/signin">
+                <span><$ signup offer_signin_link /></span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .root
+    {
+        background: linear-gradient(125deg, #0a84ff, #0067ce);
+    }
+    .panel
+    {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        display: grid;
+        grid-auto-flow: row;
+        transform: translate(-50%, -50%);
+        background: var(--gray-6);
+        padding: 33px 30px;
+        border-radius: 25px;
+        border: 1px solid var(--overlay-6);
+        gap: 0.3em;
+        width: 350px;
+        box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);    
+        max-height: calc(100vh - var(--padding));
+        max-height: calc(100dvh - var(--padding));
+        overflow: auto;
+    }
+        .panel img
+        {
+            height: 1.55em;
+        }
+        .panel .title
+        {
+            font-size: 1.75em;
+            font-family: var(--font-bold);
+            margin: 0.25em 0 0;
+        }
+        .panel .subtitle
+        {
+            font-size: 1.25em;
+            margin: 0 0 25px;
+        }
+        .panel .inputs
+        {
+            display: grid;
+            gap: 7px;
+        }
+            .panel .inputs input,
+            .panel .inputs button
+            {
+                padding: 0.6em 0.8em;
+                border-radius: 10px;
+            }
+            .panel .inputs .error input
+            {
+                border: 1px solid var(--notice)
+            }
+            .panel .inputs span.error 
+            {
+                display: none;
+                grid-auto-flow: column;
+                grid-auto-columns: max-content auto;
+                gap: 0.5em;
+                color: var(--notice);
+                font-size: 0.8em;
+            }
+                .panel .inputs span:not(#Text_ErrorSignUp).error:before 
+                {
+                    content: "\f1aa";
+                    font-family: var(--font-icon);
+                }
+            .panel .inputs #Text_ErrorSignUp.error
+            {
+                text-align: center;
+                margin: 0.5em 0 0 0;
+                font-size: 0.9em;
+            }
+            .panel .inputs button
+            {
+                margin: 25px 0 0;
+            }
+                .panel .inputs button .progressring
+                {
+                    width: 1em;
+                    height: 1em;
+                }
+                .panel:not(.loading) .inputs button .progressring
+                {
+                    display: none;
+                }
+            .panel .inputs .offersignup
+            {
+                margin-top: 1em;
+                justify-self: center;
+            }
+</style>
+
+<script>
+    $(".titlebar").remove();
+    $("nav").remove();
+    $(".loading").hide();
+
+    Button_SignUp.onclick = SignUp;
+    
+    Input_Email.oninput = EmailCheck;
+    Input_Username.oninput = UsernameCheck;
+    Input_PhoneNumber.oninput = PhoneNumberCheck;
+    Input_Password.oninput = PasswordCheck;
+
+    Input_Email.onkeydown = InputEnter;
+    Input_Username.onkeydown = InputEnter;
+    Input_PhoneNumber.onkeydown = InputEnter;
+    Input_Password.onkeydown = InputEnter;
+
+    function EmailCheck()
+    {
+        let reg = /^([A-Za-z0-9_\-\.])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,4})$/;
+        let valid = reg.test(this.value);
+
+        if (valid)
+        {
+            $(this).parent().removeClass("error");
+            $(Text_ErrorEmail).hide();
+            this.onblur = null;
+        }
+        else
+        {
+            this.onblur = function()
+            {
+                $(this).parent().addClass("error");
+                $(Text_ErrorEmail).css("display", "grid");
+                this.onblur = null;
+            }
+        }
+
+        InputCheck();
+    }
+    function PhoneNumberCheck()
+    {
+        let reg = /^[+]*[(]{0,1}[0-9]{1,3}[)]{0,1}[-\s\./0-9]*$/g;
+        let valid = reg.test(this.value);
+
+        if (valid)
+        {
+            $(this).parent().removeClass("error");
+            $(Text_ErrorPhoneNumber).hide();
+            this.onblur = null;
+        }
+        else
+        {
+            this.onblur = function()
+            {
+                $(this).parent().addClass("error");
+                $(Text_ErrorPhoneNumber).css("display", "grid");
+                this.onblur = null;
+            }
+        }
+
+        InputCheck();
+    }
+
+    function UsernameCheck()
+    {
+        let elem = this;
+        let value = this.value.match(/[a-zA-Z0-9|\_|\.]/g) || [];
+        this.value = value.join("").toLowerCase();
+        InputCheck();
+        
+        this.onblur = function()
+        {
+            $.ajax
+            ({
+                url: "/api/checkusername",
+                type: "POST",
+                data: 
+                { 
+                    username: Input_Username.value
+                }
+            })
+            .done(function(data) 
+            {
+                if (data == true)
+                {        
+                    $(elem).parent().addClass("error");
+                    $(Text_ErrorUsername).css("display", "grid");   
+                }
+                else
+                {
+                    $(elem).parent().removeClass("error");
+                    $(Text_ErrorUsername).hide();
+                }
+                InputCheck();
+            })
+            this.onblur = null;
+        }
+    }
+
+    function PasswordCheck()
+    {
+        let reg = /^[^\s](?=.*[a-zA-Z])(?=.*\d)(?=.*[^a-zA-Z0-9\s]).{8,}[^\s]$/;
+        let valid = reg.test(this.value);
+
+        if (valid)
+        {
+            $(this).parent().removeClass("error");
+            $(Text_ErrorPassword).hide();
+            $(Text_ErrorPasswordSpace).hide();
+            this.onblur = null;
+            InputCheck();
+        }
+        else
+        {
+            this.onblur = function()
+            {
+                $(this).parent().addClass("error");
+                
+                if (this.value.startsWith(" ") || this.value.endsWith(" "))
+                {
+                    $(Text_ErrorPassword).hide();
+                    $(Text_ErrorPasswordSpace).css("display", "grid");
+                }
+                else
+                {
+                    $(Text_ErrorPassword).css("display", "grid");
+                    $(Text_ErrorPasswordSpace).hide();
+                }
+
+                this.onblur = null;
+                InputCheck();
+            }
+        }
+    }
+
+    function InputCheck()
+    {
+        let disabled = false;
+        let inputs = [Input_Email, Input_Password, Input_Username, Input_PhoneNumber];
+
+        for (let input of inputs)
+            if (input.value.trim() == "" || $(input).parent().hasClass("error"))
+            {
+                disabled = true;
+                break;
+            }
+
+        Button_SignUp.disabled = disabled;
+    }
+    function InputEnter(e)
+    {
+        if (e.key == "Enter")
+        {
+            if (this == Input_Email)
+                Input_Username.focus();
+            else if (this == Input_Username)
+                Input_Password.focus();
+            else if (this == Input_Password)
+                Button_SignUp.click();
+        }
+    }
+
+    function SignUp()
+    {
+        $(".panel").addClass("loading");
+        $(".panel .inputs #Text_ErrorSignUp").hide();
+        $("#Text_ErrorUsername").hide();
+        $(".panel .inputs input, .panel .inputs button").attr("disabled", "");
+        $.ajax
+        ({
+            url: "/api/signup/student",
+            type: "POST",
+            data: 
+            { 
+                username: Input_Username.value, 
+                password: Input_Password.value,
+                email: Input_Email.value,
+                displayname: Input_DisplayName.value,
+                phonenumber: Input_PhoneNumber.value
+            }
+        })
+        .done(function(data) 
+        {
+            $(".panel").removeClass("loading");
+            $(".panel .inputs input, .panel .inputs button").removeAttr("disabled");
+            window.location.replace("/client");
+        })
+        .fail(function(data) 
+        {
+            $(".panel").removeClass("loading");
+            $(".panel .inputs input, .panel .inputs button").removeAttr("disabled");
+            
+            if (data.status == 400)
+            {
+                $(".panel .inputs #Text_ErrorSignUp").html(data.responseText);
+            }
+            else if (data.status == 0)
+            {
+                $(".panel .inputs #Text_ErrorSignUp").html("<$ signup error_nointernet />");
+            }
+            else if (data.status >= 500 && data.status < 600)
+            {
+                $(".panel .inputs #Text_ErrorSignUp").html("<$ signup error_server />");
+            }
+            else
+            {
+                $(".panel .inputs #Text_ErrorSignUp").html("<$ signup error_generic />");
+            }
+
+            $(".panel .inputs #Text_ErrorSignUp").show();
+            Input_Username.focus();
+        });
+    }
+</script>

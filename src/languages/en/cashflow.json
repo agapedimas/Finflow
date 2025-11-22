@@ -1,19 +1,27 @@
 {
     "title": "Cashflow",
 
-    "recap_title": "Recap",
-    "recap_budgetremaining": "Remaining Budget",
-    "recap_budgetstatus_overlimit": "Too high, you may readjust your budget plan.",
-    "recap_budgetstatus_nearlimit": "Caution! Your balance is low.",
-    "recap_budgetstatus_normal": "Looks normal. Keep up the good work.",
-    "recap_budgetreadjust": "Readjust",
-    "recap_spendingtotal": "Total Spending",
-    "recap_spendingcategories": "Spending Categories",
+    "overview_title": "Overview",
+    "overview_budgetremaining": "Remaining Budget",
+    "overview_budgetstatus_overlimit": "Too high, you may readjust your budget plan.",
+    "overview_budgetstatus_nearlimit": "Caution! Your balance is low.",
+    "overview_budgetstatus_normal": "Looks normal. Keep up the good work.",
+    "overview_budgetreadjust": "Readjust",
+    "overview_expensesthisweek": "This Week's Expenses",
+    "overview_feedback_title": "Assistant Feedback",
+    "overview_feedback_empty": "No feedback yet from assistant. Check back later.",
+    "overview_feedback_ask": "Ask Assistant",
 
     "monthlyreport_title": "Monthly Report",
 
     "transaction_scanbill": "Scan Bill",
-    "transaction_addmanual": "Input Manual",
+    "transaction_scanbill_preview": "Preview",
+    "transaction_scan_uploadgallery": "Upload from Gallery",
+    "transaction_addmanual": "Input Manually",
+    "transaction_addmanual_discard_title": "Discard Input Transaction?",
+    "transaction_addmanual_discard_description": "You can input it later, anytime.",
+    "transaction_addmanual_discard_confirm": "Discard",
+    "transaction_addmanual_discard_cancel": "Keep Inputing",
     "transaction_add_title": "New Transaction",
     "transaction_scan_title": "Scan Bill"
 }

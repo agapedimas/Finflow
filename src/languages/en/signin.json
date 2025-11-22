@@ -1,10 +1,13 @@
 {
     "title": "Sign In",
-    "description": "Access as administrator and post drills for students.",
+    "description": "Start manage your financial for brighter future.",
     
     "error_generic": "Something went wrong",
     "error_incorrect": "Username or password is incorrect",
     "error_nointernet": "Connect to internet",
     "error_server": "We're having trouble right now. Please try again later.",
-    "error_signin": "Please sign in to continue"
+    "error_signin": "Please sign in to continue",
+
+    "offer_signup_title": "Don't have an account?",
+    "offer_signup_link": "Sign up"
 }
