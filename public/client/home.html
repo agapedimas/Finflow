@@ -244,7 +244,11 @@
             const thumbnailElement = document.createElement("img");
             thumbnailElement.classList.add("thumbnail");
             thumbnailElement.src = "/recommendations/thumbnails/" + recommendation.id;
-
+            thumbnailElement.onerror = function() {
+                this.src = ".png";
+                this.onerror = null;
+            }
+            
             const textElement = document.createElement("span");
             textElement.classList.add("text");
             textElement.innerText = recommendation.text;
