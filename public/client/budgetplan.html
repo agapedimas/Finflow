@@ -1,16 +1,15 @@
 <ad-title><$ budgetplan title /></ad-title>
 
-<div class="header">
-    <div class="buttons">
-        <button id="Button_NewTransaction"><$ generic new /></button>
-    </div>
-    <div class="title"><$ budgetplan title /></div>
-</div>
 
 <style>
     html:not([theme=dark]) .root .main {
         background: var(--gray-6);
     }
+    body, .root, .main,
+    #Activity_Main {
+        background: inherit;
+    }
+
     #Header_MonthlyPlan {
         display: grid;
         grid-auto-flow: column;
@@ -57,11 +56,17 @@
         }
         #List_MonthlyPlan .stack .description {
             display: grid;
-            grid-auto-flow: row;
+            grid-auto-columns: max-content;
             grid-auto-rows: max-content;
         }
+            #List_MonthlyPlan .stack .description .name {
+            }
             #List_MonthlyPlan .stack .description .price {
                 color: var(--foreground-description);
+            }
+            #List_MonthlyPlan .stack .description .quantity {
+                margin-left: 0.5ch;
+                font-weight: 600;
             }
         #List_MonthlyPlan .stack .navigate {
             display: grid;
@@ -101,85 +106,403 @@
             #List_MonthlyPlan .stack .navigate .icon {
                 color: var(--foreground-description);
             }
+    
+
+    :where(#PopOver_NewPlan, #PopOver_EditPlan) {
+    }
+        :where(#PopOver_NewPlan, #PopOver_EditPlan) .stack {
+            grid-auto-columns: 100px auto !important;
+        }
+            :where(#PopOver_NewPlan, #PopOver_EditPlan) .stack > span {
+                font-weight: 600;
+            }
+            :where(#PopOver_NewPlan, #PopOver_EditPlan) .stack > label:has(select) {
+                display: inline-grid;
+                grid-auto-flow: column;
+                justify-items: start;
+                text-align: left !important;
+                justify-content: space-between;
+                opacity: 1;
+            }
+            :where(#PopOver_NewPlan, #PopOver_EditPlan) .stack :where(label:has(select:disabled), input:disabled) {
+                opacity: 0.6 !important;
+                pointer-events: none;
+            }
+
+    
+    #List_PlanDetails .stack:not(.vertical) {
+        grid-auto-columns: 100px auto;
+    }
+        #List_PlanDetails .stack.vertical > span:nth-child(2):not(:empty) {
+            color: var(--foreground-description);
+            margin-top: 0.25em;
+        }
+        #List_PlanDetails .stack:not(.vertical) > span:nth-child(2) {
+            color: var(--foreground-description);
+            text-align: right;
+        }
 </style>
 
-<div class="content">
-    <div id="Header_MonthlyPlan" class="header">
-        <div id="Tab_Months" class="tab">
-            <span data-month="jan"><$ generic month_january_short /></span>
-            <span data-month="feb"><$ generic month_february_short /></span>
-            <span data-month="mar"><$ generic month_march_short /></span>
-            <span data-month="apr"><$ generic month_april_short /></span>
-            <span data-month="may"><$ generic month_may_short /></span>
-            <span data-month="jun"><$ generic month_june_short /></span>
-            <span data-month="jul"><$ generic month_july_short /></span>
-            <span data-month="aug"><$ generic month_august_short /></span>
-            <span data-month="sep"><$ generic month_september_short /></span>
-            <span data-month="oct"><$ generic month_october_short /></span>
-            <span data-month="nov"><$ generic month_november_short /></span>
-            <span data-month="dec"><$ generic month_december_short /></span>
+<section>
+    <div class="header">
+        <div class="buttons">
+            <div></div>
+            <button id="Button_NewPlan" class="icon" ad-tooltip="<$ budgetplan newplan_title />">&#xf8dd;</button>
         </div>
-        <select id="Select_Years"></select>
+        <div class="title"><$ budgetplan title /></div>
     </div>
-    <div id="List_MonthlyPlan" class="cards">
+
+    <div class="content">
+        <div id="Header_MonthlyPlan" class="header">
+            <div id="Tab_Months" class="tab">
+                <span data-month="jan"><$ generic month_january_short /></span>
+                <span data-month="feb"><$ generic month_february_short /></span>
+                <span data-month="mar"><$ generic month_march_short /></span>
+                <span data-month="apr"><$ generic month_april_short /></span>
+                <span data-month="may"><$ generic month_may_short /></span>
+                <span data-month="jun"><$ generic month_june_short /></span>
+                <span data-month="jul"><$ generic month_july_short /></span>
+                <span data-month="aug"><$ generic month_august_short /></span>
+                <span data-month="sep"><$ generic month_september_short /></span>
+                <span data-month="oct"><$ generic month_october_short /></span>
+                <span data-month="nov"><$ generic month_november_short /></span>
+                <span data-month="dec"><$ generic month_december_short /></span>
+            </div>
+            <select id="Select_Years"></select>
+        </div>
+        <div id="List_MonthlyPlan" class="cards">
+        </div>
+    </div>
+</section>
+<section>
+    <div class="header">
+        <div class="buttons">
+            <button id="Button_EditPlan" ad-tooltip="<$ budgetplan editplan_title />"><$ generic edit /></button>
+        </div>
+        <div class="title"></div>
+    </div>
+    <div class="content">
+        <div class="list" id="List_PlanDetails">
+            <div class="stack name">
+                <span><$ generic price /></span>
+                <span id="Text_StuffPrice"></span>
+            </div>
+            <div class="stack quantity">
+                <span><$ generic quantity /></span>
+                <span id="Text_StuffQuantity"></span>
+            </div>
+            <div class="stack category">
+                <span><$ generic category /></span>
+                <span id="Text_StuffCategory"></span>
+            </div>
+            <div class="stack status">
+                <span><$ generic status /></span>
+                <span id="Text_StuffStatus"></span>
+            </div>
+            <div class="stack feedback vertical">
+                <span><$ generic ai_feedback /></span>
+                <span id="Text_StuffFeedback"></span>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<div class="popover" id="PopOver_NewPlan" preventDefault>
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="title"><$ budgetplan newplan_title /></div>
+            <div class="buttons">
+                <button id="Button_CancelNewPlan"><$ generic cancel /></button>
+                <button id="Button_SubmitNewPlan">
+                    <span><$ generic create /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+        </div>
+        <div class="content">
+            <div class="list">
+                <div class="stack name">
+                    <span><$ generic name /></span>
+                    <input id="Input_StuffName" type="text" class="plain" placeholder="<$ generic name />"/>
+                </div>
+                <div class="stack price">
+                    <span><$ generic price /></span>
+                    <input id="Input_StuffPrice" type="text" class="plain" value="Rp0" placeholder="<$ generic price_placeholder />"/>
+                </div>
+                <div class="stack quantity">
+                    <span><$ generic quantity /></span>
+                    <input id="Input_StuffQuantity" type="number" class="plain" value="1" min="1"/>
+                </div>
+                <div class="stack category">
+                    <span><$ generic category /></span>
+                    <select id="Select_StuffCategory" class="plain"></select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="popover" id="PopOver_EditPlan" preventDefault>
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="title"><$ budgetplan editplan_title /></div>
+            <div class="buttons">
+                <button id="Button_CancelEditPlan"><$ generic cancel /></button>
+                <button id="Button_SubmitEditPlan">
+                    <span><$ generic done /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+        </div>
+        <div class="content">
+            <div class="list">
+                <div class="stack name">
+                    <span><$ generic name /></span>
+                    <input id="Input_StuffNameEdit" type="text" class="plain" placeholder="<$ generic name />"/>
+                </div>
+                <div class="stack price">
+                    <span><$ generic price /></span>
+                    <input id="Input_StuffPriceEdit" type="text" class="plain" value="Rp0" placeholder="<$ generic price_placeholder />"/>
+                </div>
+                <div class="stack quantity">
+                    <span><$ generic quantity /></span>
+                    <input id="Input_StuffQuantityEdit" type="number" class="plain" value="1" min="1"/>
+                </div>
+                <div class="stack category">
+                    <span><$ generic category /></span>
+                    <select id="Select_StuffCategoryEdit" class="plain"></select>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script>
+    let categories = [];
+
+    PopOver_NewPlan.onbeforeclose = function() {
+        if (PopOver_NewPlan.isinputchanged == false)
+            return PopOver_NewPlan.close(true);
+
+        Components.ActionSheet.Open({
+            Title: "<$ budgetplan newplan_discard_title />",
+            Description: "<$ budgetplan newplan_discard_description />",
+            Actions: [
+                {
+                    Type: "Option.Critical",
+                    Title: "<$ budgetplan newplan_discard_confirm />",
+                    Action: function() {
+                        PopOver_NewPlan.close(true);
+                    }
+                },
+                {
+                    Type: "Footer",
+                    Title: "<$ budgetplan newplan_discard_cancel />"
+                }
+            ]
+        })
+    }
+    PopOver_EditPlan.onbeforeclose = function() {
+        if (PopOver_EditPlan.isinputchanged == false)
+            return PopOver_EditPlan.close(true);
+
+        Components.ActionSheet.Open({
+            Title: "<$ budgetplan editplan_discard_title />",
+            Description: "<$ budgetplan editplan_discard_description />",
+            Actions: [
+                {
+                    Type: "Option.Critical",
+                    Title: "<$ budgetplan editplan_discard_confirm />",
+                    Action: function() {
+                        PopOver_EditPlan.close(true);
+                    }
+                },
+                {
+                    Type: "Footer",
+                    Title: "<$ budgetplan editplan_discard_cancel />"
+                }
+            ]
+        })
+    }
+
+    const newPlanInputs = [Input_StuffName, Input_StuffPrice, Input_StuffQuantity, Select_StuffCategory];
+    const editPlanInputs = [Input_StuffNameEdit, Input_StuffPriceEdit, Input_StuffQuantityEdit, Select_StuffCategoryEdit];
     
+    Button_NewPlan.onclick = function() {
+        Input_StuffName.value = "";
+        Input_StuffPrice.value = "Rp0";
+        Input_StuffQuantity.value = 1;
+        checkInputs();
+        PopOver_NewPlan.isinputchanged = false;
+        PopOver_NewPlan.open(this);
+    }
+    Button_CancelNewPlan.onclick = function() {
+        PopOver_NewPlan.close();
+    }
+    Button_SubmitNewPlan.onclick = async function() {
+        Button_SubmitNewPlan.disabled =
+        Button_CancelNewPlan.disabled = 
+        PopOver_NewPlan.isloading = true;
+        for (const input of newPlanInputs)
+            input.disabled = true;
 
-    const DUMMY_CATEGORIES = [
-        {
-            "id": "category1",
-            "name": "Food & Drink",
-            "allocated": 250000,
-            "status": "normal",
-            "usage": 90203,
-            "balance": 159797
-        },
-        {
-            "id": "category2",
-            "name": "Education",
-            "allocated": 15000000,
-            "status": "normal",
-            "usage": 8500000,
-            "balance": 6500000
+        const plan = {
+            name: Input_StuffName.value,
+            price: parseInt(Input_StuffPrice.value.replace(/[^0-9]/g, "")) || 0,
+            quantity: parseInt(Input_StuffQuantity.value) || 0,
+            categoryId: Select_StuffCategory.value
         }
-    ]
 
-    const DUMMY_YEARS = [2024, 2025]
+        try {
+            // DUMMY ACTION
+            await Delay(500);
+            DUMMY_MONTHLY_PLAN.stuffs.push(plan);
+            // await $.post("/api/budgetplan/", plan);
+            const activeMonth = [...Tab_Months.children].find(o => o.classList.contains("active"))?.dataset?.month;
+            const activeYear = Select_Years.value;
+            fetchPlanList(activeMonth, activeYear);
+        }
+        catch (error) {
+        }
 
-    const DUMMY_MONTHLY_PLAN = {
-        "month": "November",      
-        "year": 2025,             
-        "allocated": 2000000,  
-        "stuffs": [
-            {
-                "id": "ggasfakjfha",
-                "name": "Bawang",
-                "price": 15000,
-                "amount": 2,
-                "category_id": "category2"
-            },
-            {
-                "id": "ggasfakjfha",
-                "name": "Makan siang",
-                "price": 25000,
-                "amount": 20,
-                "category_id": "category2"
-            },
-            {
-                "id": "ggasfakjfha",
-                "name": "Bayar SKS",
-                "price": 150000,
-                "amount": 1,
-                "category_id": "category1"
-            },
-        ]
-    };
+        Button_SubmitNewPlan.disabled =
+        Button_CancelNewPlan.disabled = 
+        PopOver_NewPlan.isloading = false;
+        for (const input of newPlanInputs)
+            input.disabled = false;
+        PopOver_NewPlan.close(true);
 
+        console.log(plan);
+    }
+    Button_EditPlan.onclick = async function() {
+        const plan = Activity_Main.sections[1].data;
+        Input_StuffNameEdit.value = plan.name;
+        Input_StuffPriceEdit.value = formatCurrency(plan.price);
+        Input_StuffQuantityEdit.value = plan.quantity;
+        Select_StuffCategoryEdit.value = plan.categoryId;
+        checkInputs();
+        PopOver_EditPlan.isinputchanged = false;
+        PopOver_EditPlan.open();
+    }
+    Button_CancelEditPlan.onclick = function() {
+        PopOver_EditPlan.close();
+    }
+    Button_SubmitEditPlan.onclick = async function() {
+        Button_SubmitEditPlan.disabled =
+        Button_CancelEditPlan.disabled = 
+        PopOver_EditPlan.isloading = true;
+        for (const input of editPlanInputs)
+            input.disabled = true;
 
+        const plan = {
+            name: Input_StuffNameEdit.value,
+            price: parseInt(Input_StuffPriceEdit.value.replace(/[^0-9]/g, "")) || 0,
+            quantity: parseInt(Input_StuffQuantityEdit.value) || 0,
+            categoryId: Select_StuffCategoryEdit.value,
+            status: "pending",
+            feedback: null
+        }
+
+        Object.assign(Activity_Main.sections[1].data, plan);
+
+        try {
+            // DUMMY ACTION
+            await Delay(500);
+            // await $.patch("/api/budgetplan/", plan);
+            
+            const category = categories.find(o => o.id == plan.categoryId);
+            Activity_Main.sections[1].name = plan.name;
+            
+            Text_StuffPrice.innerText = formatCurrency(plan.price);
+            Text_StuffQuantity.innerText = plan.quantity;
+            Text_StuffCategory.innerText = category.name;
+            Text_StuffStatus.innerText = "<$ budgetplan plan_status_pending />";
+
+            Text_StuffStatus.setAttribute("class", "pending");
+            Text_StuffFeedback.innerText = plan.feedback;
+
+            const activeMonth = [...Tab_Months.children].find(o => o.classList.contains("active"))?.dataset?.month;
+            const activeYear = Select_Years.value;
+            fetchPlanList(activeMonth, activeYear);
+        }
+        catch (error) {
+        }
+        
+        Button_SubmitEditPlan.disabled =
+        Button_CancelEditPlan.disabled = 
+        PopOver_EditPlan.isloading = false;
+        for (const input of editPlanInputs)
+            input.disabled = false;
+        PopOver_EditPlan.close(true);
+    }
+
+    Input_StuffName.oninput = 
+    Input_StuffQuantity.oninput =
+    Select_StuffCategory.onchange =
+    Input_StuffNameEdit.oninput = 
+    Input_StuffQuantityEdit.oninput =
+    Select_StuffCategoryEdit.onchange = function() {
+        PopOver_NewPlan.isinputchanged = true;
+        PopOver_EditPlan.isinputchanged = true;
+        checkInputs();
+    }
+    Input_StuffPrice.onfocus = 
+    Input_StuffPriceEdit.onfocus = function() {
+        this.value = this.value.replace(/[^0-9]/g, "");
+    }
+    Input_StuffPrice.oninput = 
+    Input_StuffPriceEdit.oninput = function() {
+        this.value = this.value.replace(/[^0-9]/g, "");
+        if (this != Input_StuffName)
+            Input_StuffName.oninput();
+        if (this != Input_StuffPriceEdit)
+            Input_StuffPriceEdit.oninput();
+    }
+    Input_StuffPrice.onblur =
+    Input_StuffPriceEdit.onblur = function() {
+        checkInputs();
+        const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
+        this.value = value.substring(0, value.length - 3);
+    }
+
+    function checkInputs() {
+        let isSubmitEnabled = true;
+        if (PopOver_NewPlan.isopened) {
+            for (const input of newPlanInputs) {
+                if (input.value.trim() == "") {
+                    isSubmitEnabled = false;
+                    break;
+                }
+            }
+            Button_SubmitNewPlan.disabled = !isSubmitEnabled;
+        }
+        else {
+            for (const input of editPlanInputs) {
+                if (input.value.trim() == "") {
+                    isSubmitEnabled = false;
+                    break;
+                }
+            }
+            Button_SubmitEditPlan.disabled = !isSubmitEnabled;
+        }
+        return isSubmitEnabled;
+    }
+
+    initializeCategories();
     initializePlanList();
+
+    async function initializeCategories() {
+        categories = DUMMY_CATEGORIES || await $.get("/api/categories");
+
+        for (const category of categories) {
+            const optionElement = document.createElement("option");
+            optionElement.value = category.id;
+            optionElement.innerText = category.name;
+            Select_StuffCategory.append(optionElement);
+            Select_StuffCategoryEdit.append(optionElement.cloneNode(true));
+        }
+    }
 
     function initializePlanList() {
         for (const tab of Tab_Months.children) {
@@ -238,31 +561,47 @@
     function appendPlanList(plan) {
         const thumbnailElement = document.createElement("img");
         thumbnailElement.classList.add("thumbnail");
-        thumbnailElement.src = "/client/categories/thumbnail/" + plan.category_id;
+        thumbnailElement.src = "/client/categories/thumbnail/" + plan.categoryId;
+        thumbnailElement.onerror = function() {
+            this.src = ".png";
+            this.onerror = null;
+        }
 
         const nameElement = document.createElement("span");
         nameElement.classList.add("name");
         nameElement.innerText = plan.name;
 
+        const quantityElement = document.createElement("span");
+        quantityElement.classList.add("quantity");
+        quantityElement.innerText = "× " + plan.quantity;
+
         const priceElement = document.createElement("span");
         priceElement.classList.add("price");
         priceElement.innerText = formatCurrency(plan.price);
+        priceElement.append(quantityElement);
 
         const descriptionGroupElement = document.createElement("div");
         descriptionGroupElement.classList.add("description");
         descriptionGroupElement.append(nameElement);
         descriptionGroupElement.append(priceElement);
 
-        const amountElement = document.createElement("span");
-        amountElement.classList.add("amount");
-        amountElement.innerText = "x" + plan.amount;
+        const statusElement = document.createElement("span");
+        statusElement.classList.add("status");
+        statusElement.classList.add(plan.status);
+        if (plan.status == "approved")
+            statusElement.innerText = "<$ budgetplan plan_status_approved />";
+        else if (plan.status == "rejected")
+            statusElement.innerText = "<$ budgetplan plan_status_rejected />";
+        else if (plan.status == "pending")
+            statusElement.innerText = "<$ budgetplan plan_status_pending />";
+
         const chevronElement = document.createElement("span");
         chevronElement.classList.add("icon");
         chevronElement.innerText = "\uef4a";
 
         const navigateElement = document.createElement("div");
         navigateElement.classList.add("navigate");
-        navigateElement.append(amountElement);
+        navigateElement.append(statusElement);
         navigateElement.append(chevronElement);
 
         const containerElement = document.createElement("div");
@@ -272,15 +611,37 @@
         containerElement.append(thumbnailElement);
         containerElement.append(descriptionGroupElement);
         containerElement.append(navigateElement);
+        containerElement.onclick = function() {
+            Activity_Main.navigateTo(1);
+            Activity_Main.sections[1].name = plan.name;
+            Activity_Main.sections[1].data = plan;
+            
+            const category = categories.find(o => o.id == plan.categoryId);
+
+            Text_StuffPrice.innerText = formatCurrency(plan.price);
+            Text_StuffQuantity.innerText = plan.quantity;
+            Text_StuffCategory.innerText = category.name;
+
+            if (plan.status == "approved")
+                Text_StuffStatus.innerText = "<$ budgetplan plan_status_approved />";
+            else if (plan.status == "rejected")
+                Text_StuffStatus.innerText = "<$ budgetplan plan_status_rejected />";
+            else if (plan.status == "pending")
+                Text_StuffStatus.innerText = "<$ budgetplan plan_status_pending />";
+
+            Text_StuffStatus.setAttribute("class", plan.status);
+            Text_StuffFeedback.innerText = plan.feedback;
+        }
         
         const categoryGroupElements = [...List_MonthlyPlan.children];
-        let categoryGroupMatches = categoryGroupElements.find(o => o.dataset.category == plan.category_id);
+        let categoryGroupMatches = categoryGroupElements.find(o => o.dataset.category == plan.categoryId);
 
         if (categoryGroupMatches == null) {
+            const category = categories.find(o => o.id == plan.categoryId);
             categoryGroupMatches = document.createElement("div");
             categoryGroupMatches.classList.add("list");
-            categoryGroupMatches.dataset.category = plan.category_id;
-            categoryGroupMatches.setAttribute("ad-header", plan.category_id);
+            categoryGroupMatches.dataset.category = plan.categoryId;
+            categoryGroupMatches.setAttribute("ad-header", category.name);
             List_MonthlyPlan.append(categoryGroupMatches);
         }
 
