@@ -12,10 +12,6 @@
 			<span class='icon'>&#xecc2;</span>
 			<span><$ budgetplan title /></span>
 		</a>
-		<a goto="/client/portal">
-			<span class='icon'>&#xf83e;</span>
-			<span><$ portal title /></span>
-		</a>
 		<a goto="/client/assistant">
 			<span class='icon'>&#xfb45;</span>
 			<span><$ assistant title /></span>
@@ -28,7 +24,7 @@
 		</a>
 		<a goto="/client/settings/">
 			<img class="icon" src="/avatar/<#? activeuser.id ?#>?avatarversion=<#? activeuser.avatarversion ?#>"/>
-			<span><#? activeuser.nickname ?#></span>
+			<span><#? activeuser.displayname ?#></span>
 		</a>
 	</div>
 </section>
@@ -46,10 +42,6 @@
 		<a goto="/client/budgetplan">
 			<span class='icon'>&#xecc1;</span>
 			<span><$ budgetplan title /></span>
-		</a>
-		<a goto="/client/portal">
-			<span class='icon'>&#xf832;</span>
-			<span><$ portal title /></span>
 		</a>
 		<a goto="/client/assistant">
 			<span class='icon'>&#xfb45;</span>
