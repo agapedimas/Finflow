@@ -230,6 +230,14 @@ function Route(Server) {
   Server.post("/api/funding/finalize", ApiFinflow.finalizeAgreement);
   Server.post("/api/funding/pay", ApiFinflow.confirmTransfer);
 
+
+  // API EXECUTION & PENYALURAN DANA
+  Server.post("/api/exec/drip", ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
+  Server.post("/api/exec/urgent", ApiFinflow.requestUrgent);
+  Server.post("/api/exec/edu/pre", ApiFinflow.requestEduPreApproval);
+  Server.post("/api/exec/edu/post", ApiFinflow.requestEduReimburse);
+  Server.post("/api/exec/withdraw", ApiFinflow.requestWithdraw); // Tombol Student untuk cairkan uang
+
   // Module 4: Transactions
   // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
   Server.post("/api/scan/receipt", ApiFinflow.scanReceipt);

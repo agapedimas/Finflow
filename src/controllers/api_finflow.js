@@ -559,8 +559,272 @@ module.exports = {
         }
     },
 
-    
+    // EXECUTION WEEKLY DRIP (Backend membagikan token dari Vault ke Student)
+    // Dipanggil via tombol "Simulasi MInggu ke - X" oleh Admin
+    triggerWeeklyDrip: async (req, res) => {
+        try {
+            // 1. Cari Jadwal Drip Aktif
+            // Syarat: Status Active, Frequency Weekly, Sisa > 0
+            const q = `
+                SELECT 
+                    f.student_id, a.wallet_address, 
+                    fa.allocation_id, fa.drip_amount, fa.remaining_drip_count, fa.category_id
+                FROM funding_allocation fa
+                JOIN funding f ON fa.funding_id = f.funding_id
+                JOIN accounts a ON f.student_id = a.id
+                WHERE f.status = 'Active' 
+                AND fa.drip_frequency = 'Weekly' 
+                AND fa.remaining_drip_count > 0
+            `;
+            
+            const drips = await SQL.Query(q);
+            if (drips.data.length === 0) return success(res, { processed: 0 }, "Tidak ada jadwal drip minggu ini");
 
+            let successCount = 0;
+            let totalTokenSent = 0;
+
+            // 2. Loop Eksekusi
+            for (const item of drips.data) {
+                const amount = Math.floor(Number(item.drip_amount));
+                if (amount <= 0) continue;
+
+                try {
+                    console.log(`[DRIP] Mengirim ${amount} token ke ${item.wallet_address}...`);
+
+                    // --- BLOCKCHAIN: VAULT TRANSFER KE STUDENT ---
+                    // Kita gunakan wallet 'vaultWallet' yang sudah disetup di atas
+                    // Asumsi: Vault punya cukup token & MATIC (untuk gas)
+                    const tokenVault = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS, tokenAbi, vaultWallet);
+                    const tx = await tokenVault.transfer(item.wallet_address, amount.toString());
+                    
+                    console.log(`[DRIP] Sukses! Hash: ${tx.hash}`);
+
+                    // --- DATABASE UPDATE ---
+                    
+                    // 1. Kurangi Sisa Minggu
+                    await SQL.Query(
+                        "UPDATE funding_allocation SET remaining_drip_count = remaining_drip_count - 1 WHERE allocation_id = ?", 
+                        [item.allocation_id]
+                    );
+
+                    // 2. Tambah Saldo Virtual Student (Agar sinkron dengan wallet)
+                    await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, item.student_id]);
+
+                    // 3. Catat Transaksi
+                    const txId = generateId('drip');
+                    await SQL.Query(`
+                        INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, blockchain_tx_hash, transaction_date)
+                        VALUES (?, ?, ?, 'Drip_In', ?, 'Pencairan Mingguan (Auto)', ?, NOW())
+                    `, [txId, item.student_id, amount, item.category_id, tx.hash]);
+
+                    // 4. Notifikasi
+                    await SQL.Query(
+                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Uang Saku Cair! 💸', 'Token mingguan sudah masuk ke wallet Anda.', 'Success')",
+                        [item.student_id]
+                    );
+
+                    successCount++;
+                    totalTokenSent += amount;
+
+                } catch (bcError) {
+                    console.error(`[DRIP ERROR] Gagal ke ${item.student_id}:`, bcError);
+                }
+            }
+
+            return success(res, { processed: successCount, total: totalTokenSent }, "Weekly Drip Selesai");
+
+        } catch (e) { return error(res, "Gagal memproses drip"); }
+    },
+
+    // EXECUTION URGENT FUND (Readjustment Logic)
+    requestUrgent: async (req, res) => {
+        try {
+            const { wallet_address, amount, reason, proof_image_url } = req.body;
+
+            // 1. Validasi User & Data
+            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const user = uRes.data?.[0];
+            if (!user) return error(res, "User not found", 404);
+
+            // 2. MOCK AI VALIDATION
+            // Cek apakah alasan mengandung kata kunci darurat (sakit, kecelakaan, buku, dll)
+            // Dan wajib ada gambar
+            if (!proof_image_url) return error(res, "Bukti foto wajib diupload!", 400);
+            
+            const validKeywords = ['sakit', 'obat', 'rumah sakit', 'kecelakaan', 'hilang', 'rusak', 'darurat'];
+            const isReasonValid = validKeywords.some(word => reason.toLowerCase().includes(word));
+            
+            if (!isReasonValid) {
+                return error(res, "AI menolak: Alasan tidak terdeteksi sebagai keadaan darurat. Gunakan dana Wants.", 403);
+            }
+
+            // 3. HITUNG READJUSTMENT (Matematika Potong Gaji)
+            // Ambil data Wants (Category 0) untuk dipotong
+            const allocQuery = `
+                SELECT fa.allocation_id, fa.drip_amount, fa.remaining_drip_count 
+                FROM funding_allocation fa
+                JOIN funding f ON fa.funding_id = f.funding_id
+                WHERE f.student_id = ? AND fa.category_id = 0 AND f.status = 'Active'
+            `;
+            const allocRes = await SQL.Query(allocQuery, [user.id]);
+            const alloc = allocRes.data?.[0];
+
+            if (!alloc || alloc.remaining_drip_count <= 0) {
+                return error(res, "Tidak ada sisa budget 'Wants' masa depan untuk dipotong.", 400);
+            }
+
+            const reqAmount = Number(amount);
+            const sisaMinggu = Number(alloc.remaining_drip_count);
+            
+            // Cek limit (Max bisa ambil semua sisa Wants masa depan)
+            const maxAvailable = Number(alloc.drip_amount) * sisaMinggu;
+            if (reqAmount > maxAvailable) {
+                return error(res, `Dana tidak cukup. Maksimal pinjaman dari pos Wants: Rp ${maxAvailable}`, 400);
+            }
+
+            // Hitung potongan per minggu
+            const deductionPerWeek = Math.ceil(reqAmount / sisaMinggu);
+            const newDripAmount = Number(alloc.drip_amount) - deductionPerWeek;
+
+            // 4. EKSEKUSI DATABASE & BLOCKCHAIN
+            
+            // A. Update Drip Amount Masa Depan (PENGURANGAN)
+            await SQL.Query("UPDATE funding_allocation SET drip_amount = ? WHERE allocation_id = ?", [newDripAmount, alloc.allocation_id]);
+
+            // B. Transfer Token Sekarang (Urgent)
+            const tx = await tokenContract.transfer(wallet_address, reqAmount.toString());
+
+            // C. Catat Transaksi
+            await SQL.Query(`
+                INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, is_urgent_withdrawal, urgency_reason, proof_image_url, blockchain_tx_hash, transaction_date)
+                VALUES (?, ?, ?, 'Drip_In', 1, 'Dana Darurat (Advance)', TRUE, ?, ?, ?, NOW())
+            `, [generateId('urgent'), user.id, reqAmount, reason, proof_image_url, tx.hash]);
+
+            // D. Update Saldo Student Lokal
+            await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [reqAmount, user.id]);
+
+            return success(res, {
+                received: reqAmount,
+                deduction_per_week: deductionPerWeek,
+                remaining_wants_drip: newDripAmount,
+                tx_hash: tx.hash
+            }, "Dana Darurat Cair. Budget mingguan telah disesuaikan.");
+
+        } catch (e) { return error(res, "Gagal request urgent"); }
+    },
+
+    // Execution Education Fund 
+    // Pre Approval (VDC)
+    requestEduPreApproval: async (req, res) => {
+        try {
+            const { wallet_address, amount, url_item, vendor_info } = req.body;
+            
+            // Mock AI Logic: Cek apakah URL valid (disini kita anggap selalu valid jika ada http)
+            if (!url_item.includes('http')) return error(res, "URL Item tidak valid", 400);
+
+            // Generate Mock VDC (Kartu Debit Virtual)
+            const vdcData = {
+                card_number: "4000 1234 " + Math.floor(1000 + Math.random() * 9000) + " " + Math.floor(1000 + Math.random() * 9000),
+                cvv: Math.floor(100 + Math.random() * 900),
+                expiry: "12/26",
+                holder_name: "FINFLOW STUDENT",
+                limit: amount,
+                status: "ACTIVE_ONE_TIME"
+            };
+
+            // Di real app, kita simpan status 'Pre-Approved' di DB. 
+            // Disini kita return saja biar Frontend bisa tampilkan kartunya.
+            return success(res, vdcData, "Pre-Approval Disetujui AI. Silakan gunakan VDC ini.");
+
+        } catch (e) { return error(res, "Gagal pre-approval"); }
+    },
+
+    // POST-APPROVAL (Reimburse / Real Transfer)
+    requestEduReimburse: async (req, res) => {
+        try {
+            const { wallet_address, amount, description, proof_image_url } = req.body;
+
+            // Validasi User
+            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const user = uRes.data?.[0];
+            if (!user) return error(res, "User not found", 404);
+
+            // Cek Saldo Vault (Category 2 = Education)
+            const vaultQ = `
+                SELECT fa.allocation_id, fa.total_allocation, fa.total_withdrawn 
+                FROM funding_allocation fa
+                JOIN funding f ON fa.funding_id = f.funding_id
+                WHERE f.student_id = ? AND fa.category_id = 2 AND f.status = 'Active'
+            `;
+            const vault = (await SQL.Query(vaultQ, [user.id])).data?.[0];
+            
+            if (!vault) return error(res, "Tidak ada dana pendidikan aktif", 400);
+            if ((Number(vault.total_allocation) - Number(vault.total_withdrawn)) < amount) {
+                return error(res, "Saldo pendidikan tidak cukup", 400);
+            }
+
+            // AI SCAN STRUK (MOCK)
+            if (!proof_image_url) return error(res, "Bukti struk wajib!", 400);
+
+            // BLOCKCHAIN TRANSFER
+            const tx = await tokenContract.transfer(wallet_address, amount.toString());
+
+            // UPDATE DATABASE
+            await SQL.Query("UPDATE funding_allocation SET total_withdrawn = total_withdrawn + ? WHERE allocation_id = ?", [amount, vault.allocation_id]);
+            
+            // CATAT TRANSAKSI
+            await SQL.Query(`
+                INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, proof_image_url, is_verified_by_ai, blockchain_tx_hash, transaction_date)
+                VALUES (?, ?, ?, 'Expense', 2, ?, ?, TRUE, ?, NOW())
+            `, [generateId('edu'), user.id, amount, description, proof_image_url, tx.hash]);
+
+            // UPDATE SALDO STUDENT (Karena reimburse = uang masuk ke rekening pribadi mengganti uang talangan)
+            await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, user.id]);
+
+            return success(res, { tx_hash: tx.hash }, "Reimburse Disetujui & Ditransfer");
+
+        } catch (e) { return error(res, "Gagal reimburse"); }
+    },
+
+
+    // EXECUTION WITHDRAWAL (Student menukar Token jadi Rupiah)
+    // Frontend mengirim Hash bukti transfer token dari Student -> Admin
+    requestWithdraw: async (req, res) => {
+        try {
+            const { wallet_address, amount, tx_hash } = req.body;
+
+            // 1. Validasi User
+            const uRes = await SQL.Query("SELECT id, bank_name, bank_account_number FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const user = uRes.data?.[0];
+            if (!user) return error(res, "User not found", 404);
+
+            console.log(`[WITHDRAW] Menerima klaim hash: ${tx_hash} sebesar Rp ${amount}`);
+
+            // 2. Update Database
+            // Kurangi saldo virtual (karena token sudah dikirim keluar)
+            await SQL.Query("UPDATE accounts_student SET balance = balance - ? WHERE id = ?", [amount, user.id]);
+
+            // Catat Transaksi
+            const txId = generateId('wd');
+            await SQL.Query(`
+                INSERT INTO transactions (transaction_id, student_id, amount, type, raw_description, blockchain_tx_hash, transaction_date)
+                VALUES (?, ?, ?, 'Expense', 'Penarikan ke Bank ${user.bank_name}', ?, NOW())
+            `, [txId, user.id, amount, tx_hash]);
+
+            // 3. Notifikasi
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Penarikan Berhasil 🏦', 'Dana sedang diproses ke rekening bank Anda.', 'Info')",
+                [user.id]
+            );
+
+            return success(res, { 
+                status: "Success", 
+                bank_dest: `${user.bank_name} - ${user.bank_account_number}`
+            }, "Penarikan diproses.");
+
+        } catch (e) { return error(res, "Gagal withdraw"); }
+    },
+    
     // ============================================================
     // MODULE 4: TRANSACTIONS (Action & Vision)
     // Mencatat Pengeluaran, Menyimpan URL foto struk (untuk fitur AI Vision)

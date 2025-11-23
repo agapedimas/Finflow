@@ -159,6 +159,51 @@ const Finflow = {
         // Request GET beda format dikit
         const res = await fetch(`${CONFIG.BACKEND_URL}/dashboard?wallet_address=${user.wallet}`);
         return await res.json();
+    },
+
+    // --- D. FUNGSI SMART CONTRACT (FRONTEND) ---
+    
+    // Student Cairkan Dana (Withdraw)
+    withdrawFunds: async (amount) => {
+        try {
+            const user = await Finflow.getUserInfo();
+            if (!user) throw new Error("Login dulu!");
+
+            // Alamat Admin (Tujuan Pengembalian Token)
+            // GANTI DENGAN ALAMAT ADMIN WALLET ANDA
+            const ADMIN_ADDRESS = "0x_ALAMAT_WALLET_ADMIN_YANG_DEPLOY_CONTRACT"; 
+            const TOKEN_ADDRESS = "0x_ALAMAT_SMART_CONTRACT_FIDR";
+
+            // Setup Ethers di Frontend
+            const provider = new window.ethers.providers.Web3Provider(window.web3auth.provider);
+            const signer = provider.getSigner();
+            
+            // ABI Minimal untuk Transfer
+            const abi = ["function transfer(address to, uint256 amount) public returns (bool)"];
+            const contract = new window.ethers.Contract(TOKEN_ADDRESS, abi, signer);
+
+            console.log(`Mengirim ${amount} token ke Admin...`);
+            
+            // 1. EKSEKUSI BLOCKCHAIN (Muncul Popup Sign)
+            const tx = await contract.transfer(ADMIN_ADDRESS, amount.toString());
+            await tx.wait(); // Tunggu sukses
+
+            // 2. LAPOR KE BACKEND
+            return await _post('/exec/withdraw', {
+                wallet_address: user.wallet,
+                amount: amount,
+                tx_hash: tx.hash
+            });
+
+        } catch (error) {
+            console.error("Withdraw Error:", error);
+            return { success: false, message: error.message };
+        }
+    },
+    
+    // Admin Trigger Drip (Untuk Testing/Demo)
+    triggerDripManual: async () => {
+        return await _post('/exec/drip', {});
     }
 };
 
