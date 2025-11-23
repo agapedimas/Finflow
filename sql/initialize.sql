@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS `budget_plan` (
     `planner_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     `item_name` VARCHAR(255) NOT NULL,
     `category_id` INT UNSIGNED NOT NULL,
-    `price` DECIMAL(10, 2) NOT NULL,
+    `amount` DECIMAL(10, 2) NOT NULL,
     `quantity` INT UNSIGNED NOT NULL,
     `month` INT UNSIGNED NOT NULL,
     `year` YEAR NOT NULL,          
@@ -293,11 +293,11 @@ INSERT INTO transactions (transaction_id, student_id, amount, type, category_id,
 
 -- 5. INSERT BUDGET PLAN (AI Scenarios)
 -- Budi: Approved
-INSERT INTO budget_plan (id, planner_id, item_name, category_id, price, quantity, month, year, status, ai_feedback) VALUES 
+INSERT INTO budget_plan (id, planner_id, item_name, category_id, amount, quantity, month, year, status, ai_feedback) VALUES 
 ('plan_budi_1', 'student_01', 'Course Udemy', 2, 150000, 1, 11, 2025, 'approved', 'Sangat bagus untuk skill.');
 
 -- Siti: REJECTED (Edge Case)
-INSERT INTO budget_plan (id, planner_id, item_name, category_id, price, quantity, month, year, status, ai_feedback) VALUES 
+INSERT INTO budget_plan (id, planner_id, item_name, category_id, amount, quantity, month, year, status, ai_feedback) VALUES 
 ('plan_siti_1', 'student_02', 'Tas Branded', 0, 2000000, 1, 11, 2025, 'rejected', 'Ditolak. Harga melebihi 50% total budget bulanan kamu.');
 
 
