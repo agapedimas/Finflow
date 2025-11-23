@@ -1,15 +1,11 @@
 /**
- * FINFLOW SDK
- * Library penghubung antara Frontend UI, Web3Auth, dan Backend.
+ * FINFLOW SDK (FINAL SESSION-BASED VERSION)
+ * Library penghubung Frontend UI <-> Web3Auth <-> Backend Finflow
  */
 
-// 1. KONFIGURASI UTAMA
 const CONFIG = {
-    // Ganti dengan Client ID Web3Auth Project Anda
     WEB3AUTH_CLIENT_ID: "BGQqw1_xgioq69pdr-MA7fO099Eg0cfi-Ko4xucSzRwfqIqLnz1Gv0r3D6QVndbWZNHfg2QAKRVuWJRUB40pRFA", 
-    
-    // URL Backend (Ganti localhost dengan IP Public jika deploy nanti)
-    BACKEND_URL: "http://localhost:5000/api", 
+    BACKEND_URL: "http://localhost:5000/api", // Ganti jika deploy
     
     // Chain Config (Polygon Amoy)
     CHAIN_CONFIG: {
@@ -20,6 +16,12 @@ const CONFIG = {
         blockExplorer: "https://amoy.polygonscan.com",
         ticker: "MATIC",
         tickerName: "Matic",
+    },
+    
+    // ALAMAT KONTRAK & ADMIN (Isi dengan alamat asli setelah deploy)
+    CONTRACTS: {
+        TOKEN: "0x_ALAMAT_TOKEN_FIDR",
+        ADMIN_WALLET: "0x_ALAMAT_WALLET_ADMIN_BACKEND"
     }
 };
 
@@ -29,74 +31,58 @@ let provider = null;
 
 const Finflow = {
     
-    // --- A. INISIALISASI (Wajib dipanggil di awal) ---
+    // --- A. CORE AUTH (WEB3AUTH) ---
+    
     init: async () => {
-        try {
-            if (typeof window.ethers === 'undefined') throw new Error("Ethers.js belum di-load!");
+        if (typeof window.ethers === 'undefined') throw new Error("Ethers.js belum di-load!");
 
-            const privateKeyProvider = new window.EthereumProvider.EthereumPrivateKeyProvider({ 
-                config: { chainConfig: CONFIG.CHAIN_CONFIG } 
-            });
+        const privateKeyProvider = new window.EthereumProvider.EthereumPrivateKeyProvider({ 
+            config: { chainConfig: CONFIG.CHAIN_CONFIG } 
+        });
 
-            web3auth = new window.Modal.Web3Auth({
-                clientId: CONFIG.WEB3AUTH_CLIENT_ID,
-                web3AuthNetwork: "sapphire_devnet",
-                privateKeyProvider: privateKeyProvider
-            });
+        web3auth = new window.Modal.Web3Auth({
+            clientId: CONFIG.WEB3AUTH_CLIENT_ID,
+            web3AuthNetwork: "sapphire_devnet",
+            privateKeyProvider: privateKeyProvider
+        });
 
-            await web3auth.initModal();
-            
-            if (web3auth.connected) {
-                provider = web3auth.provider;
-                return await Finflow.getUserInfo(); // Auto return data user jika sudah login
-            }
-            return null; // Belum login
-        } catch (error) {
-            console.error("Finflow Init Error:", error);
-            throw error;
+        await web3auth.initModal();
+        
+        if (web3auth.connected) {
+            provider = web3auth.provider;
+            return await _getWalletAndEmail(); // Return info user buat UI
         }
+        return null;
     },
 
-    // --- B. FUNGSI AUTH ---
     login: async () => {
         if (!web3auth) throw new Error("SDK belum di-init");
         provider = await web3auth.connect();
-        return await Finflow.getUserInfo();
+        return await _getWalletAndEmail();
     },
 
     logout: async () => {
         if (!web3auth) return;
         await web3auth.logout();
         provider = null;
+        // Panggil logout backend juga buat hapus session
+        // await fetch(CONFIG.BACKEND_URL + '/auth/logout'); 
     },
 
-    getUserInfo: async () => {
-        if (!provider) return null;
-        
-        // 1. Ambil Email dari Web3Auth
-        const user = await web3auth.getUserInfo();
-        
-        // 2. Ambil Wallet dari Ethers
-        const ethersProvider = new window.ethers.providers.Web3Provider(provider);
-        const signer = ethersProvider.getSigner();
-        const address = await signer.getAddress();
-
-        return {
-            email: user.email,
-            wallet: address,
-            name: user.name
-        };
-    },
-
-    // --- C. FUNGSI API BACKEND (CRUD) ---
+    // --- B. AUTH BACKEND (PUBLIC ENDPOINTS) ---
     
-    // Register Funder
-    registerFunder: async (data) => {
-        // data = { fullName, orgName, bankName, bankAccount }
-        // Otomatis ambil email/wallet dari sesi login
-        const user = await Finflow.getUserInfo(); 
-        if(!user) throw new Error("User belum login");
+    // 1. Login Backend (Menukar Wallet jadi Session Cookie)
+    backendLogin: async () => {
+        const user = await _getWalletAndEmail();
+        return await _post('/auth/login', {
+            email: user.email,
+            wallet_address: user.wallet
+        });
+    },
 
+    // 2. Register Funder
+    registerFunder: async (data) => {
+        const user = await _getWalletAndEmail();
         return await _post('/auth/register/funder', {
             email: user.email,
             wallet_address: user.wallet,
@@ -107,10 +93,9 @@ const Finflow = {
         });
     },
 
-    // Register Student (Aktivasi via Token)
+    // 3. Register Student (Invite)
     registerStudent: async (data) => {
-        // data = { inviteToken, fullName, bankName, bankAccount, password }
-        const user = await Finflow.getUserInfo();
+        const user = await _getWalletAndEmail();
         return await _post('/auth/register/student', {
             invite_token: data.inviteToken,
             email: user.email,
@@ -118,79 +103,105 @@ const Finflow = {
             full_name: data.fullName,
             bank_name: data.bankName,
             bank_account: data.bankAccount,
-            password: data.password
+            password: "password_dummy" // Backend butuh ini meski dummy
         });
     },
 
-    // Register Parent
+    // 4. Register Parent (Invite)
     registerParent: async (data) => {
-        const user = await Finflow.getUserInfo();
+        const user = await _getWalletAndEmail();
         return await _post('/auth/register/parent', {
             invite_token: data.inviteToken,
             email: user.email,
             wallet_address: user.wallet,
             full_name: data.fullName,
-            password: data.password
+            password: "password_dummy"
         });
     },
 
-    // Login Biasa (Cek ke Backend)
-    backendLogin: async () => {
-        const user = await Finflow.getUserInfo();
-        return await _post('/auth/login', {
-            email: user.email,
-            wallet_address: user.wallet
-        });
-    },
+    // --- C. FITUR PROTECTED (SESSION BASED) ---
+    // Perhatikan: Tidak ada param 'wallet_address' yang dikirim di sini!
+    
+    // 1. Dashboard & Insight
+    getDashboard: async () => _get('/dashboard'),
+    getInsights: async () => _get('/student/insights'),
+    getReport: async () => _get('/student/report'),
 
-    // Create Invite
-    createInvite: async (targetEmail, role) => {
-        const user = await Finflow.getUserInfo();
+    // 2. Invite System
+    createInvite: async (emailTujuan, role) => {
         return await _post('/auth/invite/create', {
-            wallet_address: user.wallet,
-            invitee_email: targetEmail,
-            role_target: role // 'student' or 'parent'
+            invitee_email: emailTujuan,
+            role_target: role
         });
     },
+
+    // 3. Funding & Budgeting
+    initiateFunding: async (data) => {
+        return await _post('/funding/init', data); // data = {student_email, total_amount, ...}
+    },
     
-    // Ambil Data Dashboard
-    getDashboard: async () => {
-        const user = await Finflow.getUserInfo();
-        // Request GET beda format dikit
-        const res = await fetch(`${CONFIG.BACKEND_URL}/dashboard?wallet_address=${user.wallet}`);
-        return await res.json();
+    parentTopup: async (amount) => {
+        return await _post('/funding/topup', { amount: amount });
     },
 
-    // --- D. FUNGSI SMART CONTRACT (FRONTEND) ---
+    submitBudgetPlan: async (data) => {
+        return await _post('/funding/finalize', {
+            alloc_needs: data.needs,
+            alloc_wants: data.wants,
+            alloc_edu: data.edu
+        });
+    },
+
+    confirmPayment: async (fundingIds, amount) => {
+        return await _post('/funding/pay', {
+            funding_ids: fundingIds,
+            amount_paid: amount
+        });
+    },
+
+    // 4. Transaction & Execution
+    addTransaction: async (data) => {
+        // data = { amount, category_id, description, ... }
+        return await _post('/transaction/add', data);
+    },
+
+    requestUrgent: async (amount, reason, imgUrl) => {
+        return await _post('/exec/urgent', {
+            amount: amount,
+            reason: reason,
+            proof_image_url: imgUrl
+        });
+    },
+
+    requestEducation: async (amount, desc, imgUrl) => {
+        return await _post('/exec/edu/post', { // Reimburse
+            amount: amount,
+            description: desc,
+            proof_image_url: imgUrl
+        });
+    },
+
+    // --- D. BLOCKCHAIN ACTION (WITHDRAWAL) ---
     
-    // Student Cairkan Dana (Withdraw)
     withdrawFunds: async (amount) => {
         try {
-            const user = await Finflow.getUserInfo();
-            if (!user) throw new Error("Login dulu!");
-
-            // Alamat Admin (Tujuan Pengembalian Token)
-            // GANTI DENGAN ALAMAT ADMIN WALLET ANDA
-            const ADMIN_ADDRESS = "0x_ALAMAT_WALLET_ADMIN_YANG_DEPLOY_CONTRACT"; 
-            const TOKEN_ADDRESS = "0x_ALAMAT_SMART_CONTRACT_FIDR";
-
-            // Setup Ethers di Frontend
+            // 1. Siapkan Kontrak
             const provider = new window.ethers.providers.Web3Provider(window.web3auth.provider);
             const signer = provider.getSigner();
-            
-            // ABI Minimal untuk Transfer
-            const abi = ["function transfer(address to, uint256 amount) public returns (bool)"];
-            const contract = new window.ethers.Contract(TOKEN_ADDRESS, abi, signer);
+            const contract = new window.ethers.Contract(
+                CONFIG.CONTRACTS.TOKEN, 
+                ["function transfer(address to, uint256 amount) public returns (bool)"], 
+                signer
+            );
 
             console.log(`Mengirim ${amount} token ke Admin...`);
             
-            // 1. EKSEKUSI BLOCKCHAIN (Muncul Popup Sign)
-            const tx = await contract.transfer(ADMIN_ADDRESS, amount.toString());
-            await tx.wait(); // Tunggu sukses
+            // 2. Eksekusi (Popup Privy Muncul)
+            const tx = await contract.transfer(CONFIG.CONTRACTS.ADMIN_WALLET, amount.toString());
+            await tx.wait(); 
 
-            // 2. LAPOR KE BACKEND
+            // 3. Lapor Backend (Bawa Session Cookie)
             return await _post('/exec/withdraw', {
-                wallet_address: user.wallet,
                 amount: amount,
                 tx_hash: tx.hash
             });
@@ -201,26 +212,42 @@ const Finflow = {
         }
     },
     
-    // Admin Trigger Drip (Untuk Testing/Demo)
-    triggerDripManual: async () => {
-        return await _post('/exec/drip', {});
-    }
+    // Admin Only
+    triggerDrip: async () => _post('/exec/drip', {})
 };
 
-// Helper Private untuk Fetch
+// --- PRIVATE HELPERS ---
+
+async function _getWalletAndEmail() {
+    const user = await web3auth.getUserInfo();
+    const ethersProvider = new window.ethers.providers.Web3Provider(provider);
+    const signer = ethersProvider.getSigner();
+    const address = await signer.getAddress();
+    return { email: user.email, wallet: address, name: user.name };
+}
+
 async function _post(endpoint, body) {
     try {
         const response = await fetch(CONFIG.BACKEND_URL + endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            credentials: 'include' // <--- INI KUNCI SESSION AUTH
         });
         return await response.json();
-    } catch (error) {
-        console.error("API Error:", error);
-        return { success: false, message: "Koneksi Gagal" };
-    }
+    } catch (e) { return { success: false, message: "Network Error" }; }
 }
 
-// Export agar bisa dipakai di file lain (jika pakai module system)
-// window.Finflow = Finflow; // Atau tempel ke window biar global
+async function _get(endpoint) {
+    try {
+        const response = await fetch(CONFIG.BACKEND_URL + endpoint, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: 'include' // <--- INI JUGA
+        });
+        return await response.json();
+    } catch (e) { return { success: false, message: "Network Error" }; }
+}
+
+// Expose to Window
+window.Finflow = Finflow;

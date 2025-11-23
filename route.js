@@ -217,44 +217,46 @@ function Route(Server) {
   });
 
 
+
+  // API yang butuh login (Protected)
   // API AUTH ROUTES
   Server.post("/api/auth/register/funder", ApiFinflow.registerFunder);
   Server.post("/api/auth/register/student", ApiFinflow.registerStudent);
   Server.post("/api/auth/register/parent", ApiFinflow.registerParent);
-  Server.post("/api/auth/invite/create", ApiFinflow.createInvite);
+  Server.post("/api/auth/invite/create", ApiFinflow.requireAuth, ApiFinflow.createInvite);
   Server.post("/api/auth/login", ApiFinflow.login);
   
   // API FUNDING AGREEMENT
-  Server.post("/api/funding/init", ApiFinflow.initiateFunding);
-  Server.post("/api/funding/topup", ApiFinflow.parentTopup);
-  Server.post("/api/funding/finalize", ApiFinflow.finalizeAgreement);
-  Server.post("/api/funding/pay", ApiFinflow.confirmTransfer);
+  Server.post("/api/funding/init", ApiFinflow.requireAuth, ApiFinflow.initiateFunding);
+  Server.post("/api/funding/topup", ApiFinflow.requireAuth, ApiFinflow.parentTopup);
+  Server.post("/api/funding/finalize", ApiFinflow.requireAuth, ApiFinflow.finalizeAgreement);
+  Server.post("/api/funding/pay", ApiFinflow.requireAuth, ApiFinflow.confirmTransfer);
 
 
   // API EXECUTION & PENYALURAN DANA
-  Server.post("/api/exec/drip", ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
-  Server.post("/api/exec/urgent", ApiFinflow.requestUrgent);
-  Server.post("/api/exec/edu/pre", ApiFinflow.requestEduPreApproval);
-  Server.post("/api/exec/edu/post", ApiFinflow.requestEduReimburse);
-  Server.post("/api/exec/withdraw", ApiFinflow.requestWithdraw); // Tombol Student untuk cairkan uang
+  Server.post("/api/exec/drip", ApiFinflow.requireAuth, ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
+  Server.post("/api/exec/urgent", ApiFinflow.requireAuth, ApiFinflow.requestUrgent);
+  Server.post("/api/exec/edu/pre", ApiFinflow.requireAuth, ApiFinflow.requestEduPreApproval);
+  Server.post("/api/exec/edu/post", ApiFinflow.requireAuth, ApiFinflow.requestEduReimburse);
+  Server.post("/api/exec/withdraw", ApiFinflow.requireAuth, ApiFinflow.requestWithdraw); // Tombol Student untuk cairkan uang
 
   // API MONITORING FUNDER
-  Server.get("/api/monitoring/funder", ApiFinflow.getFunderMonitoring);
+  Server.get("/api/monitoring/funder", ApiFinflow.requireAuth, ApiFinflow.getFunderMonitoring);
 
   // Module 4: Transactions
   // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
-  Server.post("/api/scan/receipt", ApiFinflow.scanReceipt);
+  Server.post("/api/scan/receipt", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
 
   // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
-  Server.post("/api/transaction/add", ApiFinflow.addTransaction);
+  Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
 
   // API MONEY MANAGEMENT DASHBOARD
-  Server.get("/api/student/insights", ApiFinflow.getInsights);
-  Server.get("/api/student/report", ApiFinflow.getWeeklyReport);
+  Server.get("/api/student/insights", ApiFinflow.requireAuth, ApiFinflow.getInsights);
+  Server.get("/api/student/report", ApiFinflow.requireAuth, ApiFinflow.getWeeklyReport);
 
   // Notifications
-  Server.get("/api/notifications/unread", ApiFinflow.getUnreadNotifications);
-  Server.get("/api/notifications/history", ApiFinflow.getNotificationHistory);
+  Server.get("/api/notifications/unread", ApiFinflow.requireAuth, ApiFinflow.getUnreadNotifications);
+  Server.get("/api/notifications/history", ApiFinflow.requireAuth, ApiFinflow.getNotificationHistory);
 
   Map(Server);
 }

@@ -1,5 +1,4 @@
 const SQL = require("../../sql");
-const Functions = require("../../functions");
 const Authentication = require("../../authentication");
 const { ethers } = require("ethers");
 
@@ -60,7 +59,48 @@ const aiCheckBudgetHealth = (total, needs, wants, edu) => {
     return { approved: true, reason: "Rencana keuangan sehat dan disetujui AI."};
 }
 
+
+// -- MIDDLEWARE AUTH --
+// Fungsi ini dipasang di Router untuk melindungi API
+const requireAuth = async (req, res, next) => {
+    // 1. Cek apakah ada session?
+    if (!req.session || !req.session.account) {
+        return res.status(401).json({ success: false, message: "Unauthorized: Silakan Login Dulu" });
+    }
+
+    // 2. Ambil ID Session
+    const sessionId = req.session.account;
+
+    try {
+        // 3. Cek ke Database Authentication (Sesuai file authentication.js Anda)
+        const authQ = "SELECT user FROM authentication WHERE id = ?";
+        const authRes = await SQL.Query(authQ, [sessionId]);
+
+        if(!authRes.data || authRes.data.length === 0){
+            return res.status(401).json({ success: false, message: "Session Expired" });
+        }
+
+        const userId = authRes.data[0].user;
+
+        // 4. Ambil Data User Lengkap
+        const userQ = "SELECT * FROM accounts WHERE id = ?";
+        const userRes = await SQL.Query(userQ, [userId]);
+
+        if (!userRes.data || userRes.data.length === 0) {
+            return res.status(401).json({ success: false, message: "User tidak ditemukan" });
+        }
+
+        // 5. TEMPELKAN USER KE REQUEST (Magic Moment)
+        // Agar controller di bawahnya tidak perlu cari user lagi
+        req.currentUser = userRes.data[0];
+        
+        next(); // Lanjut ke Controller Asli
+    } catch (e) {
+        return res.status(500).json({ success: false, message: "Auth Error" });
+    }
+}
 module.exports = {
+    requireAuth,
     // ============================================================
     // 1. FUNDER REGISTRATION (Pendaftaran Mandiri)
     // Flow: Buka Web -> Login Privy -> isi Form -> Submit
@@ -109,11 +149,10 @@ module.exports = {
     // ============================================================
     createInvite: async (req, res) => {
         try {
-            const { wallet_address, invitee_email, role_target } = req.body;
+            const { invitee_email, role_target } = req.body;
 
             // Cek Pengundang
-            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address = ?", [wallet_address]);
-            const inviter = uRes.data?.[0];
+            const inviter = req.currentUser;
             if(!inviter) return error(res, "Unauthorized", 401);
 
             const token = generateToken();
@@ -264,11 +303,9 @@ module.exports = {
     // 1. Funder Memulai (Set Dana Pokok)
     initiateFunding: async (req, res) => {
         try {
-            const { wallet_address, student_email, total_amount, start_date, end_date, period_name } = req.body;
+            const { student_email, total_amount, start_date, end_date, period_name } = req.body;
 
-            // Validasi Funder
-            const fRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address = ?", [wallet_address]);
-            const funder = fRes.data?.[0];
+            const funder = req.currentUser;
             if(!funder) return error(res, "Funder tidak ditemukan", 404);
 
             // Cari Student by Email (Karena Funder input email)
@@ -300,11 +337,10 @@ module.exports = {
     // 2. Parent Melihat & Topup (Opsional)
     parentTopup: async (req, res) => {
         try {
-            const { wallet_address, amount, is_final } = req.body;
+            const { amount, is_final } = req.body;
 
             // Cari Parent
-            const pRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const parent = pRes.data?.[0];
+            const parent = req.currentUser;
             if (!parent) return error(res, "Parent not found", 404);
 
             // Cari Student Anak-nya 
@@ -348,11 +384,9 @@ module.exports = {
     // 3. Student Buat Plan & AI Validasi
     finalizeAgreement: async (req, res) => {
         try {
-            const { wallet_address, alloc_needs, alloc_wants, alloc_edu } = req.body;
+            const { alloc_needs, alloc_wants, alloc_edu } = req.body;
 
-            // Validasi User & Funding
-            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const student = uRes.data?.[0];
+            const student = req.currentUser;
             if (!student) return error(res, "User not found", 404);
 
             const fRes = await SQL.Query("SELECT funding_id, total_period_fund, funder_id, start_date, end_date FROM funding WHERE student_id=? AND status='Waiting_Allocation'", [student.id]);
@@ -440,7 +474,7 @@ module.exports = {
             // Input fleksibel:
             // 1. funding_ids: Array ID yang mau dibayar
             // 2. amount_paid: Nominal (Opsional). Jika kosong/null, dianggap LUNAS (Full Payment).
-            const { wallet_address, funding_ids, amount_paid } = req.body;
+            const {  funding_ids, amount_paid } = req.body;
 
             if (!Array.isArray(funding_ids) || funding_ids.length === 0) {
                 return error(res, "Funding IDs harus array dan tidak boleh kosong", 400);
@@ -704,11 +738,10 @@ module.exports = {
     // EXECUTION URGENT FUND (Readjustment Logic)
     requestUrgent: async (req, res) => {
         try {
-            const { wallet_address, amount, reason, proof_image_url } = req.body;
+            const { amount, reason, proof_image_url } = req.body;
 
             // 1. Validasi User & Data
-            const uRes = await SQL.Query("SELECT id, parent_id, displayname FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+            const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             // 2. MOCK AI VALIDATION
@@ -757,7 +790,7 @@ module.exports = {
             await SQL.Query("UPDATE funding_allocation SET drip_amount = ? WHERE allocation_id = ?", [newDripAmount, alloc.allocation_id]);
 
             // B. Transfer Token Sekarang (Urgent)
-            const tx = await tokenContract.transfer(wallet_address, reqAmount.toString());
+            const tx = await tokenContract.transfer(user.wallet_address, reqAmount.toString());
 
             // C. Catat Transaksi
             await SQL.Query(`
@@ -792,36 +825,50 @@ module.exports = {
     // Pre Approval (VDC)
     requestEduPreApproval: async (req, res) => {
         try {
-            const { wallet_address, amount, url_item, vendor_info } = req.body;
+            // [FIX] Ambil User dari Session Middleware
+            const user = req.currentUser; 
             
-            // Mock AI Logic: Cek apakah URL valid (disini kita anggap selalu valid jika ada http)
+            // Kita tidak butuh wallet_address dari body lagi
+            const { amount, url_item, vendor_info } = req.body;
+            
+            // Validasi Input
+            if (!url_item || !amount) return error(res, "Data request tidak lengkap", 400);
+
+            // Mock AI Logic: Cek apakah URL valid
             if (!url_item.includes('http')) return error(res, "URL Item tidak valid", 400);
 
-            // Generate Mock VDC (Kartu Debit Virtual)
+            // [FEATURE] Custom VDC Name
+            // Karena kita tau siapa usernya, kita bisa cetak nama dia di kartu!
+            const cardHolder = user.displayname ? user.displayname.toUpperCase() : "FINFLOW STUDENT";
+
+            // Generate Mock VDC
             const vdcData = {
                 card_number: "4000 1234 " + Math.floor(1000 + Math.random() * 9000) + " " + Math.floor(1000 + Math.random() * 9000),
                 cvv: Math.floor(100 + Math.random() * 900),
-                expiry: "12/26",
-                holder_name: "FINFLOW STUDENT",
-                limit: amount,
+                expiry: "12/28",
+                holder_name: cardHolder, // <--- Nama Asli Student
+                limit: Number(amount),
                 status: "ACTIVE_ONE_TIME"
             };
 
-            // Di real app, kita simpan status 'Pre-Approved' di DB. 
-            // Disini kita return saja biar Frontend bisa tampilkan kartunya.
+            // (Opsional) Simpan log request pre-approval ke DB jika perlu audit trail
+            // await SQL.Query("INSERT INTO edu_requests ...")
+
             return success(res, vdcData, "Pre-Approval Disetujui AI. Silakan gunakan VDC ini.");
 
-        } catch (e) { return error(res, "Gagal pre-approval"); }
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal pre-approval");
+        }
     },
 
     // POST-APPROVAL (Reimburse / Real Transfer)
     requestEduReimburse: async (req, res) => {
         try {
-            const { wallet_address, amount, description, proof_image_url } = req.body;
+            const { amount, description, proof_image_url } = req.body;
 
             // Validasi User
-            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+            const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             // Cek Saldo Vault (Category 2 = Education)
@@ -842,7 +889,7 @@ module.exports = {
             if (!proof_image_url) return error(res, "Bukti struk wajib!", 400);
 
             // BLOCKCHAIN TRANSFER
-            const tx = await tokenContract.transfer(wallet_address, amount.toString());
+            const tx = await tokenContract.transfer(user.wallet_address, amount.toString());
 
             // UPDATE DATABASE
             await SQL.Query("UPDATE funding_allocation SET total_withdrawn = total_withdrawn + ? WHERE allocation_id = ?", [amount, vault.allocation_id]);
@@ -875,11 +922,10 @@ module.exports = {
     // Frontend mengirim Hash bukti transfer token dari Student -> Admin
     requestWithdraw: async (req, res) => {
         try {
-            const { wallet_address, amount, tx_hash } = req.body;
+            const { amount, tx_hash } = req.body;
 
             // 1. Validasi User
-            const uRes = await SQL.Query("SELECT id, bank_name, bank_account_number FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+            const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             console.log(`[WITHDRAW] Menerima klaim hash: ${tx_hash} sebesar Rp ${amount}`);
@@ -914,13 +960,12 @@ module.exports = {
     // Input: wallet_address (Funder), student_id (Target Anak)
     getFunderMonitoring: async (req, res) => {
         try {
-            const { wallet_address, student_id } = req.query;
+            const { student_id } = req.query;
             
-            if (!wallet_address || !student_id) return error(res, "Wallet dan Student ID wajib diisi", 400);
+            if (req.currentUser.wallet_address || !student_id) return error(res, "Wallet dan Student ID wajib diisi", 400);
 
             // 1. IDENTIFIKASI VIEWER (Siapa yang sedang login?)
-            const vRes = await SQL.Query("SELECT id, displayname FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const viewer = vRes.data?.[0];
+            const viewer = req.currentUser;
             if (!viewer) return error(res, "Akun viewer tidak ditemukan", 404);
 
             // 2. IDENTIFIKASI STUDENT (Siapa targetnya?)
@@ -1064,11 +1109,10 @@ module.exports = {
     // Ada logic cek untuk pola berbahaya
     addTransaction: async (req, res) => {
         try {
-            const { wallet_address, amount, category_id, description, merchant_name, transaction_date, proof_image_url } = req.body;
+            const { amount, category_id, description, merchant_name, transaction_date, proof_image_url } = req.body;
 
             // 1. Validasi User & Saldo
-            const uRes = await SQL.Query("SELECT a.id, s.balance FROM accounts a JOIN accounts_student s ON a.id = s.id WHERE a.wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+            const user = req.currentUser;
             
             if (!user) return error(res, "User not found", 404);
             const currentBalance = Number(user.balance);
@@ -1158,13 +1202,10 @@ module.exports = {
     // ============================================================
     getInsights: async (req, res) => {
         try {
-            const { wallet_address } = req.query;
-
-            if (!wallet_address) return error(res, "Wallet address required", 400);
+            if (!req.currentUser.wallet_address) return error(res, "Wallet address required", 400);
 
             // Validasi User: Memastikan wallet terdaftar
-            const uRes = await SQL.Query("SELECT id, displayname FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+            const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             // Ambil data Statistik secara Paralel
@@ -1204,11 +1245,8 @@ module.exports = {
 
     // Fetch Weekly Report Untuk Card Dashboard
     getWeeklyReport: async (req, res) => {
-        try {
-            const { wallet_address } = req.query;
-            
-            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+        try {        
+            const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             // Ambil Laporan TERBARU (Paling akhir dibuat)
@@ -1243,9 +1281,7 @@ module.exports = {
     // ============================================================
     getUnreadNotifications: async (req, res) => {
         try {
-            const { wallet_address } = req.query;
-            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+            const user = req.currentUser;
             if (!user) return success(res, []);
 
             // Ambil notif yang belum dibaca (is_read = 0)
@@ -1268,11 +1304,8 @@ module.exports = {
     // ============================================================
     getNotificationHistory: async (req, res) => {
         try {
-            const { wallet_address } = req.query;
-            
             // 1. Validasi User
-            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
-            const user = uRes.data?.[0];
+            const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             // 2. Ambil 20 Notifikasi Terakhir (Baik yang sudah dibaca maupun belum)
