@@ -824,7 +824,125 @@ module.exports = {
 
         } catch (e) { return error(res, "Gagal withdraw"); }
     },
-    
+
+
+    // Funder Monitoring (Dashboard Funder/Parent)
+    // Input: wallet_address (Funder), student_id (Target Anak)
+    getFunderMonitoring: async (req, res) => {
+        try {
+            const { wallet_address, student_id } = req.query;
+            
+            if (!wallet_address || !student_id) return error(res, "Wallet dan Student ID wajib diisi", 400);
+
+            // 1. IDENTIFIKASI VIEWER (Siapa yang sedang login?)
+            const vRes = await SQL.Query("SELECT id, displayname FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const viewer = vRes.data?.[0];
+            if (!viewer) return error(res, "Akun viewer tidak ditemukan", 404);
+
+            // 2. IDENTIFIKASI STUDENT (Siapa targetnya?)
+            const sRes = await SQL.Query("SELECT id, parent_id FROM accounts WHERE id=?", [student_id]);
+            const student = sRes.data?.[0];
+            if (!student) return error(res, "Student target tidak ditemukan", 404);
+
+            // 3. AMBIL DATA FUNDING (Beasiswa Aktif)
+            const fRes = await SQL.Query("SELECT * FROM funding WHERE student_id=? AND status='Active'", [student_id]);
+            const funding = fRes.data?.[0];
+
+            if (!funding) return error(res, "Belum ada beasiswa aktif untuk student ini", 404);
+
+            // 4. CEK HAK AKSES (AUTHORIZATION CHECK)
+            // Apakah Viewer adalah Funder?
+            const isFunder = (funding.funder_id === viewer.id);
+            
+            // Apakah Viewer adalah Parent?
+            const isParent = (student.parent_id === viewer.id);
+
+            // Jika bukan keduanya, TENDANG!
+            if (!isFunder && !isParent) {
+                return error(res, "Akses Ditolak! Anda bukan Funder maupun Orang Tua dari mahasiswa ini.", 403);
+            }
+
+            // -------------------------------------------------------
+            // JIKA LOLOS, LANJUT AMBIL DATA STATISTIK
+            // -------------------------------------------------------
+
+            // A. Data Drip (Uang Saku Cair)
+            const dripTotalRes = await SQL.Query(`
+                SELECT SUM(amount) as total_drip 
+                FROM transactions 
+                WHERE student_id = ? AND type = 'Drip_In'
+            `, [student_id]);
+            const totalDripSent = Number(dripTotalRes.data?.[0]?.total_drip || 0);
+
+            // B. Data Edukasi (Total Terpakai dari Vault)
+            const eduRes = await SQL.Query(`
+                SELECT SUM(amount) as total_edu
+                FROM transactions 
+                WHERE student_id = ? AND category_id = 2 AND type = 'Expense'
+            `, [student_id]);
+            const totalEduUsed = Number(eduRes.data?.[0]?.total_edu || 0);
+
+            // C. Analisa Kesehatan Keuangan (Logic Sederhana)
+            const urgentCountRes = await SQL.Query(`
+                SELECT COUNT(*) as count FROM transactions 
+                WHERE student_id = ? AND is_urgent_withdrawal = 1
+            `, [student_id]);
+            const urgentCount = Number(urgentCountRes.data?.[0]?.count || 0);
+
+            let healthStatus = "Sehat ✅";
+            let healthDesc = "Penggunaan dana wajar sesuai rencana.";
+            
+            if (urgentCount > 0) {
+                healthStatus = "Perhatian ⚠️";
+                healthDesc = `Student telah melakukan ${urgentCount}x penarikan darurat. Mohon dicek.`;
+            }
+
+            // D. Log Transaksi (Hanya Edu & Urgent demi Privasi)
+            const logQuery = `
+                SELECT transaction_date, amount, type, category_id, raw_description, is_urgent_withdrawal, is_verified_by_ai, proof_image_url, blockchain_tx_hash
+                FROM transactions 
+                WHERE student_id = ? 
+                AND (category_id = 2 OR is_urgent_withdrawal = 1) 
+                ORDER BY transaction_date DESC
+            `;
+            const logs = await SQL.Query(logQuery, [student_id]);
+
+            const formattedLogs = logs.data.map(tx => ({
+                date: new Date(tx.transaction_date).toISOString().split('T')[0],
+                type: tx.is_urgent_withdrawal ? "DARURAT" : "EDUCATION",
+                nominal: tx.amount,
+                status: "Sukses",
+                ai_audit: tx.is_urgent_withdrawal ? "Valid: Alasan Darurat" : "Valid: Barang Edukasi",
+                proof_url: tx.proof_image_url || "#",
+                tx_hash: tx.blockchain_tx_hash || "#"
+            }));
+
+            // E. Pesan Khusus untuk Viewer
+            const roleName = isFunder ? "Pemberi Beasiswa" : "Orang Tua";
+            const welcomeMsg = `${roleName}, dari total dana Rp ${Number(funding.total_period_fund).toLocaleString()} sejauh ini:`;
+
+            // F. Response JSON Final
+            return success(res, {
+                viewer_role: isFunder ? 'funder' : 'parent',
+                message_header: welcomeMsg,
+                summary: {
+                    total_fund: Number(funding.total_period_fund),
+                    disbursed_drip: totalDripSent,
+                    used_education: totalEduUsed,
+                    // Sisa = Total - (Yang sudah di-drip + Yang sudah dipakai beli barang)
+                    remaining_fund: Number(funding.total_period_fund) - totalDripSent - totalEduUsed, 
+                    health_status: healthStatus,
+                    health_desc: healthDesc
+                },
+                logs: formattedLogs
+            }, "Data Monitoring Siap");
+
+        } catch (e) {
+            console.error("Monitoring Error:", e);
+            return error(res, "Gagal memuat data monitoring");
+        }
+    },
+
     // ============================================================
     // MODULE 4: TRANSACTIONS (Action & Vision)
     // Mencatat Pengeluaran, Menyimpan URL foto struk (untuk fitur AI Vision)

@@ -238,6 +238,9 @@ function Route(Server) {
   Server.post("/api/exec/edu/post", ApiFinflow.requestEduReimburse);
   Server.post("/api/exec/withdraw", ApiFinflow.requestWithdraw); // Tombol Student untuk cairkan uang
 
+  // API MONITORING FUNDER
+  Server.get("/api/monitoring/funder", ApiFinflow.getFunderMonitoring);
+
   // Module 4: Transactions
   // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
   Server.post("/api/scan/receipt", ApiFinflow.scanReceipt);
