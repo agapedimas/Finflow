@@ -6,7 +6,7 @@
 // 1. KONFIGURASI UTAMA
 const CONFIG = {
     // Ganti dengan Client ID Web3Auth Project Anda
-    WEB3AUTH_CLIENT_ID: "PASTE_CLIENT_ID_DISINI", 
+    WEB3AUTH_CLIENT_ID: "BGQqw1_xgioq69pdr-MA7fO099Eg0cfi-Ko4xucSzRwfqIqLnz1Gv0r3D6QVndbWZNHfg2QAKRVuWJRUB40pRFA", 
     
     // URL Backend (Ganti localhost dengan IP Public jika deploy nanti)
     BACKEND_URL: "http://localhost:5000/api", 
