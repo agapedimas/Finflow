@@ -248,6 +248,14 @@ function Route(Server) {
   // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
   Server.post("/api/transaction/add", ApiFinflow.addTransaction);
 
+  // API MONEY MANAGEMENT DASHBOARD
+  Server.get("/api/student/insights", ApiFinflow.getInsights);
+  Server.get("/api/student/report", ApiFinflow.getWeeklyReport);
+
+  // Notifications
+  Server.get("/api/notifications/unread", ApiFinflow.getUnreadNotifications);
+  Server.get("/api/notifications/history", ApiFinflow.getNotificationHistory);
+
   Map(Server);
 }
 

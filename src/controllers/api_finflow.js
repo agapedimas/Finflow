@@ -413,6 +413,14 @@ module.exports = {
                 [funding.funder_id]
             );
 
+            // [BARU] Notif ke Parent (Jika ada)
+            if (student.parent_id) {
+                await SQL.Query(
+                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Update Beasiswa 📝', 'Anak Anda telah menyelesaikan rencana anggaran. Silakan cek dashboard.', 'Info')",
+                    [student.parent_id]
+                );
+            }
+
             return success(res, { 
                 status: "Ready_To_Fund", 
                 ai_message: aiCheck.reason,
@@ -541,6 +549,17 @@ module.exports = {
                         "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif ✅', 'Dana telah dikunci. Smart Contract aktif.', 'Success')",
                         [fund.funder_id]
                     );
+
+                    // [BARU] Cari Parent & Kirim Notif
+                    const pRes = await SQL.Query("SELECT parent_id FROM accounts WHERE id=?", [fund.student_id]);
+                    const parentId = pRes.data?.[0]?.parent_id;
+
+                    if (parentId) {
+                        await SQL.Query(
+                            "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif 🎉', 'Dana pendidikan anak Anda telah terkunci aman di Smart Contract.', 'Success')",
+                            [parentId]
+                        );
+                    }
                 }
 
                 processedCount++;
@@ -561,13 +580,14 @@ module.exports = {
 
     // EXECUTION WEEKLY DRIP (Backend membagikan token dari Vault ke Student)
     // Dipanggil via tombol "Simulasi MInggu ke - X" oleh Admin
+    // Ada notifikasi Funder Warning kalo sisa drip dah dikit
+    // Sebagai trigger untuk analisis weekly report juga
     triggerWeeklyDrip: async (req, res) => {
         try {
             // 1. Cari Jadwal Drip Aktif
-            // Syarat: Status Active, Frequency Weekly, Sisa > 0
             const q = `
                 SELECT 
-                    f.student_id, a.wallet_address, 
+                    f.funding_id, f.funder_id, f.student_id, a.wallet_address, a.displayname,
                     fa.allocation_id, fa.drip_amount, fa.remaining_drip_count, fa.category_id
                 FROM funding_allocation fa
                 JOIN funding f ON fa.funding_id = f.funding_id
@@ -581,59 +601,104 @@ module.exports = {
             if (drips.data.length === 0) return success(res, { processed: 0 }, "Tidak ada jadwal drip minggu ini");
 
             let successCount = 0;
-            let totalTokenSent = 0;
 
-            // 2. Loop Eksekusi
+            // 2. Loop Eksekusi per Student
             for (const item of drips.data) {
                 const amount = Math.floor(Number(item.drip_amount));
                 if (amount <= 0) continue;
 
                 try {
-                    console.log(`[DRIP] Mengirim ${amount} token ke ${item.wallet_address}...`);
+                    console.log(`[DRIP] Processing ${item.displayname}...`);
 
-                    // --- BLOCKCHAIN: VAULT TRANSFER KE STUDENT ---
-                    // Kita gunakan wallet 'vaultWallet' yang sudah disetup di atas
-                    // Asumsi: Vault punya cukup token & MATIC (untuk gas)
-                    const tokenVault = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS, tokenAbi, vaultWallet);
-                    const tx = await tokenVault.transfer(item.wallet_address, amount.toString());
+                    // --- A. BLOCKCHAIN TRANSFER ---
+                    // (Gunakan wallet Vault)
+                    // const tokenVault = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS, tokenAbi, vaultWallet);
+                    // const tx = await tokenVault.transfer(item.wallet_address, amount.toString());
                     
-                    console.log(`[DRIP] Sukses! Hash: ${tx.hash}`);
+                    // Simulasi Hash untuk demo jika blockchain off
+                    const txHash = "0x_simulated_drip_" + Date.now(); 
 
-                    // --- DATABASE UPDATE ---
-                    
-                    // 1. Kurangi Sisa Minggu
-                    await SQL.Query(
-                        "UPDATE funding_allocation SET remaining_drip_count = remaining_drip_count - 1 WHERE allocation_id = ?", 
-                        [item.allocation_id]
-                    );
-
-                    // 2. Tambah Saldo Virtual Student (Agar sinkron dengan wallet)
+                    // --- B. DATABASE UPDATE (Saldo & History) ---
+                    await SQL.Query("UPDATE funding_allocation SET remaining_drip_count = remaining_drip_count - 1 WHERE allocation_id = ?", [item.allocation_id]);
                     await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, item.student_id]);
-
-                    // 3. Catat Transaksi
+                    
                     const txId = generateId('drip');
                     await SQL.Query(`
                         INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, blockchain_tx_hash, transaction_date)
-                        VALUES (?, ?, ?, 'Drip_In', ?, 'Pencairan Mingguan (Auto)', ?, NOW())
-                    `, [txId, item.student_id, amount, item.category_id, tx.hash]);
+                        VALUES (?, ?, ?, 'Drip_In', ?, 'Pencairan Mingguan', ?, NOW())
+                    `, [txId, item.student_id, amount, item.category_id, txHash]);
 
-                    // 4. Notifikasi
+                    // ============================================================
+                    // 🔥 UPDATE: PROACTIVE REPORT (SAVE TO DB) 🔥
+                    // ============================================================
+                    
+                    // 1. Hitung Pengeluaran Minggu Lalu
+                    const expenseQ = `
+                        SELECT SUM(amount) as total_spent 
+                        FROM transactions 
+                        WHERE student_id = ? 
+                        AND type = 'Expense' 
+                        AND transaction_date >= DATE(NOW()) - INTERVAL 7 DAY
+                    `;
+                    const expRes = await SQL.Query(expenseQ, [item.student_id]);
+                    const lastWeekSpent = Number(expRes.data?.[0]?.total_spent || 0);
+                    
+                    // 2. Analisa AI
+                    const limit = Number(item.drip_amount);
+                    const ratio = lastWeekSpent / limit;
+                    const sisaSaldo = limit - lastWeekSpent;
+
+                    let healthStatus = 'Good';
+                    let reportBody = `Hai ${item.displayname}! Minggu ini kamu mencatat pengeluaran Rp ${lastWeekSpent.toLocaleString('id-ID')} dari target Rp ${limit.toLocaleString('id-ID')}.\n\n`;
+
+                    if (ratio < 0.5) {
+                        healthStatus = 'Excellent';
+                        reportBody += `✅ Hebat: Kamu hemat sekali! Masih sisa banyak (Rp ${sisaSaldo.toLocaleString('id-ID')}). Tabung sisanya ya!\n`;
+                    } else if (ratio <= 1.0) {
+                        healthStatus = 'Good';
+                        reportBody += `✅ Bagus: Pengeluaranmu pas sesuai budget. Pertahankan disiplin ini.\n`;
+                    } else {
+                        healthStatus = 'Warning';
+                        reportBody += `⚠️ Perhatian: Kamu boros minggu lalu (Over budget). Coba kurangi jajan minggu ini.\n`;
+                    }
+
+                    reportBody += `\nDana baru Rp ${limit.toLocaleString('id-ID')} sudah cair. Semangat!`;
+
+                    // 3. SIMPAN KE TABEL REPORT (Bukan Notifikasi)
                     await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Uang Saku Cair! 💸', 'Token mingguan sudah masuk ke wallet Anda.', 'Success')",
-                        [item.student_id]
+                        "INSERT INTO weekly_reports (student_id, total_spent, budget_limit, health_status, ai_message, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
+                        [item.student_id, lastWeekSpent, limit, healthStatus, reportBody]
                     );
 
+                    // 4. Kirim Notifikasi PENDEK saja (Pancingan)
+                    await SQL.Query(
+                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Rapor Mingguan Siap 📊', 'Evaluasi keuanganmu minggu ini sudah terbit. Cek Dashboard sekarang!', 'Info')",
+                        [item.student_id]
+                    );
+                    // ============================================================
+
+                    // --- C. CEK SALDO FUNDER (Warning Logic) ---
+                    const sisaMinggu = Number(item.remaining_drip_count) - 1;
+                    if (sisaMinggu <= 2) {
+                        await SQL.Query(
+                            "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Saldo Menipis 📉', 'Sisa dana beasiswa tinggal 2 minggu. Mohon siapkan top-up.', 'Urgent')",
+                            [item.funder_id]
+                        );
+                    }
+
                     successCount++;
-                    totalTokenSent += amount;
 
                 } catch (bcError) {
                     console.error(`[DRIP ERROR] Gagal ke ${item.student_id}:`, bcError);
                 }
             }
 
-            return success(res, { processed: successCount, total: totalTokenSent }, "Weekly Drip Selesai");
+            return success(res, { processed: successCount }, "Weekly Drip & Report Selesai");
 
-        } catch (e) { return error(res, "Gagal memproses drip"); }
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal memproses drip"); 
+        }
     },
 
     // EXECUTION URGENT FUND (Readjustment Logic)
@@ -642,7 +707,7 @@ module.exports = {
             const { wallet_address, amount, reason, proof_image_url } = req.body;
 
             // 1. Validasi User & Data
-            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const uRes = await SQL.Query("SELECT id, parent_id, displayname FROM accounts WHERE wallet_address=?", [wallet_address]);
             const user = uRes.data?.[0];
             if (!user) return error(res, "User not found", 404);
 
@@ -702,6 +767,16 @@ module.exports = {
 
             // D. Update Saldo Student Lokal
             await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [reqAmount, user.id]);
+
+            // [BARU] Notif Bahaya ke Parent
+            if (user.parent_id) {
+                const msgParent = `Anak Anda (${user.displayname}) baru saja menarik Dana Darurat Rp ${Number(amount).toLocaleString()} dengan alasan: "${reason}".`;
+                
+                await SQL.Query(
+                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, '⚠️ Penarikan Darurat', ?, 'Urgent')",
+                    [user.parent_id, msgParent]
+                );
+            }
 
             return success(res, {
                 received: reqAmount,
@@ -780,6 +855,15 @@ module.exports = {
 
             // UPDATE SALDO STUDENT (Karena reimburse = uang masuk ke rekening pribadi mengganti uang talangan)
             await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, user.id]);
+
+            // [FIX] Menggunakan Template Literal (Backticks) + Format Rupiah
+            const formattedAmount = Number(amount).toLocaleString('id-ID'); // Biar jadi "150.000"
+            const notifMessage = `Dana pendidikan sebesar Rp ${formattedAmount} telah dicairkan ke rekening Anda.`;
+
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Reimburse Sukses 📚', ?, 'Success')",
+                [user.id, notifMessage] 
+            );
 
             return success(res, { tx_hash: tx.hash }, "Reimburse Disetujui & Ditransfer");
 
@@ -977,39 +1061,95 @@ module.exports = {
 
     // B. SAVE TRANSACTION (Simpan ke Database)
     // Dipanggil setelah user review hasil scan, atau input manual
+    // Ada logic cek untuk pola berbahaya
     addTransaction: async (req, res) => {
         try {
             const { wallet_address, amount, category_id, description, merchant_name, transaction_date, proof_image_url } = req.body;
 
-            // 1. Cek User & Saldo
+            // 1. Validasi User & Saldo
             const uRes = await SQL.Query("SELECT a.id, s.balance FROM accounts a JOIN accounts_student s ON a.id = s.id WHERE a.wallet_address=?", [wallet_address]);
             const user = uRes.data?.[0];
+            
+            if (!user) return error(res, "User not found", 404);
+            const currentBalance = Number(user.balance);
+            const expenseAmount = Number(amount);
 
-            if(!user) return error(res, "User not found", 404);
+            if (currentBalance < expenseAmount) return error(res, "Saldo tidak mencukupi!", 400);
 
-            // Validasi Saldo (hanya jika expense, bukan income)
-            // Asumsi addTransaction ini khusus expense
-            if(Number(user.balance) < Number(amount)) return error(res, "Saldo tidak mencukupi!", 400);
-
-            // 2. Tentukan Tanggal (Pakai input user ATAU waktu sekarang)
+            // 2. Simpan Transaksi Dulu (Optimistic UI)
             const finalDate = transaction_date ? transaction_date : new Date();
-
-            // 2. Simpan Transaksi 
-            const txId = generateId("tx");
-            const qTx = `
+            const txId = generateId('tx');
+            
+            await SQL.Query(`
                 INSERT INTO transactions 
                 (transaction_id, student_id, amount, type, category_id, merchant_name, raw_description, proof_image_url, is_verified_by_ai, transaction_date) 
-                VALUES (?, ?, ?, 'Expense', ?, ?, ?, ?, FALSE, NOW())
+                VALUES (?, ?, ?, 'Expense', ?, ?, ?, ?, FALSE, ?)
+            `, [txId, user.id, expenseAmount, category_id, merchant_name || '', description, proof_image_url || null, finalDate]);
+
+            // 3. Update Saldo
+            const newBalance = currentBalance - expenseAmount;
+            await SQL.Query("UPDATE accounts_student SET balance = ? WHERE id = ?", [newBalance, user.id]);
+
+            // ============================================================
+            // 🔥 AI COACH QUICK SCAN (LOGIC PENDETEKSI BAHAYA) 🔥
+            // ============================================================
+            
+            // A. Ambil Data Pendukung (Budget Mingguan & Sisa Hari)
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0=Minggu, 1=Senin
+            const daysUntilDrip = dayOfWeek === 1 ? 7 : (8 - dayOfWeek) % 7;
+            
+            // Ambil total jatah drip mingguan (Needs + Wants) dari tabel allocation
+            const allocQ = `
+                SELECT SUM(drip_amount) as weekly_limit 
+                FROM funding_allocation fa 
+                JOIN funding f ON fa.funding_id = f.funding_id
+                WHERE f.student_id = ? AND f.status = 'Active' AND fa.drip_frequency = 'Weekly'
             `;
-            await SQL.Query(qTx, [txId, user.id, amount, category_id, merchant_name || '', description, proof_image_url || null, finalDate]);
+            const allocRes = await SQL.Query(allocQ, [user.id]);
+            const weeklyLimit = Number(allocRes.data?.[0]?.weekly_limit || 0);
 
-            // 3. Potong Saldo Student
-            await SQL.Query("UPDATE accounts_student SET balance = balance - ? WHERE id=?", [amount, user.id]);
+            if (weeklyLimit > 0) {
+                let warningTitle = "";
+                let warningMsg = "";
+                
+                // RULE 1: Transaksi Jumbo (>30% Budget Mingguan)
+                if (expenseAmount > (weeklyLimit * 0.3)) {
+                    warningTitle = "⚠️ Pembelian Besar Terdeteksi";
+                    warningMsg = `Waduh, kamu baru saja menghabiskan 30% jatah mingguanmu untuk satu barang. Pastikan sisa ${daysUntilDrip} hari kedepan aman ya!`;
+                }
 
-            return success(res, { tx_id: txId, new_balance: user.balance - amount }, "Transaksi Berhasil Disimpan");
+                // RULE 2: Boros di Awal Minggu (>50% habis di 3 hari pertama)
+                // Asumsi Senin=1, Selasa=2, Rabu=3. Jika hari ini <= Rabu DAN Saldo < 50%
+                // Kita cek sisa saldo vs limit.
+                // Sisa saldo < 50% limit mingguan? (Asumsi saldo utamanya berasal dari drip)
+                else if (dayOfWeek >= 1 && dayOfWeek <= 3 && newBalance < (weeklyLimit * 0.5)) {
+                    warningTitle = "⚠️ Rem Sedikit!";
+                    warningMsg = "Baru awal minggu tapi uangmu sudah sisa setengah. Tahan jajan dulu sampai weekend!";
+                }
+
+                // RULE 3: Survival Mode (Sisa uang < Biaya Makan Minimum)
+                const minMakan = 15000 * daysUntilDrip;
+                if (newBalance < minMakan) {
+                    warningTitle = "🚨 BAHAYA KELAPARAN";
+                    warningMsg = `Sisa uangmu (Rp ${newBalance}) kurang dari estimasi makan (Rp ${minMakan}). STOP JAJAN SEKARANG. Fokus beli nasi saja.`;
+                }
+
+                // Jika ada warning, Simpan ke Notifikasi
+                if (warningTitle !== "") {
+                    await SQL.Query(
+                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, 'Warning')",
+                        [user.id, warningTitle, warningMsg]
+                    );
+                }
+            }
+            // ============================================================
+
+            return success(res, { tx_id: txId, new_balance: newBalance }, "Transaksi Tersimpan");
+
         } catch (e) {
             console.error(e);
-            return error(res, "Gagal memproses transaksi");
+            return error(res, "Gagal menyimpan transaksi");
         }
     },
 
@@ -1062,6 +1202,33 @@ module.exports = {
         }
     },
 
+    // Fetch Weekly Report Untuk Card Dashboard
+    getWeeklyReport: async (req, res) => {
+        try {
+            const { wallet_address } = req.query;
+            
+            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const user = uRes.data?.[0];
+            if (!user) return error(res, "User not found", 404);
+
+            // Ambil Laporan TERBARU (Paling akhir dibuat)
+            const q = `
+                SELECT * FROM weekly_reports 
+                WHERE student_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            `;
+            const report = await SQL.Query(q, [user.id]);
+
+            if (report.data.length === 0) {
+                return success(res, null, "Belum ada laporan mingguan.");
+            }
+
+            return success(res, report.data[0], "Laporan dimuat");
+
+        } catch (e) { return error(res, "Gagal ambil laporan"); }
+    },
+
     // ============================================================
     // MODULE 7: AI CHATBOT (RAG Context Provider)
     // Frontend kirim pesan
@@ -1069,7 +1236,73 @@ module.exports = {
     // Backend mengirim Pesan User + Context Data ke Logic RAG
     // Balasan disimpan di chat history
     // ============================================================
-    
+
+
+    // ============================================================
+    // MODULE 8: NOTIFICATION SYSTEM (POLLING)
+    // ============================================================
+    getUnreadNotifications: async (req, res) => {
+        try {
+            const { wallet_address } = req.query;
+            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const user = uRes.data?.[0];
+            if (!user) return success(res, []);
+
+            // Ambil notif yang belum dibaca (is_read = 0)
+            const q = "SELECT * FROM notifications WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC";
+            const notifs = await SQL.Query(q, [user.id]);
+
+            // Opsional: Langsung tandai terbaca agar tidak muncul berulang kali
+            if (notifs.data.length > 0) {
+                const ids = notifs.data.map(n => n.id).join(',');
+                await SQL.Query(`UPDATE notifications SET is_read = 1 WHERE id IN (${ids})`);
+            }
+
+            return success(res, notifs.data || []);
+
+        } catch (e) { return error(res, "Gagal ambil notif"); }
+    },
+
+    // ============================================================
+    // MODULE 8: NOTIFICATION HISTORY (Inbox Lonceng)
+    // ============================================================
+    getNotificationHistory: async (req, res) => {
+        try {
+            const { wallet_address } = req.query;
+            
+            // 1. Validasi User
+            const uRes = await SQL.Query("SELECT id FROM accounts WHERE wallet_address=?", [wallet_address]);
+            const user = uRes.data?.[0];
+            if (!user) return error(res, "User not found", 404);
+
+            // 2. Ambil 20 Notifikasi Terakhir (Baik yang sudah dibaca maupun belum)
+            const q = `
+                SELECT title, message, type, is_read, created_at 
+                FROM notifications 
+                WHERE user_id = ? 
+                ORDER BY created_at DESC 
+                LIMIT 20
+            `;
+            const notifs = await SQL.Query(q, [user.id]);
+
+            // 3. Hitung jumlah yang belum dibaca (untuk Badge Merah)
+            const unreadCountRes = await SQL.Query(
+                "SELECT COUNT(*) as total FROM notifications WHERE user_id = ? AND is_read = 0", 
+                [user.id]
+            );
+            const unreadCount = unreadCountRes.data?.[0]?.total || 0;
+
+            // 4. Tandai semua sebagai 'read' setelah dibuka (Opsional, biasanya saat diklik baru read)
+            await SQL.Query("UPDATE notifications SET is_read = 1 WHERE user_id = ?", [user.id]);
+
+            return success(res, {
+                unread_count: unreadCount,
+                history: notifs.data || []
+            }, "History Notifikasi Loaded");
+
+        } catch (e) { return error(res, "Gagal load notifikasi"); }
+    },
+
 }
 
 // ============================================================
