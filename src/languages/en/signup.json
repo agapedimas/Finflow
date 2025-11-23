@@ -4,7 +4,10 @@
     "title_parent": "Sign Up as Parent",
     "title_scholarshipfunder": "Sign Up as Scholarship Funder",
     "description": "Create an account to manage financial for brighter future.",
-    "description_role": "I’m a...",
+    "description_role": "I'm a...",
+    "description_signupwithgoogle": "Connect your Metamask wallet to continue.",
+
+    "signup_with_google": "Sign up with Google",
     
     "offer_signin_title": "Already have an account?",
     "offer_signin_link": "Sign in",

@@ -39,8 +39,8 @@
     "password_placeholder": "Strong and memorable",
 
     "balance": "Balance",
-    "price": "Price",
-    "price_placeholder": "e.g.: Rp25,000",
+    "amount": "Amount",
+    "amount_placeholder": "e.g.: Rp25,000",
     "type": "Type",
     "income": "Income",
     "expense": "Expense",

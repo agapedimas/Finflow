@@ -294,32 +294,35 @@
             grid-auto-flow: column;
             gap: 0.15em;
         }
-            #List_MonthlyReport .stack .navigate .price {
+            #List_MonthlyReport .stack .navigate .amount {
                 display: grid;
                 grid-auto-flow: column;
                 align-items: center;
                 gap: 0.75ch;
             }
-            #List_MonthlyReport .stack .navigate .price.income {
+            #List_MonthlyReport .stack .navigate .amount.income,
+            #List_MonthlyReport .stack .navigate .amount.dripIn {
                 color: #34c759;
             }
             [theme=dark]
-            #List_MonthlyReport .stack .navigate .price.income {
+            #List_MonthlyReport .stack .navigate .amount.income,
+            #List_MonthlyReport .stack .navigate .amount.dripIn {
                 color: #30d158;
             }
-            #List_MonthlyReport .stack .navigate .price.expenses {
+            #List_MonthlyReport .stack .navigate .amount.expense {
                 color: #ff3b30;
             }
             [theme=dark]
-            #List_MonthlyReport .stack .navigate .price.expenses {
+            #List_MonthlyReport .stack .navigate .amount.expense {
                 color: #ff453a;
             }
-                #List_MonthlyReport .stack .navigate .price.income::before {
+                #List_MonthlyReport .stack .navigate .amount.income::before,
+                #List_MonthlyReport .stack .navigate .amount.dripIn::before {
                     content: "\eae9";
                     font-family: var(--font-icon);
                     font-size: 0.85em;
                 }
-                #List_MonthlyReport .stack .navigate .price.expenses::before {
+                #List_MonthlyReport .stack .navigate .amount.expense::before {
                     content: "\eba9";
                     font-family: var(--font-icon);
                     font-size: 0.85em;
@@ -506,9 +509,9 @@
                         <span><$ generic name /></span>
                         <input type="text" class="plain" placeholder="<$ generic name />"/>
                     </div>
-                    <div class="stack price">
-                        <span><$ generic price /></span>
-                        <input type="text" class="plain" value="Rp0" placeholder="<$ generic price_placeholder />"/>
+                    <div class="stack amount">
+                        <span><$ generic amount /></span>
+                        <input type="text" class="plain" value="Rp0" placeholder="<$ generic amount_placeholder />"/>
                     </div>
                     <div class="stack type">
                         <span><$ generic type /></span>
@@ -573,6 +576,24 @@
     </div>
 </div>
 
+<div class="popover" id="PopOver_EditTransaction" preventDefault="true">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelEditTransaction"><$ generic cancel /></button>
+                <button id="Button_SubmitEditTransaction">
+                    <span><$ generic done /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+            <div class="title"><$ cashflow transaction_edit_title /></div>
+        </div>
+        <div class="content">
+            <div id="Grid_TransactionListEdit"></div>
+        </div>
+    </div>
+</div>
+
 <script>
     let categories = [];
 
@@ -611,15 +632,15 @@
 
     Button_AddNewTransaction.onclick = function() {
         const listTemplate = Template_TransactionForm.content.children[0].cloneNode(true);
-        const priceInput = listTemplate.querySelector(".price > input");
-        priceInput.onfocus = function() {
+        const amountInput = listTemplate.querySelector(".amount > input");
+        amountInput.onfocus = function() {
             this.value = this.value.replace(/[^0-9]/g, "");
         }
-        priceInput.oninput = function() {
+        amountInput.oninput = function() {
             PopOver_InputManual.isinputchanged = true;
             this.value = this.value.replace(/[^0-9]/g, "");
         }
-        priceInput.onblur = function() {
+        amountInput.onblur = function() {
             const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
             this.value = value.substring(0, value.length - 3);
         }
@@ -657,15 +678,15 @@
 
         const transactions = [...Grid_TransactionList.children].map(function(list) {
             const nameInput = list.querySelector(".name input");
-            const priceInput = list.querySelector(".price input");
+            const amountInput = list.querySelector(".amount input");
             const timeInput = list.querySelector(".time input");
             const typeInput = list.querySelector(".type select");
             const categoryInput = list.querySelector(".category select");
 
             return {
                 name: nameInput.value,
-                price: parseInt(priceInput.value.replace(/[^0-9]/g, "")) || 0,
-                timestamp: new Date(timeInput.value) * 1 || 0,
+                amount: parseInt(amountInput.value.replace(/[^0-9]/g, "")) || 0,
+                transactionDate: new Date(timeInput.value) * 1 || 0,
                 isExpenses: typeInput.value == "true",
                 categoryId: categoryInput.value 
             }
@@ -990,7 +1011,7 @@
 
         const nameElement = document.createElement("span");
         nameElement.classList.add("name");
-        nameElement.innerText = transaction.name;
+        nameElement.innerText = transaction.rawDescription;
 
         const category = categories.find(o => o.id == transaction.categoryId);
 
@@ -1003,10 +1024,10 @@
         descriptionGroupElement.append(nameElement);
         descriptionGroupElement.append(categoryElement);
 
-        const priceElement = document.createElement("span");
-        priceElement.classList.add("price");
-        priceElement.classList.add(transaction.isExpenses ? "expenses" : "income");
-        priceElement.innerText = formatCurrency(transaction.price);
+        const amountElement = document.createElement("span");
+        amountElement.classList.add("amount");
+        amountElement.classList.add(transaction.type);
+        amountElement.innerText = formatCurrency(transaction.amount);
 
         const chevronElement = document.createElement("span");
         chevronElement.classList.add("icon");
@@ -1014,7 +1035,7 @@
 
         const navigateElement = document.createElement("div");
         navigateElement.classList.add("navigate");
-        navigateElement.append(priceElement);
+        navigateElement.append(amountElement);
         navigateElement.append(chevronElement);
 
         const containerElement = document.createElement("div");
@@ -1024,17 +1045,21 @@
         containerElement.append(thumbnailElement);
         containerElement.append(descriptionGroupElement);
         containerElement.append(navigateElement);
+        containerElement.data = transaction;
+        containerElement.onclick = function() {
+            
+        }
         
         const dateGroupElements = [...List_MonthlyReport.children];
-        let dateGroupMatches = dateGroupElements.find(o => o.dataset.date == new Date(transaction.timestamp).getDate());
+        let dateGroupMatches = dateGroupElements.find(o => o.dataset.date == new Date(transaction.transactionDate).getDate());
 
         if (dateGroupMatches == null) {
             dateGroupMatches = document.createElement("div");
             dateGroupMatches.classList.add("list");
-            dateGroupMatches.dataset.date = new Date(transaction.timestamp).getDate();
+            dateGroupMatches.dataset.date = new Date(transaction.transactionDate).getDate();
 
             // today
-            const diffTimestamp = Date.now() - transaction.timestamp; 
+            const diffTimestamp = Date.now() - transaction.transactionDate; 
             if (diffTimestamp < 1000 * 60 * 60 * 24)
                 dateGroupMatches.setAttribute("ad-header", "<$ generic today />");
             // yesterday
@@ -1042,7 +1067,7 @@
                 dateGroupMatches.setAttribute("ad-header", "<$ generic yesterday />");
             // a long time ago
             else
-                dateGroupMatches.setAttribute("ad-header", moment(transaction.timestamp).format("ll"));
+                dateGroupMatches.setAttribute("ad-header", moment(transaction.transactionDate).format("ll"));
             List_MonthlyReport.append(dateGroupMatches);
         }
 

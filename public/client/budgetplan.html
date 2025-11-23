@@ -61,7 +61,7 @@
         }
             #List_MonthlyPlan .stack .description .name {
             }
-            #List_MonthlyPlan .stack .description .price {
+            #List_MonthlyPlan .stack .description .amount {
                 color: var(--foreground-description);
             }
             #List_MonthlyPlan .stack .description .quantity {
@@ -73,32 +73,32 @@
             grid-auto-flow: column;
             gap: 0.15em;
         }
-            #List_MonthlyPlan .stack .navigate .price {
+            #List_MonthlyPlan .stack .navigate .amount {
                 display: grid;
                 grid-auto-flow: column;
                 align-items: center;
                 gap: 0.75ch;
             }
-            #List_MonthlyPlan .stack .navigate .price.income {
+            #List_MonthlyPlan .stack .navigate .amount.income {
                 color: #34c759;
             }
             [theme=dark]
-            #List_MonthlyPlan .stack .navigate .price.income {
+            #List_MonthlyPlan .stack .navigate .amount.income {
                 color: #30d158;
             }
-            #List_MonthlyPlan .stack .navigate .price.expenses {
+            #List_MonthlyPlan .stack .navigate .amount.expenses {
                 color: #ff3b30;
             }
             [theme=dark]
-            #List_MonthlyPlan .stack .navigate .price.expenses {
+            #List_MonthlyPlan .stack .navigate .amount.expenses {
                 color: #ff453a;
             }
-                #List_MonthlyPlan .stack .navigate .price.income::before {
+                #List_MonthlyPlan .stack .navigate .amount.income::before {
                     content: "\eae9";
                     font-family: var(--font-icon);
                     font-size: 0.85em;
                 }
-                #List_MonthlyPlan .stack .navigate .price.expenses::before {
+                #List_MonthlyPlan .stack .navigate .amount.expenses::before {
                     content: "\eba9";
                     font-family: var(--font-icon);
                     font-size: 0.85em;
@@ -184,8 +184,8 @@
     <div class="content">
         <div class="list" id="List_PlanDetails">
             <div class="stack name">
-                <span><$ generic price /></span>
-                <span id="Text_StuffPrice"></span>
+                <span><$ generic amount /></span>
+                <span id="Text_StuffAmount"></span>
             </div>
             <div class="stack quantity">
                 <span><$ generic quantity /></span>
@@ -226,9 +226,9 @@
                     <span><$ generic name /></span>
                     <input id="Input_StuffName" type="text" class="plain" placeholder="<$ generic name />"/>
                 </div>
-                <div class="stack price">
-                    <span><$ generic price /></span>
-                    <input id="Input_StuffPrice" type="text" class="plain" value="Rp0" placeholder="<$ generic price_placeholder />"/>
+                <div class="stack amount">
+                    <span><$ generic amount /></span>
+                    <input id="Input_StuffAmount" type="text" class="plain" value="Rp0" placeholder="<$ generic amount_placeholder />"/>
                 </div>
                 <div class="stack quantity">
                     <span><$ generic quantity /></span>
@@ -261,9 +261,9 @@
                     <span><$ generic name /></span>
                     <input id="Input_StuffNameEdit" type="text" class="plain" placeholder="<$ generic name />"/>
                 </div>
-                <div class="stack price">
-                    <span><$ generic price /></span>
-                    <input id="Input_StuffPriceEdit" type="text" class="plain" value="Rp0" placeholder="<$ generic price_placeholder />"/>
+                <div class="stack amount">
+                    <span><$ generic amount /></span>
+                    <input id="Input_StuffAmountEdit" type="text" class="plain" value="Rp0" placeholder="<$ generic amount_placeholder />"/>
                 </div>
                 <div class="stack quantity">
                     <span><$ generic quantity /></span>
@@ -326,14 +326,14 @@
         })
     }
 
-    const newPlanInputs = [Input_StuffName, Input_StuffPrice, Input_StuffQuantity, Select_StuffCategory];
-    const editPlanInputs = [Input_StuffNameEdit, Input_StuffPriceEdit, Input_StuffQuantityEdit, Select_StuffCategoryEdit];
+    const newPlanInputs = [Input_StuffName, Input_StuffAmount, Input_StuffQuantity, Select_StuffCategory];
+    const editPlanInputs = [Input_StuffNameEdit, Input_StuffAmountEdit, Input_StuffQuantityEdit, Select_StuffCategoryEdit];
     
     Button_NewPlan.onclick = function() {
         Input_StuffName.value = "";
-        Input_StuffPrice.value = "Rp0";
+        Input_StuffAmount.value = "Rp0";
         Input_StuffQuantity.value = 1;
-        checkInputs();
+        checkInputs(PopOver_NewPlan);
         PopOver_NewPlan.isinputchanged = false;
         PopOver_NewPlan.open(this);
     }
@@ -349,7 +349,7 @@
 
         const plan = {
             name: Input_StuffName.value,
-            price: parseInt(Input_StuffPrice.value.replace(/[^0-9]/g, "")) || 0,
+            amount: parseInt(Input_StuffAmount.value.replace(/[^0-9]/g, "")) || 0,
             quantity: parseInt(Input_StuffQuantity.value) || 0,
             categoryId: Select_StuffCategory.value
         }
@@ -378,10 +378,10 @@
     Button_EditPlan.onclick = async function() {
         const plan = Activity_Main.sections[1].data;
         Input_StuffNameEdit.value = plan.name;
-        Input_StuffPriceEdit.value = formatCurrency(plan.price);
+        Input_StuffAmountEdit.value = formatCurrency(plan.amount);
         Input_StuffQuantityEdit.value = plan.quantity;
         Select_StuffCategoryEdit.value = plan.categoryId;
-        checkInputs();
+        checkInputs(PopOver_EditPlan);
         PopOver_EditPlan.isinputchanged = false;
         PopOver_EditPlan.open();
     }
@@ -397,7 +397,7 @@
 
         const plan = {
             name: Input_StuffNameEdit.value,
-            price: parseInt(Input_StuffPriceEdit.value.replace(/[^0-9]/g, "")) || 0,
+            amount: parseInt(Input_StuffAmountEdit.value.replace(/[^0-9]/g, "")) || 0,
             quantity: parseInt(Input_StuffQuantityEdit.value) || 0,
             categoryId: Select_StuffCategoryEdit.value,
             status: "pending",
@@ -414,7 +414,7 @@
             const category = categories.find(o => o.id == plan.categoryId);
             Activity_Main.sections[1].name = plan.name;
             
-            Text_StuffPrice.innerText = formatCurrency(plan.price);
+            Text_StuffAmount.innerText = formatCurrency(plan.amount);
             Text_StuffQuantity.innerText = plan.quantity;
             Text_StuffCategory.innerText = category.name;
             Text_StuffStatus.innerText = "<$ budgetplan plan_status_pending />";
@@ -445,30 +445,30 @@
     Select_StuffCategoryEdit.onchange = function() {
         PopOver_NewPlan.isinputchanged = true;
         PopOver_EditPlan.isinputchanged = true;
-        checkInputs();
+        checkInputs(PopOver_EditPlan);
     }
-    Input_StuffPrice.onfocus = 
-    Input_StuffPriceEdit.onfocus = function() {
+    Input_StuffAmount.onfocus = 
+    Input_StuffAmountEdit.onfocus = function() {
         this.value = this.value.replace(/[^0-9]/g, "");
     }
-    Input_StuffPrice.oninput = 
-    Input_StuffPriceEdit.oninput = function() {
+    Input_StuffAmount.oninput = 
+    Input_StuffAmountEdit.oninput = function() {
         this.value = this.value.replace(/[^0-9]/g, "");
         if (this != Input_StuffName)
             Input_StuffName.oninput();
-        if (this != Input_StuffPriceEdit)
-            Input_StuffPriceEdit.oninput();
+        if (this != Input_StuffAmountEdit)
+            Input_StuffAmountEdit.oninput();
     }
-    Input_StuffPrice.onblur =
-    Input_StuffPriceEdit.onblur = function() {
-        checkInputs();
+    Input_StuffAmount.onblur =
+    Input_StuffAmountEdit.onblur = function() {
+        checkInputs(PopOver_EditPlan);
         const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
         this.value = value.substring(0, value.length - 3);
     }
 
-    function checkInputs() {
+    function checkInputs(popOver = null) {
         let isSubmitEnabled = true;
-        if (PopOver_NewPlan.isopened) {
+        if (popOver == PopOver_NewPlan) {
             for (const input of newPlanInputs) {
                 if (input.value.trim() == "") {
                     isSubmitEnabled = false;
@@ -575,15 +575,15 @@
         quantityElement.classList.add("quantity");
         quantityElement.innerText = "× " + plan.quantity;
 
-        const priceElement = document.createElement("span");
-        priceElement.classList.add("price");
-        priceElement.innerText = formatCurrency(plan.price);
-        priceElement.append(quantityElement);
+        const amountElement = document.createElement("span");
+        amountElement.classList.add("amount");
+        amountElement.innerText = formatCurrency(plan.amount);
+        amountElement.append(quantityElement);
 
         const descriptionGroupElement = document.createElement("div");
         descriptionGroupElement.classList.add("description");
         descriptionGroupElement.append(nameElement);
-        descriptionGroupElement.append(priceElement);
+        descriptionGroupElement.append(amountElement);
 
         const statusElement = document.createElement("span");
         statusElement.classList.add("status");
@@ -618,7 +618,7 @@
             
             const category = categories.find(o => o.id == plan.categoryId);
 
-            Text_StuffPrice.innerText = formatCurrency(plan.price);
+            Text_StuffAmount.innerText = formatCurrency(plan.amount);
             Text_StuffQuantity.innerText = plan.quantity;
             Text_StuffCategory.innerText = category.name;
 
