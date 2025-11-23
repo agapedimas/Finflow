@@ -558,7 +558,10 @@
         <section>
             <div class="header cascaded">
                 <div class="buttons">
-                    <button id="Button_SubmitScan"><$ generic submit /></button>
+                    <button id="Button_SubmitScan">
+                        <span><$ generic submit /></span>
+                        <div class="progressring"></div>
+                    </button>
                 </div>
                 <div class="title"><$ cashflow transaction_scanbill_preview /></div>
             </div>
@@ -712,7 +715,32 @@
     PopOver_InputCamera.onclosed = function() {
         detachCamera();
     }
+    Button_SubmitScan.onclick = async function() {
+        PopOver_InputCamera.iscloseable = false;
+        PopOver_InputCamera.isloading =
+        Button_SubmitScan.disabled = true;
 
+        const form = new FormData();
+        form.append("file", Image_InputCameraPreview.file);
+
+        try {
+            await $.ajax({
+                type: "post",
+                url: "/api/cashflow/transactions/uploadbill",
+                data: form,
+                contentType: false,
+                processData: false
+            });
+            PopOver_InputCamera.close();
+        }
+        catch (error) {
+            console.error(error);
+        }
+
+        PopOver_InputCamera.iscloseable = true;
+        PopOver_InputCamera.isloading =
+        Button_SubmitScan.disabled = false;
+    }
     Button_CancelScan.onclick = function() {
         PopOver_InputCamera.close();
     }
@@ -784,6 +812,9 @@
 
         const data = Canvas_InputCamera.toDataURL("image/png");
         Image_InputCameraPreview.src = data;
+
+        const file = new File([new Blob([data])], "camera_" + Date.now());
+        Image_InputCameraPreview.file = file;
     }
 
     async function getPhotoFromGallery() {
@@ -803,9 +834,12 @@
                     return resolve(false);
 
                 if (files[0].size > 2000000) {
+                    Image_InputCameraPreview.file = null;
                     Components.Notification.Send({ Id: "avatar_failed", Title: "<$ accounts avatar_upload_error_title />", Message: "<$ accounts avatar_upload_error_message />", Icon: "\ufe64", Buttons: [{Text: "<$ generic dismiss />"}] });
                     return resolve(false);
                 }
+
+                Image_InputCameraPreview.file = files[0];
                     
                 const reader = new FileReader();
                 reader.readAsDataURL(files[0]);
