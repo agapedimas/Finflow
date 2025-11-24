@@ -4,7 +4,48 @@
         [
             {
                 "Model": "gemini-2.5-flash",
-                "Tools":  [{ "googleSearch": {}, "urlContext": {} }],
+                "Tools":  [
+                    { 
+                        "googleSearch": {}, 
+                        "urlContext": {} 
+                    },
+                    {
+                        "functionDeclarations": [
+                            {
+                                "name": "get_budget_compliance",
+                                "description": "Menganalisis total pengeluaran Student untuk bulan berjalan berdasarkan alokasi (Wants, Needs, Education) dan membandingkannya dengan budget yang dialokasikan di perjanjian aktif. Wajib digunakan untuk semua pertanyaan yang menanyakan status keuangan atau kepatuhan budget saat ini.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {
+                                        "student_id": {
+                                            "type": "string",
+                                            "description": "ID Student aktif. Diambil dari sesi."
+                                        }
+                                    },
+                                    "required": ["student_id"]
+                                }
+                            },
+                            {
+                                "name": "get_top_spending_categories",
+                                "description": "Mengidentifikasi kategori pengeluaran terbesar untuk periode waktu tertentu. Wajib digunakan ketika pengguna menanyakan tentang rincian pengeluaran historis.",
+                                "parameters": {
+                                    "type": "object",
+                                    "properties": {
+                                        "student_id": {
+                                            "type": "string",
+                                            "description": "ID Student aktif."
+                                        },
+                                        "time_frame": {
+                                            "type": "string",
+                                            "description": "Periode waktu, harus salah satu dari: 'current_month', 'last_month', atau 'last_30_days'."
+                                        }
+                                    },
+                                    "required": ["student_id", "time_frame"]
+                                }
+                            }
+                        ]
+                    }
+                ],
                 "Thinking": true,
                 "Limit": 250
             },
@@ -14,7 +55,7 @@
                 "Thinking": true,
                 "Limit": 1000
             },
-            {   
+            {
                 "Model": "gemini-2.0-flash",
                 "Tools":  [{ "googleSearch": {} }],
                 "Limit": 200

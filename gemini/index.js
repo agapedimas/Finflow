@@ -163,8 +163,10 @@ const Chat = {
                 });
 
                 const parts = [];
-                parts.push({ text: message });
 
+                if (message != null && message.trim() !== "") { // <--- Cek null dan string kosong
+                    parts.push({ text: message });
+                }
                 if (file != null)
                 {
                     if (file.fileData == null)
@@ -219,6 +221,7 @@ const Chat = {
 
                 let queries = [];
                 let text = "";
+                let functionCall = null;
 
                 for (let candidate of response?.candidates || [])
                 {
@@ -234,6 +237,16 @@ const Chat = {
                             code = 1105;
                         else
                             code = 1106;
+                    }
+
+                    for (let content of candidate.content?.parts || []) {
+                        if (content.functionCall) {
+                            functionCall = content.functionCall;
+                            // Jika ada function call, kita biasanya tidak perlu teks/grounding dari respons ini
+                            text = ""; 
+                            break; 
+                        }
+                       
                     }
 
                     for (let grounding of candidate.groundingMetadata?.groundingChunks || [])
@@ -323,7 +336,9 @@ const Chat = {
                 return resolve({
                     text: text,
                     queries: queries,
+                    function_call: functionCall,    
                     history: history,
+
                     finish: { 
                         code: code,
                         usage: token,
