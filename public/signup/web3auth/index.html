@@ -1,0 +1,159 @@
+<style>
+    .root
+    {
+        background: linear-gradient(125deg, #0a84ff, #0067ce);
+    }
+    .panel
+    {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        display: grid;
+        grid-auto-flow: row;
+        transform: translate(-50%, -50%);
+        background: var(--gray-6);
+        padding: 33px 30px;
+        border-radius: 25px;
+        border: 1px solid var(--overlay-6);
+        gap: 0.3em;
+        width: 350px;
+        box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);
+    }
+        .panel img
+        {
+            height: 1.55em;
+        }
+        .panel .title
+        {
+            font-size: 1.75em;
+            font-family: var(--font-bold);
+            margin: 0.25em 0 0;
+        }
+        .panel .subtitle
+        {
+            font-size: 1.25em;
+        }
+        .panel .inputs
+        {
+            display: grid;
+            gap: 7px;
+        }
+            .panel .inputs input,
+            .panel .inputs button
+            {
+                padding: 0.6em 0.8em;
+                border-radius: 10px;
+            }
+            .panel .inputs .error 
+            {
+                display: none;
+                color: var(--notice);
+                text-align: center;
+                margin: 0.5em 0 0 0;
+                font-size: 0.9em;
+            }
+            .panel .inputs button
+            {
+                margin: 1em 0;
+            }
+                .panel .inputs button .progressring
+                {
+                    width: 1em;
+                    height: 1em;
+                }
+                .panel:not(.loading) .inputs button .progressring
+                {
+                    display: none;
+                }
+            .panel .inputs .offersignin
+            {
+                justify-self: center;
+            }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@8.12.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@8.12.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/openlogin-adapter@8.12.4"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+<script src="/sdk.js"></script>
+
+<div class="panel" theme="light" accent="blue">
+    <img src="/assets/logo_text.png"/>
+    <div class="title" id="Text_SignUpTitle"><$ signup title /></div>
+    <div class="subtitle"><$ signup description_signupwithgoogle /></div>
+    <div class="inputs">
+        <button id="Button_ContinueWithGoogle">
+            <img class="icon" src="/assets/logo_google.webp"/>
+            <span><$ signup signup_with_google /></span>
+        </button>
+
+        <div class="offersignin">
+            <span><$ signup offer_signin_title /></span>
+            <a class="link" id="Button_SignIn" goto="/signin">
+                <span><$ signup offer_signin_link /></span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(".titlebar").remove();
+    $("nav").remove();
+    $(".loading").hide();
+    
+    const funderType = new URL(window.location.href).searchParams.get("type");
+
+    if (funderType == "student") {
+        Text_SignUpTitle.innerText = "<$ signup title_student />";
+    }
+    else if (funderType == "parent") {
+        Text_SignUpTitle.innerText = "<$ signup title_parent />";
+    }
+    else if (funderType == "scholarshipfunder") {
+        Text_SignUpTitle.innerText = "<$ signup title_scholarshipfunder />";
+    }
+    else {
+        window.location.replace("/signup");
+    }
+
+    Button_ContinueWithGoogle.onclick = async function() {
+        await Finflow.login("google");
+    }
+
+    // A. Inisialisasi saat halaman load
+    window.onload = async () => {
+        // Pasang Finflow ke Window biar global
+        window.Finflow = Finflow; 
+        
+        const user = await Finflow.init();
+        if (user) {
+            console.log("User sudah login:", user.email);
+            // Update UI header (Tampilkan foto profil, dll)
+        }
+    };
+
+    // B. Saat Tombol "Login Google" diklik
+    async function handleLoginBtn() {
+        const user = await Finflow.login();
+        alert("Welcome " + user.email);
+    }
+
+    // C. Saat Form Register disubmit
+    async function handleRegisterSubmit() {
+        const dataInput = {
+            fullName: document.getElementById("inputNama").value,
+            orgName: document.getElementById("inputOrg").value,
+            bankName: "BCA",
+            bankAccount: "123"
+        };
+
+        const result = await Finflow.registerFunder(dataInput);
+
+        if (result.success) {
+            window.location.href = "dashboard.html";
+        } else {
+            alert(result.message);
+        }
+    }
+</script>
