@@ -5,10 +5,6 @@
             {
                 "Model": "gemini-2.5-flash",
                 "Tools":  [
-                    { 
-                        "googleSearch": {}, 
-                        "urlContext": {} 
-                    },
                     {
                         "functionDeclarations": [
                             {

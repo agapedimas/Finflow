@@ -218,7 +218,7 @@ function Route(Server) {
           
           // 2. Panggil Gemini: Kirim userMessage di iterasi 0, lalu NULL di iterasi berikutnya
           // Catatan: Asumsi gemini/index.js sudah memvalidasi dan mengabaikan message=null/""
-          response = await Gemini.Chat.Send(userMessage, 1, history);
+          response = await Gemini.Chat.Send(userMessage, 0, history);
           
           // 3. Cek apakah Gemini meminta pemanggilan fungsi
           if (response.function_call && response.function_call.name) {
@@ -245,9 +245,11 @@ function Route(Server) {
                   funcResult = { success: false, message: "Fungsi RAG tidak ditemukan." };
               }
 
+              console.log(funcResult);
+
               // 7. Simpan Hasil Fungsi (functionResponse) ke history (Role: 'function')
               history.push({ 
-                  role: 'function', 
+                  role: 'model', 
                   parts: [{ 
                       functionResponse: { name: funcName, response: funcResult } 
                   }] 

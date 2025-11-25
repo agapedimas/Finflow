@@ -1,4 +1,4 @@
-const SQL = require("../index"); // SESUAIKAN PATH KE MODUL KONEKSI DATABASE ANDA
+const SQL = require("../sql"); // SESUAIKAN PATH KE MODUL KONEKSI DATABASE ANDA
 
 /**
  * Menganalisis total pengeluaran Student untuk bulan berjalan berdasarkan alokasi 
@@ -36,11 +36,11 @@ async function get_budget_compliance(studentId) {
             GROUP BY ac.allocation_type;
         `;
         
+        const result = await SQL.Query(query, [studentId, studentId, currentMonth, currentYear]);
         // Catatan: Pastikan urutan parameter sesuai dengan tanda tanya (?) di query.
-        const [results] = await SQL.Execute(query, [studentId, studentId, currentMonth, currentYear]); 
         
         // Mengembalikan hasil mentah (JSON) ke Gemini untuk dirangkum
-        return { success: true, analysis_period: `${currentYear}-${currentMonth}`, data: results }; 
+        return { success: result.success, analysis_period: `${currentYear}-${currentMonth}`, data: result.data }; 
 
     } catch (error) {
         console.error("Error in get_budget_compliance:", error);
@@ -95,10 +95,10 @@ async function get_top_spending_categories(studentId, timeFrame) {
             LIMIT 5;
         `;
 
-        const [results] = await SQL.Execute(query, [studentId]); 
+        const result = await SQL.Query(query, [studentId]);
         
         // Mengembalikan hasil mentah (JSON) ke Gemini
-        return { success: true, period: periodDescription, data: results }; 
+        return { success: result.success, period: periodDescription, data: result.data }; 
 
     } catch (error) {
         console.error("Error in get_top_spending_categories:", error);

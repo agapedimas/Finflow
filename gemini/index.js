@@ -285,7 +285,7 @@ const Chat = {
 
                     for (let content of candidate.content?.parts || [])
                     {
-                        if (content.text.startsWith("THINK"))
+                        if (!content.text || content.text.startsWith("THINK"))
                             continue;
 
                         text = text.trim() + "\n\n" + content.text.trim();
@@ -422,7 +422,7 @@ const Chat = {
             if (
                 history[history.length - 1].parts == null        || 
                 history[history.length - 1].parts.length == 0    ||
-                history[history.length - 1].parts[0].text.trim() == ""
+                history[history.length - 1].parts[0]?.text?.trim() == ""
             )
             {
                 history.pop();
