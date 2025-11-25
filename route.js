@@ -245,7 +245,7 @@ function Route(Server) {
 
   // Module 4: Transactions
   // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
-  Server.post("/api/scan/receipt", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
+  Server.post("/api/cashflow/transactions/uploadbill", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
 
   // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
   Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);

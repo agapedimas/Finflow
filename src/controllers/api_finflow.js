@@ -1,6 +1,32 @@
 const SQL = require("../../sql");
 const Authentication = require("../../authentication");
 const { ethers } = require("ethers");
+const fs = require("fs");
+const path = require("path");
+
+// [BARU] Helper: Simpan Buffer (dari req.files) ke File Fisik
+function saveBufferToTemp(buffer, mimetype) {
+    // 1. Tentukan ekstensi file (jpg/png)
+    const ext = mimetype.split('/')[1] || 'jpg';
+    
+    // 2. Buat nama file unik
+    const fileName = `scan_${Date.now()}.${ext}`;
+    const dirPath = path.join(__dirname, "../../temp");
+    const filePath = path.join(dirPath, fileName);
+
+    // Pastikan folder temp ada
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath);
+
+    // 3. Tulis buffer langsung ke disk (Cepat!)
+    fs.writeFileSync(filePath, buffer);
+
+    // Return format object untuk modul Gemini teman Anda
+    return {
+        path: filePath,
+        mimeType: mimetype,
+        name: fileName
+    };
+}
 
 // CONFIG BLOCKCHAIN
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
@@ -1080,27 +1106,54 @@ module.exports = {
 
     // A. SMART SCAN (OCR Service) - Auto fill Form
     // Frontend memanggil ini saat user upload foto di menu "Catat Pengeluaran"
-    // Outputnya hanya JSON data, BELUM disimpan ke database
     scanReceipt: async (req, res) => {
+        let tempFile = null;
         try {
-            const { image_url } = req.body;
-
-            if(!image_url) return error(res, "Image URL required", 400);
-
-            // AI LOGIC
-            // Simulasi Output AI (Supaya Frontend bisa demo)
-            // Di real implementation ini hasil return dari Gemini API
-            const aiExtractedData = {
-                amount: "150000",
-                merchant: "Warung Tegal Bahari",
-                date: new Date().toISOString().split('T')[0],
-                category_id: 1,
-                description: "Makan Siang Nasi Rames"
+            // [UPDATE] Cek apakah ada file yang diupload?
+            if (!req.files || !req.files.file) {
+                return error(res, "No file uploaded", 400);
             }
 
-            return success(res, aiExtractedData, "Scan Berhasil");
+            const uploadedFile = req.files.file; // Ini object file dari express-fileupload
+
+            // 1. Simpan Buffer ke Temp
+            console.log("[OCR] Processing uploaded file...");
+            tempFile = saveBufferToTemp(uploadedFile.data, uploadedFile.mimetype);
+            
+            // 2. Siapkan Prompt
+            const prompt = `
+                Analyze this receipt image. Extract data into strict JSON format:
+                {
+                    "merchant": "Store Name",
+                    "amount": Number (Total IDR),
+                    "date": "YYYY-MM-DD",
+                    "items_summary": "Short description",
+                    "category_id": Number (Guess: 1=Needs, 0=Wants, 2=Education)
+                }
+                Return ONLY JSON. No markdown.
+            `;
+
+            // 3. Panggil Modul Teman (Sama seperti sebelumnya)
+            const response = await GeminiModule.Chat.Send(prompt, 2, [], tempFile);
+
+            // 4. Hapus File Temp
+            try { fs.unlinkSync(tempFile.path); } catch(e){}
+
+            // 5. Parse Hasil
+            let resultData = {};
+            try {
+                const cleanText = response.text.replace(/```json|```/g, '').trim();
+                resultData = JSON.parse(cleanText);
+            } catch (parseError) {
+                resultData = { raw_text: response.text, merchant: "Manual Input Needed" };
+            }
+
+            return success(res, resultData, "Scan Berhasil");
+
         } catch (e) {
-            return error(res, "Gagal memindai struk");
+            if(tempFile) try { fs.unlinkSync(tempFile.path); } catch(err){}
+            console.error(e);
+            return error(res, "Gagal scan receipt");
         }
     },
 
