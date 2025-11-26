@@ -218,7 +218,7 @@ function Route(Server) {
           
           // 2. Panggil Gemini: Kirim userMessage di iterasi 0, lalu NULL di iterasi berikutnya
           // Catatan: Asumsi gemini/index.js sudah memvalidasi dan mengabaikan message=null/""
-          response = await Gemini.Chat.Send(userMessage, 1, history);
+          response = await Gemini.Chat.Send(userMessage, 0, history);
           
           // 3. Cek apakah Gemini meminta pemanggilan fungsi
           if (response.function_call && response.function_call.name) {
@@ -286,6 +286,28 @@ function Route(Server) {
   Server.post("/api/auth/invite/create", ApiFinflow.requireAuth, ApiFinflow.createInvite);
   Server.post("/api/auth/login", ApiFinflow.login);
   
+  // [UPDATE] Logout API
+    // Gunakan POST agar lebih aman (standar API)
+    Server.post("/api/auth/logout", async function (req, res) {
+        try {
+            if (req.session.account) {
+                // 1. Hapus dari Tabel Authentication (Database)
+                await Authentication.Remove(req.session.account);
+                
+                // 2. Hancurkan Cookie Session (Memory Server)
+                req.session.destroy((err) => {
+                    if (err) console.error("Session destroy error:", err);
+                });
+            }
+            
+            // 3. Kirim JSON Sukses (JANGAN REDIRECT DISINI)
+            res.json({ success: true, message: "Session destroyed" });
+
+        } catch (e) {
+            res.status(500).json({ success: false, message: "Logout error" });
+        }
+    });
+    
   // API FUNDING AGREEMENT
   Server.post("/api/funding/init", ApiFinflow.requireAuth, ApiFinflow.initiateFunding);
   Server.post("/api/funding/topup", ApiFinflow.requireAuth, ApiFinflow.parentTopup);

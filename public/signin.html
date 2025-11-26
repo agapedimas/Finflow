@@ -1,16 +1,21 @@
 <ad-title><$ signin title /></ad-title>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+<script src="/sdk.js"></script>
 
 <div class="panel" theme="light" accent="blue">
     <img src="/assets/logo_text.png"/>
     <div class="title"><$ signin title /></div>
     <div class="subtitle"><$ signin description /></div>
     <div class="inputs">
-        <input type="text" id="Input_Username" ad-text="<$ generic username />" name="username" autofocus/>
-        <input type="password" id="Input_Password" ad-text="<$ generic password />" name="password"/>
-        <span class="error"></span>
-        <button class="accent" id="Button_SignIn" disabled>
+        <span class="error" id="Text_Error" style="display:none;"></span>
+
+        <button class="accent" id="Button_SignIn">
             <div class="progressring"></div>
-            <span><$ signin title /></span>
+            <img class="icon" src="/assets/logo_google.webp" />
+            <span>Masuk dengan Google</span>
         </button>
         <div class="offersignup">
             <span><$ signin offer_signup_title /></span>
@@ -101,75 +106,96 @@
     $("nav").remove();
     $(".loading").hide();
 
-    Button_SignIn.onclick = SignIn;
+    // 1. Cek Status Login Saat Load
+    window.onload = async () => {
+        try {
+            // Init SDK
+            const user = await Finflow.init();
+            
+            if (user) {
+                console.log("User detected, verifying session...");
+                // Jika user refresh tapi masih login di Web3Auth, kita coba login ulang ke backend
+                // untuk memastikan role dan session cookie aktif
+                // handleBackendLogin();
+                const btn = document.getElementById("Button_SignIn");
+                if(btn) btn.querySelector("span").innerText = "Lanjutkan sebagai " + user.email;
+            }
+        } catch (e) {
+            console.error("Init Error:", e);
+        }
+    };
+
+    // 2. Handle Tombol Klik
+    const btnSignIn = document.getElementById("Button_SignIn");
     
-    Input_Username.oninput = InputCheck;
-    Input_Password.oninput = InputCheck;
+    btnSignIn.onclick = async function() {
+        // Efek Loading (Sesuai style asli)
+        $(".panel").addClass("loading");
+        $("#Text_Error").hide();
+        btnSignIn.disabled = true;
 
-    Input_Username.onkeydown = InputEnter;
-    Input_Password.onkeydown = InputEnter;
+        try {
+            // Panggil Login SDK (Popup Google)
+            // Fungsi ini otomatis memanggil backend /auth/login juga
+            const result = await Finflow.login();
+            
+            handleLoginSuccess(result);
 
-    function InputCheck()
-    {
-        if (Input_Username.value.trim() != "" && Input_Password.value.trim() != "")
-            Button_SignIn.disabled = false;
-        else
-            Button_SignIn.disabled = true;
-    }
-    function InputEnter(e)
-    {
-        if (e.key == "Enter")
-        {
-            if (this == Input_Username)
-                Input_Password.focus();
-            else if (this == Input_Password)
-                SignIn();
+        } catch (error) {
+            console.error(error);
+            showError(error.message || "Login dibatalkan atau gagal.");
+        }
+    };
+
+    // Helper: Memanggil Backend Login tanpa popup (untuk auto-login)
+    async function handleBackendLogin() {
+        try {
+            const result = await Finflow.backendLogin();
+            handleLoginSuccess(result);
+        } catch (e) {
+            // Jangan show error kalau auto-login gagal, biarkan user klik tombol manual
+            console.log("Auto-login failed, user must click button.");
         }
     }
 
-    function SignIn()
-    {
-        $(".panel").addClass("loading");
-        $(".panel .inputs .error").hide();
-        $(".panel .inputs input, .panel .inputs button").attr("disabled", "");
-        $.ajax
-        ({
-            url: "signin",
-            type: "POST",
-            data: 
-            { 
-                username: Input_Username.value, 
-                password: Input_Password.value
-            },
-            success: function()
-            {
-                window.location.replace("/client");
-            },
-            error: function(error)
-            {
-                $(".panel").removeClass("loading");
-                $(".panel .inputs input, .panel .inputs button").removeAttr("disabled");
-                
-                if (error.status == 401)
-                {
-                    $(".panel .inputs .error").html("<$ signin error_incorrect />");
-                }
-                else if (error.status == 0)
-                {
-                    $(".panel .inputs .error").html("<$ signin error_nointernet />");
-                }
-                else if (error.status >= 500 && error.status < 600)
-                {
-                    $(".panel .inputs .error").html("<$ signin error_server />");
-                }
-                else
-                {
-                    $(".panel .inputs .error").html("<$ signin error_generic />");
-                }
+    // Helper: Redirect sesuai Role
+    function handleLoginSuccess(result) {
+        // Reset Loading
+        $(".panel").removeClass("loading");
+        btnSignIn.disabled = false;
 
-                $(".panel .inputs .error").show();
-                Input_Username.focus();
+        console.log(result);
+
+        if (result && result.success) {
+            const role = result.data.role;
+            
+            if (role === 'student') {
+                window.location.href = "/client";
+            } else if (role === 'funder') {
+                window.location.href = "/client";
+            } else if (role === 'parent') {
+                // Asumsi ada halaman parent, atau arahkan ke dashboard umum
+                window.location.href = "/client"; 
+            } else {
+                // Fallback
+                window.location.href = "/client";
             }
-        })
+        } else {
+            // User login Google sukses, tapi belum daftar di Finflow
+            showError(result.message || "Akun tidak ditemukan. Silakan Daftar dulu.");
+        }
+    }
+
+    function showError(msg) {
+        $(".panel").removeClass("loading");
+        btnSignIn.disabled = false;
+        
+        const errEl = document.getElementById("Text_Error");
+        if(errEl) {
+            errEl.innerText = msg;
+            errEl.style.display = "block";
+        } else {
+            alert(msg);
+        }
     }
 </script>

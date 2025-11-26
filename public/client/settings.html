@@ -230,6 +230,12 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+<script src="/sdk.js"></script>
+
 <script>
     Select_Theme.value = localStorage.getItem("theme");
     Select_Theme.onchange = function () { Theme_Change(this.value) }
@@ -250,12 +256,14 @@
             Actions: [
                 { 
                     Title: "<$ settings signout />", Type: "Options.Critical", 
-                    Action: function()
+                    
+                    // [UBAH BAGIAN INI]
+                    Action: async function()
                     {
-                        return new Promise(function()
-                        {
-                            window.location.href = "/signout";
-                        });
+                        // Panggil Logout dari SDK (Bersihkan Google + Database + LocalStorage)
+                        // Pastikan Finflow.init() dipanggil dulu jika belum
+                        await Finflow.init(); 
+                        await Finflow.logout();
                     }
                 },
                 { 

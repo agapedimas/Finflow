@@ -1389,6 +1389,61 @@ module.exports = {
         } catch (e) { return error(res, "Gagal load notifikasi"); }
     },
 
+    // Halaman Home: Get Current Program Info
+    getCurrentProgram: async (req, res) => {
+        try {
+            // Ambil user dari session middleware
+            const user = req.currentUser;
+
+
+            // Query Funding Aktif (Yang sedang berjalan atau menunggu proses)
+            // Kita join dengan accounts untuk ambil nama Funder/Organisasi sebagai backup nama program
+            const q = `
+                SELECT f.funding_id, f.funder_id, f.program_name, f.end_date, f.status,
+                       a.organization_name, a.displayname
+                FROM funding f
+                JOIN accounts a ON f.funder_id = a.id
+                WHERE f.student_id = ? 
+                AND f.status IN ('Open_For_Parent', 'Waiting_Allocation', 'Ready_To_Fund', 'Partially_Funded', 'Active')
+                ORDER BY f.start_date DESC 
+                LIMIT 1
+            `;
+
+            const result = await SQL.Query(q, [user.id]);
+            const program = result.data?.[0];
+
+            // SKENARIO A: Belum Join Program Apapun
+            if (!program) {
+                return success(res, {
+                    isJoined: false,
+                    funderId: null,
+                    displayName: "Belum Terdaftar",
+                    activeUntil: null,
+                    status: "None"
+                });
+            }
+
+            // SKENARIO B: Sudah Join
+            // Logic Nama: Pakai program_name DB, kalau kosong pakai Nama Organisasi
+            const finalName = program.program_name || `Beasiswa ${program.organization_name || program.displayname}`;
+
+            // Format tanggal (YYYY-MM-DD)
+            const endDate = new Date(program.end_date).toISOString().split('T')[0];
+
+            return success(res, {
+                isJoined: true,
+                funderId: program.funder_id,
+                displayName: finalName,
+                activeUntil: endDate,
+                status: program.status // Tambahan info status (misal: Active)
+            }, "Data Program Ditemukan");
+            
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal mengambil info program");
+        }
+    },
+
 }
 
 // ============================================================
