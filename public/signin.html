@@ -164,15 +164,13 @@
         $(".panel").removeClass("loading");
         btnSignIn.disabled = false;
 
-        console.log(result);
-
         if (result && result.success) {
             const role = result.data.role;
             
             if (role === 'student') {
                 window.location.href = "/client";
             } else if (role === 'funder') {
-                window.location.href = "/client";
+                window.location.href = "/scholarshipfunder";
             } else if (role === 'parent') {
                 // Asumsi ada halaman parent, atau arahkan ke dashboard umum
                 window.location.href = "/client"; 

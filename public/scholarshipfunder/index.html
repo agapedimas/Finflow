@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Funder</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <script src="../sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #f0f4f8; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; max-width: 700px; margin-left: auto; margin-right: auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { font-size: 1.5em; margin: 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.9em; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        .btn-submit { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; }
+        .alert { padding: 10px; margin-top: 10px; border-radius: 5px; }
+        .alert.error { background: #ffdddd; color: #cc0000; }
+        .alert.success { background: #ddffdd; color: #008000; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="FunderWelcome">Selamat Datang, Funder!</h1>
+        <button onclick="Finflow.logout()" class="btn-submit" style="background: #dc3545;">Logout</button>
+    </div>
+
+    <div class="card" id="Card_CreateProgram">
+        <h2>1. Buat Program Beasiswa Baru</h2>
+        <form id="formProgram">
+            <div class="form-group">
+                <label>Nama Program:</label>
+                <input type="text" id="programName" required value="Beasiswa Semester Genap 2025">
+            </div>
+            <div class="form-group">
+                <label>Email Mahasiswa Target (Sudah daftar):</label>
+                <input type="email" id="studentEmail" required value="budi@student.com">
+            </div>
+            <div class="form-group">
+                <label>Total Dana 1 Periode (Rp):</label>
+                <input type="number" id="totalAmount" required value="6000000">
+            </div>
+            <div class="form-group">
+                <label>Tanggal Mulai:</label>
+                <input type="date" id="startDate" required value="2025-01-01">
+            </div>
+            <div class="form-group">
+                <label>Tanggal Selesai:</label>
+                <input type="date" id="endDate" required value="2025-06-30">
+            </div>
+            <button type="submit" class="btn-submit">Inisiasi Program (Buat Janji)</button>
+            <div id="statusProgram" class="alert hidden"></div>
+        </form>
+    </div>
+
+    <div class="card" id="Card_Invite">
+        <h2>2. Undang Mahasiswa Baru (Jika belum ada akun)</h2>
+        <form id="formInvite">
+            <div class="form-group">
+                <label>Email Mahasiswa:</label>
+                <input type="email" id="inviteEmail" required placeholder="email_baru@student.com">
+            </div>
+            <button type="submit" class="btn-submit" style="background: #28a745;">Buat Link Aktivasi</button>
+            <div id="statusInvite" class="alert hidden"></div>
+        </form>
+    </div>
+
+    <script>
+        $.ajaxSetup({
+            xhrFields: { withCredentials: true },
+            crossDomain: true
+        });
+
+        $(document).ready(async function() {
+            // Cek Status Login
+            const user = await Finflow.init();
+            
+            /*
+            if (!user || user.role !== 'funder') {
+                alert("Akses ditolak. Silakan login sebagai Funder.");
+                window.location.replace("/signin.html");
+                return;
+            }  */
+            
+            // Tampilkan Nama User
+            document.getElementById("FunderWelcome").innerText = `Selamat Datang, ${user.name}!`;
+
+            // --- FUNGSI 1: INITIATE FUNDING ---
+            $("#formProgram").submit(async function(e) {
+                e.preventDefault();
+                const btn = $(this).find('button');
+                btn.prop('disabled', true).text('Memproses...');
+                $('#statusProgram').removeClass('alert-success alert-error').hide();
+
+                const payload = {
+                    student_email: $('#studentEmail').val(),
+                    total_amount: $('#totalAmount').val(),
+                    start_date: $('#startDate').val(),
+                    end_date: $('#endDate').val(),
+                    program_name: $('#programName').val()
+                };
+
+                const result = await Finflow.initiateFunding(payload);
+
+                if (result.success) {
+                    $('#statusProgram').addClass('alert-success').html(`✅ Program Berhasil Dibuat! Status: <b>${result.data.status}</b>`).show();
+                } else {
+                    $('#statusProgram').addClass('alert-error').html(`❌ Gagal: ${result.message}`).show();
+                }
+                
+                btn.prop('disabled', false).text('Inisiasi Program (Buat Janji)');
+            });
+
+            // --- FUNGSI 2: CREATE INVITE ---
+            $("#formInvite").submit(async function(e) {
+                e.preventDefault();
+                const btn = $(this).find('button');
+                btn.prop('disabled', true).text('Memproses...');
+                $('#statusInvite').removeClass('alert-success alert-error').hide();
+                
+                const email = $('#inviteEmail').val();
+                
+                const result = await Finflow.createInvite(email, 'student');
+
+                if (result.success) {
+                    $('#statusInvite').addClass('alert-success').html(`✅ Link Dibuat! Token: <code>${result.data.token}</code><br><b>Kirim link ini:</b> <a href="${result.data.link}">${result.data.link}</a>`).show();
+                } else {
+                    $('#statusInvite').addClass('alert-error').html(`❌ Gagal: ${result.message}`).show();
+                }
+                
+                btn.prop('disabled', false).text('Buat Link Aktivasi');
+            });
+
+        });
+    </script>
+</body>
+</html>

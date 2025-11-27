@@ -116,7 +116,11 @@
                 justify-self: center;
             }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
+<script src="../sdk.js"></script>
 <script>
     $(".titlebar").remove();
     $("nav").remove();
@@ -139,7 +143,13 @@
             // Redirect balik ke login dengan membawa token agar tidak hilang
             window.location.replace("/web3auth/index.html?type=student&token=" + inviteToken);
         } else {
-            document.getElementById("Input_Email").value = user.email;
+            const emailField = document.getElementById("Input_Email");
+            if(emailField) {
+                emailField.value = user.email;
+            
+                emailField.dispatchEvent(new Event('input', { bubbles: true }));
+                emailField.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         }
     };
 

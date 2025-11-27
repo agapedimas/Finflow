@@ -100,17 +100,17 @@ const DUMMY_FEEDBACK = {
 const DUMMY_CATEGORIES = [
     {
         "id": "0",
-        "name": "Education",
-        "balance": 2500000 
+        "name": "Wants",
+        "balance": 2500000
     },
     {
         "id": "1",
-        "name": "Wants",
+        "name": "Needs",
         "balance": 500000 
     },
     {
         "id": "2",
-        "name": "Needs",
+        "name": "Education",
         "balance": 400000 
     }
 ]

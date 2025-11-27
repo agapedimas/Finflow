@@ -95,6 +95,9 @@
   const funderType = urlParams.get("type");
   const inviteToken = urlParams.get("token");
 
+  console.log(funderType);
+  console.log(inviteToken);
+
   // 2. Update Judul Sesuai Peran
   if (funderType == "student") {
     document.getElementById("Text_SignUpTitle").innerText = "Aktivasi Mahasiswa";
@@ -121,7 +124,7 @@
   window.onload = async () => {
     // Pastikan SDK sudah dimuat
     if (typeof Finflow === "undefined") {
-      alert("Error: File SDK tidak ditemukan. Cek path /js/finflow-sdk.js");
+      alert("Error: File SDK tidak ditemukan. Cek path /sdk.js");
       return;
     }
 
@@ -137,11 +140,11 @@
   function handleRedirect(user) {
     // Arahkan ke form pendaftaran yang sesuai
     if (funderType === "student") {
-      window.location.href = "/signup/student.html?token=" + inviteToken;
+      window.location.href = "/signup/student?token=" + inviteToken;
     } else if (funderType === "parent") {
-      window.location.href = "/signup/parent.html?token=" + inviteToken;
+      window.location.href = "/signup/parent?token=" + inviteToken;
     } else if (funderType === "scholarshipfunder") {
-      window.location.href = "/signup/funder.html";
+      window.location.href = "/signup/funder";
     } else {
       // Kalau login biasa, masuk dashboard
       window.location.href = "/client";

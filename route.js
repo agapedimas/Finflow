@@ -5,7 +5,7 @@ const Accounts = require("./accounts");
 const Functions = require("./functions");
 const Language = require("./language");
 const FileIO = require("fs");
-const Gemini = require("./gemini");
+const GeminiModule = require("./gemini");
 const ApiFinflow = require("./src/controllers/api_finflow");
 
 const RAGService = require("./services/ragService"); // <<< BARIS BARU: Import file yang berisi implementasi get_budget_compliance dkk.
@@ -307,7 +307,7 @@ function Route(Server) {
             res.status(500).json({ success: false, message: "Logout error" });
         }
     });
-    
+
   // API FUNDING AGREEMENT
   Server.post("/api/funding/init", ApiFinflow.requireAuth, ApiFinflow.initiateFunding);
   Server.post("/api/funding/topup", ApiFinflow.requireAuth, ApiFinflow.parentTopup);
@@ -325,13 +325,12 @@ function Route(Server) {
   // API MONITORING FUNDER
   Server.get("/api/monitoring/funder", ApiFinflow.requireAuth, ApiFinflow.getFunderMonitoring);
 
-  // Module 4: Transactions
-  // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
-  Server.post("/api/cashflow/transactions/uploadbill", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
 
   // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
-  Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
-
+  Server.post("/api/cashflow/transactions", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
+  Server.get("/api/cashflow/transactions/years", ApiFinflow.requireAuth, ApiFinflow.getTransactionYears);
+  Server.post("/api/cashflow/transactions/uploadbill", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
+  
   // API MONEY MANAGEMENT DASHBOARD
   Server.get("/api/student/insights", ApiFinflow.requireAuth, ApiFinflow.getInsights);
   Server.get("/api/student/report", ApiFinflow.requireAuth, ApiFinflow.getWeeklyReport);
@@ -340,6 +339,38 @@ function Route(Server) {
   Server.get("/api/notifications/unread", ApiFinflow.requireAuth, ApiFinflow.getUnreadNotifications);
   Server.get("/api/notifications/history", ApiFinflow.requireAuth, ApiFinflow.getNotificationHistory);
 
+
+  // ============================================================
+  // MODULE: CASHFLOW UI ADAPTERS (Cocok dengan cashflow.html)
+  // ============================================================
+
+  // 1. Kartu Saldo (Wallet Card)
+  // Frontend call: $.get("/api/wallet")
+  Server.get("/api/wallet", ApiFinflow.requireAuth, ApiFinflow.getWalletData);
+
+  // 2. Grafik Batang (Expenses Chart)
+  // Frontend call: $.get("/api/expenses")
+  Server.get("/api/expenses", ApiFinflow.requireAuth, ApiFinflow.getExpensesData);
+
+  // 3. AI Feedback (Feedback Card)
+  // Frontend call: $.get("/api/cashflow/feedback")
+  Server.get("/api/cashflow/feedback", ApiFinflow.requireAuth, ApiFinflow.getFeedbackData);
+
+  // 4. Dropdown Kategori
+  // Frontend call: $.get("/api/categories")
+  Server.get("/api/categories", ApiFinflow.requireAuth, ApiFinflow.getCategories);
+
+  // 5. List Transaksi Bulanan
+  // Frontend call: $.get("/api/transactions?month=...&year=...")
+  // Kita gunakan fungsi history yang sudah ada, tapi URL-nya disesuaikan
+  Server.get("/api/transactions", ApiFinflow.requireAuth, ApiFinflow.getTransactionHistory);
+  // Server.get("/api/transactions/history", ...); // (Opsional: Simpan yang lama jika ada halaman lain yg pakai)
+
+  // 6. Fitur Tambah Transaksi (Scan & Manual)
+  // Frontend call: POST /api/scan/receipt & POST /api/transaction/add
+  // (Ini SEHARUSNYA sudah ada dari modul sebelumnya, pastikan tidak terhapus)
+  Server.post("/api/scan/receipt", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
+  Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
   Map(Server);
 }
 

@@ -1,81 +1,135 @@
-<ad-title><$ signup title /></ad-title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finflow - Sign Up</title>
 
-<div class="panel" theme="light" accent="blue">
-    <img src="/assets/logo_text.png"/>
-    <div class="title"><$ signup title /></div>
-    <div class="subtitle"><$ signup description_role /></div>
-    <div class="inputs">
-        <button id="Button_SignUp_Student" goto="/signup/web3auth?type=student"><$ signup role_student /></button>
-        <button id="Button_SignUp_Parent" goto="/signup/web3auth?type=parent"><$ signup role_parent /></button>
-        <button id="Button_SignUp_ScholarshipFunder" goto="/signup/web3auth?type=scholarshipfunder"><$ signup role_scholarshipfunder /></button>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-        <div class="offersignin">
-            <span><$ signup offer_signin_title /></span>
-            <a class="link" id="Button_SignIn" goto="/signin">
-                <span><$ signup offer_signin_link /></span>
-            </a>
+    <script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+    <script src="../sdk.js"></script>
+</head>
+<body>
+
+    <ad-title><$ signup title /></ad-title>
+
+    <div class="panel" theme="light" accent="blue">
+        <img src="/assets/logo_text.png"/>
+        <div class="title"><$ signup title /></div>
+        <div class="subtitle"><$ signup description_role /></div>
+        
+        <div class="inputs">
+            <button id="Button_SignUp_Student" onclick="window.location.href='signup/web3auth/index.html?type=student'">
+                <$ signup role_student />
+            </button>
+            
+            <button id="Button_SignUp_Parent" onclick="window.location.href='signup/web3auth/index.html?type=parent'">
+                <$ signup role_parent />
+            </button>
+            
+            <button id="Button_SignUp_ScholarshipFunder" onclick="window.location.href='signup/web3auth/index.html?type=scholarshipfunder'">
+                <$ signup role_scholarshipfunder />
+            </button>
+
+            <div class="offersignin">
+                <span><$ signup offer_signin_title /></span>
+                <a class="link" id="Button_SignIn" href="/signin.html">
+                    <span><$ signup offer_signin_link /></span>
+                </a>
+            </div>
         </div>
     </div>
-</div>
 
-<style>
-    .root
-    {
-        background: linear-gradient(125deg, #0a84ff, #0067ce);
-    }
-    .panel
-    {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        display: grid;
-        grid-auto-flow: row;
-        transform: translate(-50%, -50%);
-        background: var(--gray-6);
-        padding: 33px 30px;
-        border-radius: 25px;
-        border: 1px solid var(--overlay-6);
-        gap: 0.3em;
-        width: 350px;
-        box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);    
-        max-height: calc(100vh - var(--padding));
-        max-height: calc(100dvh - var(--padding));
-        overflow: auto;
-    }
-        .panel img
-        {
+    <style>
+        .root {
+            background: linear-gradient(125deg, #0a84ff, #0067ce);
+        }
+        .panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            display: grid;
+            grid-auto-flow: row;
+            transform: translate(-50%, -50%);
+            background: var(--gray-6);
+            padding: 33px 30px;
+            border-radius: 25px;
+            border: 1px solid var(--overlay-6);
+            gap: 0.3em;
+            width: 350px;
+            box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);    
+            max-height: calc(100vh - var(--padding));
+            max-height: calc(100dvh - var(--padding));
+            overflow: auto;
+        }
+        .panel img {
             height: 1.55em;
         }
-        .panel .title
-        {
+        .panel .title {
             font-size: 1.75em;
             font-family: var(--font-bold);
             margin: 0.25em 0 0;
         }
-        .panel .subtitle
-        {
+        .panel .subtitle {
             font-size: 1.25em;
             margin: 0 0 1em;
         }
-        .panel .inputs
-        {
+        .panel .inputs {
             display: grid;
             gap: 7px;
         }
-            .panel .inputs button
-            {
-                padding: 0.6em 0.8em;
-                border-radius: 10px;
-            }
-            .panel .inputs .offersignin
-            {
-                margin-top: 1em;
-                justify-self: center;
-            }
-</style>
+        .panel .inputs button {
+            padding: 0.6em 0.8em;
+            border-radius: 10px;
+            cursor: pointer; /* Tambahan UX */
+        }
+        .panel .inputs .offersignin {
+            margin-top: 1em;
+            justify-self: center;
+        }
+        /* Tambahan agar link terlihat bisa diklik */
+        .link { cursor: pointer; color: blue; text-decoration: underline; }
+    </style>
 
-<script>
-    $(".titlebar").remove();
-    $("nav").remove();
-    $(".loading").hide();
-</script>
+    <script>
+        // Setup jQuery AJAX agar Cookie terbawa (PENTING untuk Session Backend)
+        $.ajaxSetup({
+            xhrFields: { withCredentials: true },
+            crossDomain: true
+        });
+
+        // UI Cleanup Template
+        $(".titlebar").remove();
+        $("nav").remove();
+        $(".loading").hide();
+
+        // --- LOGIC AUTO-REDIRECT ---
+        // Jika user sudah login, jangan tampilkan menu signup, langsung lempar ke dashboard
+        window.onload = async () => {
+            try {
+                if(typeof Finflow === 'undefined') return;
+
+                const user = await Finflow.init();
+                if (user) {
+                    console.log("User sudah login, redirecting...");
+                    // Cek Role user untuk redirect yang tepat
+                    // Kita bisa panggil backendLogin untuk dapet role fresh
+                    const loginRes = await Finflow.backendLogin(user);
+                    if(loginRes.success) {
+                        const role = loginRes.data.role;
+                        if(role === 'student') window.location.href = "/student.html";
+                        else if(role === 'funder') window.location.href = "/funder.html";
+                        else window.location.href = "/client";
+                    }
+                }
+            } catch (e) {
+                console.log("Belum login / Init error:", e);
+            }
+        };
+    </script>
+</body>
+</html>

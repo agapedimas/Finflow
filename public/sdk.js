@@ -141,6 +141,16 @@ const Finflow = {
       password: "dummy_password",
     });
   },
+
+  createInvite: async (targetEmail, role) => {
+        // Kita tidak perlu panggil _getUserInfo() di sini, karena backend sudah tahu
+        // siapa yang login lewat Session Cookie.
+        
+        return await _post('/auth/invite/create', {
+            invitee_email: targetEmail,
+            role_target: role // 'student' or 'parent'
+        });
+    },
 };
 
 // --- HELPERS ---
@@ -155,7 +165,7 @@ async function _getUserInfo() {
 
 async function _post(endpoint, body) {
   try {
-    return await $.post(CONFIG.BACKEND_URL + endpoint, body);
+    // return await $.post(CONFIG.BACKEND_URL + endpoint, body);
     // const res = await fetch(CONFIG.BACKEND_URL + endpoint, {
     //   method: "POST",
     //   headers: { "Content-Type": "application/json" },
@@ -164,6 +174,15 @@ async function _post(endpoint, body) {
     // });
     // console.log(res.body);
     // return await res.json();
+    const response = await $.ajax({
+            url: CONFIG.BACKEND_URL + endpoint,
+            type: "POST",
+            data: body, // JANGAN di-JSON.stringify
+            // contentType: Biarkan default, jangan di-set json
+            dataType: "json",
+            xhrFields: { withCredentials: true }
+        });
+    return response;
   } catch (e) {
     console.error(e);
     return { success: false, message: "Gagal koneksi ke server backend" };
