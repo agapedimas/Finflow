@@ -13,10 +13,9 @@ CREATE TABLE IF NOT EXISTS `accounts`
     `bank_name` VARCHAR(50) NULL,
     `bank_account_number` VARCHAR(50) NULL,
 
-    
     PRIMARY KEY (`id`), 
     UNIQUE KEY `username` (`username`),
-    UNIQUE KEY `email` (`email`),
+    UNIQUE KEY `email` (`email`)
 ) 
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
