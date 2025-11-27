@@ -6,7 +6,7 @@ const Functions = require("./functions");
 const Template = require("./template");
 const Language = require("./language");
 const Route = require("./route");
-const Gemini = require("./gemini");
+const GeminiService = require("./gemini");
 
 const Express = require("express");
 const Server = Express();
@@ -15,6 +15,15 @@ const MySQLStore = require("express-mysql-session")(Session);
 const BodyParser = require("body-parser");
 const FileUpload = require("express-fileupload");
 
+/*
+const Cors = require("cors"); // Pastikan sudah npm install cors
+
+// Taruh ini TEPAT setelah inisialisasi Server = Express()
+Server.use(Cors({
+    origin: true, // Boleh diakses dari mana saja (Frontend Testing)
+    credentials: true
+})); */
+
 Configure();
 
 async function Configure()
@@ -22,7 +31,7 @@ async function Configure()
 	await SQL.Initialize();
     await Template.Initialize();
 	await Language.Initialize();
-	await Gemini.Initialize();
+	await GeminiService.Initialize();
 	
     const Session_Store = new MySQLStore(SQL.Configuration);
     

@@ -1,5 +1,36 @@
 // DUMMIES
 
+// api/notifications/history
+const DUMMY_NOTIFICATIONS = [
+    {
+        "id": "1",
+        // "studentId": "student_01",  -> yg ini gaperlu ya
+        "title": "Uang Masuk 💸",
+        "message": "Drip mingguan Rp 750.000 berhasil dicairkan.",
+        "isRead": false,
+        "type": "success" || "warning", // tolong di lowercase aja, ikutin konvensi js
+        "createdAt": 1763798016000 // timestamp sql '2025-11-22 14:53:36' tolong diubah jadi UNIX timestamp, pake `new Date("2025-11-22 14:53:36") * 1` aja
+    },
+    {
+        "id": "2",
+        // "studentId": "student_01",  -> yg ini gaperlu ya
+        "title": "Uang Keluar Lagi Jir 💸",
+        "message": "Drip mingguan Rp 2.750.000 berhasil dipinjolkan.",
+        "isRead": true,
+        "type": "warning", // tolong di lowercase aja, ikutin konvensi js
+        "createdAt": 1763193216000 // timestamp sql '2025-11-22 14:53:36' tolong diubah jadi UNIX timestamp, pake `new Date("2025-11-22 14:53:36") * 1` aja
+    },
+    {
+        "id": "3",
+        // "studentId": "student_01",  -> yg ini gaperlu ya
+        "title": "Uang Keluar Lagi Jir 3 💸",
+        "message": "Drip mingguan Rp 2.350.000 berhasil dicairkan.",
+        "isRead": true,
+        "type": "success", // tolong di lowercase aja, ikutin konvensi js
+        "createdAt": 1763193216000 // timestamp sql '2025-11-22 14:53:36' tolong diubah jadi UNIX timestamp, pake `new Date("2025-11-22 14:53:36") * 1` aja
+    }
+]
+
 const DUMMY_CURRENTPROGRAM = {
     "isJoined": true,
     "funderId": "fund1",
@@ -86,38 +117,55 @@ const DUMMY_CATEGORIES = [
 
 const DUMMY_YEARS = [2024, 2025]
 
+// api/transactions/?month=...&year=...
 const DUMMY_MONTHLY_REPORT = [
     {
-        "id": "ggasfakjfha",
-        "timestamp": 1763139600000,
-        "isExpenses": true,
-        "name": "Pembayaran Biaya SKS",
-        "price": 1500000,
+        "id": "tx_budi_edu",
+        //"studentId": student_01 -> ini gausah ya
+        "transactionDate": 1763139600000, // timestamp sql '2025-11-22 14:53:36' tolong diubah jadi UNIX timestamp, pake `new Date("2025-11-22 14:53:36") * 1` aja
+        "type": "expense" || "income" || "dripIn", // penulisan kapital ikutin konvensi js aja
+        "rawDescription": "Beli Buku Coding",
+        "isVerifiedByAI": true,
+        "isUrgentWithdrawal": false,
+        "urgencyReason": null,
+        "amount": 150000.00,
         "categoryId": "0"
     },
     {
-        "id": "aksfhawi2",
-        "timestamp": 1763053200000,
-        "isExpenses": false,
-        "name": "Income from Parent",
-        "price": 2000000,
+        "id": "tx_budi_in",
+        //"studentId": student_01 -> ini gausah ya
+        "transactionDate": 1763139600000, // timestamp sql '2025-11-22 14:53:36' tolong diubah jadi UNIX timestamp, pake `new Date("2025-11-22 14:53:36") * 1` aja
+        "type": "dripIn", // penulisan kapital ikutin konvensi js aja
+        "rawDescription": "Minggu 1: Needs + Wants",
+        "isVerifiedByAI": true,
+        "isUrgentWithdrawal": false,
+        "urgencyReason": null,
+        "amount": 750000.00,
         "categoryId": null
     },
     {
-        "id": "smfnamsa2",
-        "timestamp": 1763053200000,
-        "isExpenses": true,
-        "name": "Ayam Goreng",
-        "price": 12500,
-        "categoryId": "2"
+        "id": "tx_budi_out1",
+        //"studentId": student_01 -> ini gausah ya
+        "transactionDate": 1763119600000, // timestamp sql '2025-11-22 14:53:36' tolong diubah jadi UNIX timestamp, pake `new Date("2025-11-22 14:53:36") * 1` aja
+        "type": "expense", // penulisan kapital ikutin konvensi js aja
+        "rawDescription": "Makan Siang Warteg",
+        "isVerifiedByAI": false,
+        "isUrgentWithdrawal": false,
+        "urgencyReason": null,
+        "amount": 25000.00,
+        "categoryId": "1"
     },
     {
-        "id": "ashjjasd",
-        "timestamp": 1762880400000,
-        "isExpenses": true,
-        "name": "Bawang",
-        "price": 25000,
-        "categoryId": "2"
+        "id": "tx_siti_urgent",
+        //"studentId": student_02 -> ini gausah ya
+        "transactionDate": 1762139600000, // timestamp sql '2025-11-22 14:53:36' tolong diubah jadi UNIX timestamp, pake `new Date("2025-11-22 14:53:36") * 1` aja
+        "type": "dripIn", // penulisan kapital ikutin konvensi js aja
+        "rawDescription": "Dana Darurat: Sakit Gigi",
+        "isVerifiedByAI": true,
+        "isUrgentWithdrawal": true,
+        "urgencyReason": "Sakit gigi butuh ke dokter segera",
+        "amount": 500000.00,
+        "categoryId": "1"
     }
 ]
 
@@ -129,7 +177,7 @@ const DUMMY_MONTHLY_PLAN = {
         {
             "id": "ggasfakjfha",
             "name": "Bawang",
-            "price": 15000,
+            "amount": 15000,
             "quantity": 2,
             "status": "pending",
             "feedback": null,
@@ -138,7 +186,7 @@ const DUMMY_MONTHLY_PLAN = {
         {
             "id": "ggasfakjfha",
             "name": "Makan siang",
-            "price": 25000,
+            "amount": 25000,
             "quantity": 20,
             "status": "approved",
             "feedback": "Sangat bagus untuk kebutuhan sehari-hari",
@@ -147,7 +195,7 @@ const DUMMY_MONTHLY_PLAN = {
         {
             "id": "ggasfakjfha",
             "name": "Bayar SKS",
-            "price": 150000,
+            "amount": 150000,
             "quantity": 1,
             "status": "rejected",
             "feedback": "Harga melebihi 50% total budget bulanan kamu.",

@@ -2,10 +2,12 @@ const isProduction = (process.env.NODE_ENV == "production");
 const Variables = 
 {
     Production: isProduction,
-	Version: "1.0.1",
+	Version: "1.1.9",
 
 	AppIcon: "/assets/icon_logo.ico",
 	AppTitle: "Finflow",
+	AppTitle_Parents: "Finflow for Parents",
+	AppTitle_ScholarshipFunder: "Finflow for Scholarship Funder",
 
 	AppThumbnail: "",
 	AppAssets: "https://assets.agapedimas.com",

@@ -128,6 +128,7 @@
     mask-image: url("https://assets.agapedimas.com/ui/v3/cutouts/bubble-left.svg");
     mask-repeat: no-repeat;
     mask-position: right;
+    z-index: -1;
   }
   .messages .message.sent {
     position: relative;
@@ -148,15 +149,82 @@
     mask-image: url("https://assets.agapedimas.com/ui/v3/cutouts/bubble-right.svg");
     mask-repeat: no-repeat;
     mask-position: left;
+    z-index: -1;
   }
   .messages .message.active:not(:has(> .text > a:active)) {
     transform: scale(0.97);
     opacity: 0.8;
   }
   .messages .message .text {
-    user-select: text;
+    display: grid;
+    user-select: text;    
+    gap: 0.5em;
+
+    *
+    {
+        user-select: text;
+    }
+
+    img
+    {
+        max-width: 100%;
+    }
+
+    ul, ol
+    {
+        display: grid;
+        grid-auto-rows: max-content;
+        padding-inline-start: 1em;
+        gap: 0.5em;
+        
+        li
+        {
+            margin: 0;
+        }
+    }
+    table
+    {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        margin: 0 -70px;
+        padding: 0 70px;
+        border-collapse: collapse;
+        scrollbar-width: none;
+
+        th, td
+        {
+            border: 1px solid var(--foreground-page);
+            padding: 0.15em 0.5em;
+            width: max-content;
+        }
+    }
+    th
+    {
+        background: var(--gray-5);
+    }
+
+    pre:has(code)
+    {
+        display: block;
+        overflow: auto;
+        background: var(--gray-6);
+        border-radius: 10px;
+        padding: 1em;
+        scrollbar-width: thin;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: 0.8em;
+        line-height: 1.2;
+    }
+
+    > *,
+    > *:not(mjx-container) > *
+    {
+      margin: 0;
+    }
   }
-  .messages .message.sent .text::selection,
+  .messages .message.sent .text *::selection,
   .messages .message.sent .link::selection {
     background: white;
     color: var(--accent);
@@ -191,6 +259,8 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/marked@16.1.1/lib/marked.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked-more-lists/lib/index.umd.js"></script>
 <script>
   fetchHistory();
   Input_Message.focus();
@@ -214,7 +284,7 @@
     Input_Message.style.setProperty("--lines", lines || 1);
     Input_Message.style.height = "";
 
-    if (Input_Message.value.trim() == "") {
+    if (Input_Message.value.trim() == "" || Grid_Messages.classList.contains("typing")) {
       Button_SendMessage.disabled = true;
     } else {
       Button_SendMessage.disabled = false;
@@ -244,9 +314,9 @@
     if (data.author == "user") message.classList.add("sent");
     else message.classList.add("received");
 
-    let text = document.createElement("span");
+    let text = document.createElement("div");
     text.classList.add("text");
-    text.append(data.content);
+    text.innerHTML = marked.parse(data.content.trim());
 
     message.data = data;
     message.append(text);
@@ -289,16 +359,16 @@
   }
 
   async function sendMessage() {
-    Input_Message.disabled = true;
+    Input_Message.focus();
     Button_SendMessage.disabled = true;
 
     try {
       const message = Input_Message.value.trim();
       const userData = { time: Date.now(), author: "user", id: Date.now(), content: message };
       appendMessage(userData);
+      Grid_Messages.classList.add("typing");
       toLatestMessage(true);
       Input_Message.value = "";
-      Grid_Messages.classList.add("typing");
 
       const modelResponse = await $.post("/client/assistant/send", { message: message });
       const modelData = { time: Date.now(), author: "model", id: Date.now(), content: modelResponse.trim() };
@@ -313,8 +383,6 @@
       console.error(error);
     }
 
-    Input_Message.disabled = false;
-    Input_Message.focus();
     checkInput();
   }
 

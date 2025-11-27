@@ -5,9 +5,9 @@
     <div class="title"><$ signup title /></div>
     <div class="subtitle"><$ signup description_role /></div>
     <div class="inputs">
-        <button id="Button_SignUp_Student" goto="/signup/student"><$ signup role_student /></button>
-        <button id="Button_SignUp_Parent" goto="/signup/funder?type=parent"><$ signup role_parent /></button>
-        <button id="Button_SignUp_ScholarshipFunder" goto="/signup/funder?type=scholarshipfunder"><$ signup role_scholarshipfunder /></button>
+        <button id="Button_SignUp_Student" goto="/signup/web3auth?type=student"><$ signup role_student /></button>
+        <button id="Button_SignUp_Parent" goto="/signup/web3auth?type=parent"><$ signup role_parent /></button>
+        <button id="Button_SignUp_ScholarshipFunder" goto="/signup/web3auth?type=scholarshipfunder"><$ signup role_scholarshipfunder /></button>
 
         <div class="offersignin">
             <span><$ signup offer_signin_title /></span>
@@ -55,7 +55,7 @@
         .panel .subtitle
         {
             font-size: 1.25em;
-            margin: 0 0 25px;
+            margin: 0 0 1em;
         }
         .panel .inputs
         {
