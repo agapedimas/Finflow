@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS `transactions` (
     `transaction_id` VARCHAR(128) PRIMARY KEY NOT NULL,
     `student_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     `transaction_date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `amount` DECIMAL(10, 2) NOT NULL,
+    `amount` DECIMAL(15, 2) NOT NULL,
     
     -- [FIXED] Tambah tipe Drip_In
     `type` ENUM('Income', 'Expense', 'Drip_In') NOT NULL,

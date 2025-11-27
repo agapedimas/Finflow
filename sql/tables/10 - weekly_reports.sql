@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `weekly_reports` (
     
     -- Hasil Analisa
     `health_status` ENUM('Excellent', 'Good', 'Warning') NOT NULL,
-    `ai_message` TEXT NOT NULL, -- Isi surat cintanya
+    `ai_message` TEXT NOT NULL, 
     
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`student_id`) REFERENCES `accounts`(`id`) ON DELETE CASCADE

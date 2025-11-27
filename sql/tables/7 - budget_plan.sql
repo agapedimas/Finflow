@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS `budget_plan` (
     
     `item_name` VARCHAR(255) NOT NULL,
     `category_id` INT UNSIGNED NOT NULL,
-    `amount` DECIMAL(10, 2) NOT NULL,
+    `amount` DECIMAL(15, 2) NOT NULL,
     `quantity` INT UNSIGNED NOT NULL,
     
     `month` INT UNSIGNED NOT NULL, 

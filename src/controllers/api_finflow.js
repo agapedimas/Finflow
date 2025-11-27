@@ -277,44 +277,6 @@ module.exports = {
         }
     },
 
-    registerParent: async (req, res) => {
-        try {
-            const { email, wallet_address, full_name, invite_token } = req.body;
-
-            const iRes = await SQL.Query("SELECT * FROM invitations WHERE token = ? AND status = 'pending'", [invite_token]);
-            const invite = iRes.data?.[0];
-
-            if(!invite) return error(res, "Token Invalid / Kadaluarsa", 400);
-
-            // SECURITY: Cek Email Match
-            if(email !== invite.invitee_email) {
-                return error(res, `Email login tidak sesuai undangan!`, 403);
-            }
-
-            const newId = generateId('parent');
-            const username = email.split('@')[0];
-            const dummyPass = "WALLET_LOGIN_" + Date.now();
-
-            // Buat Akun Parent
-            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, 'Parent', NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, phonenumber]);
-
-            await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 1)", [newId]);
-
-            // LINK PARENT - STUDENT (invite.inviter_id adalah student)
-            await SQL.Query("UPDATE accounts SET parent_id = ? WHERE id = ?", [newId, invite.inviter_id]);
-            
-            // Matikan Token
-            await SQL.Query("UPDATE invitations SET status = 'used' WHERE id = ?", [invite.id]);
-
-            const sessionId = await Authentication.Add(newId, req.ip, true);
-            if(req.session) { req.session.account = sessionId; req.session.is_privy = true; }
-
-            return success(res, { id: newId, role: 'parent' }, "Akun Parent Aktif");
-        } catch (e) {
-            return error(res, "Gagal Aktivasi Parent");
-        }
-    },
 
     login: async (req, res) => {
         try {
