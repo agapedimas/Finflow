@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS `accounts`
     `email` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `wallet_address` varchar(255) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NULL,
     `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, 
+    `role` ENUM('Student', 'Parent', 'ScholarshipFunder') NOT NULL,
     `avatarversion` int UNSIGNED NOT NULL DEFAULT 1,
         PRIMARY KEY (`id`), 
         UNIQUE KEY `username` (`username`),
@@ -217,13 +218,19 @@ INSERT IGNORE INTO `allocation_categories` (id, category_name, allocation_type) 
 (300, 'Course Online', 'Education');
 
 -- 4.2 ACCOUNTS
--- (Tidak ada perubahan)
-INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created) VALUES
-('funder-12345', 'funder.a', 'Bapak Funder', 'password_hash_funder', '08111234567', 'funder.a@mail.com', '2025-01-01 00:00:00');
+-- Funder A: ID funder-12345
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created, role) VALUES
+('funder-12345', 'funder.a', 'Bapak Funder', 'password_hash_funder', '08111234567', 'funder.a@mail.com', '2025-01-01 00:00:00', 'ScholarshipFunder');
 INSERT INTO accounts_funder (id, type) VALUES ('funder-12345', 1);
-INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created) VALUES
-('student-54321', 'student.b', 'Budi Santoso', 'password_hash_student', '08123456789', 'student.b@mail.com', '2025-01-01 00:00:00');
-INSERT INTO accounts_student (id, balance) VALUES ('student-54321', 1000000.00); 
+
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created, role) VALUES
+('parent-12345', 'parent.a', 'Bapak Parent', 'password_hash_parent', '08111234567', 'parent.a@mail.com', '2025-01-01 00:00:00', 'Parent');
+INSERT INTO accounts_funder (id, type) VALUES ('parent-12345', 1);
+
+-- Student B: ID student-54321 (Student utama yang akan diuji)
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created, role) VALUES
+('student-54321', 'student.b', 'Budi Santoso', 'password_hash_student', '08123456789', 'student.b@mail.com', '2025-01-01 00:00:00', 'Student');
+INSERT INTO accounts_student (id, balance) VALUES ('student-54321', 1000000.00); -- Saldo Awal
 
 -- 4.3 FUNDING dan FUNDING_ALLOCATION
 -- PERUBAHAN KRUSIAL: Status diubah dari 'Completed' menjadi 'Active'
