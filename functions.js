@@ -108,10 +108,10 @@ const Functions =
 				"<!DOCTYPE html>" +
 					"<html " + Template.Data.Configuration + ">" +
 						"<head>" +
-							(type == "client" ? Template.Data.Head_Client : Template.Data.Head) +
+							(type == "client" || type == "parent" || type == "scholarshipfunder" ? Template.Data.Head_Client : Template.Data.Head) +
 						"</head>" +
 						"<body>" +
-							(type == "client" ? Template.Data.Body_Client : Template.Data.Body) +
+							(type == "client" || type == "parent" || type == "scholarshipfunder" ? Template.Data.Body_Client : Template.Data.Body) +
 							Template.Data.Title +
 						"</body>" +
 					"</html>";
@@ -127,11 +127,11 @@ const Functions =
 		body = 
 			body
 				.replace("<#? content ?#>", content)
-				.replace("<#? navigation ?#>", (type == "client" ? Template.Data.Navigation_Client : Template.Data.Navigation))
+				.replace("<#? navigation ?#>", (type == "parent" || type == "scholarshipfunder" ? Template.Data.Navigation_Funder : (type == "client" ? Template.Data.Navigation_Client : Template.Data.Navigation)))
 				.replace("<#? appsettings ?#>", Template.Data.Settings)
 				.replaceAll("<#? applang ?#>", language)
 				.replaceAll("<#? apptitle ?#>", Variables.AppTitle)
-				.replaceAll("<#? apptitleadmin ?#>", Variables.AppTitleAdmin)
+				.replaceAll("<#? apptitleclient ?#>", type == "parent" ? Variables.AppTitle_Parents : type == "scholarshipfunder" ? Variables.AppTitle_ScholarshipFunder : Variables.AppTitle)
 				.replaceAll("<#? appicon ?#>", Variables.AppIcon)
 				.replaceAll("<#? appassets ?#>", Variables.AppAssets)
 				.replaceAll("<#? apphomepage ?#>", Variables.WebHomepage)

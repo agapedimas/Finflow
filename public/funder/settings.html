@@ -1,0 +1,331 @@
+<ad-title><$ settings title /></ad-title>
+
+<div class="header">
+    <div class="title"><$ settings title /></div>
+</div>
+
+<style>
+    html:not([theme=dark]) .root .main
+    {
+        background: var(--gray-6);
+    }
+    .list
+    {
+        max-width: 800px;
+    }
+    #Settings_Account
+    {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 8em auto;
+        margin: 0 0 2em;
+        align-items: center;
+        gap: 1.5em;
+    }
+        #Settings_Account .avatar
+        {
+            position: relative;
+            border-radius: 100%;
+            overflow: hidden;
+        }
+        #Settings_Account .avatar.loading
+        {
+            pointer-events: none;
+        }
+            #Settings_Account .avatar::before
+            {
+                content: "\edfc";
+                position: absolute;
+                bottom: 0;
+                display: grid;
+                font-family: var(--font-icon);
+                font-size: 1.3em;
+                width: 100%;
+                height: 35px;
+                background: #00000080;
+                color: white;
+                align-items: center;
+                justify-content: center;
+                transition: 0.5s var(--key-animation) transform;
+                transform: translateY(100%);
+                z-index: 1;
+            }
+            #Settings_Account .avatar:not(.loading):hover::before
+            {
+                transform: translateY(0);
+            }
+            #Settings_Account .avatar img
+            {
+                display: block;
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                transition: 0.1s filter;
+            }
+            #Settings_Account .avatar:hover img
+            {
+                filter: var(--filter-accent-plain-hover);
+            }
+            #Settings_Account .avatar:active img
+            {
+                filter: var(--filter-accent-plain-active);
+            }
+            #Settings_Account .avatar.loading img
+            {
+                filter: brightness(0.3);
+            }
+            #Settings_Account .avatar .progressring
+            {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                width: 30px;
+                transform: translate(-50%, -50%);
+                display: none;
+                z-index: 1;
+            }
+            #Settings_Account .avatar.loading .progressring
+            {
+                display: block;
+            }
+        #Settings_Account .details
+        {
+            display: block;
+        }
+            #Settings_Account .details .name
+            {    
+                font-size: 1.5em;
+                font-family: var(--font-semibold);
+            }
+            #Settings_Account .details .description
+            {    
+                font-size: 1.5em;
+                font-family: var(--font-semibold);
+                color: var(--foreground-description);
+            }
+            #Settings_Account .details button
+            {
+                margin: 1em 0 0;
+            }
+
+    #List_Accounts .stack img
+    {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 100%;
+    }
+    #List_Accounts .stack .details
+    {
+        display: grid;
+    }
+        #List_Accounts .stack .details .role
+        {
+            color: var(--foreground-description);
+        }
+        
+    #PopOver_AddAccount .list > .stack
+    {
+        grid-auto-columns: 95px auto;
+    }
+        #PopOver_AddAccount .list > .stack > span:first-child 
+        {
+            font-family: var(--font-semibold);
+        }
+        #PopOver_AddAccount .list > .stack > textarea
+        {
+            field-sizing: content;
+        }
+        #PopOver_AddAccount .list > .stack *:has(select)
+        {
+            text-align: left;
+        }
+            #PopOver_AddAccount .list > .stack select
+            {
+                width: 100%;
+            }
+</style>
+
+<div class="content">
+    <div id="Settings_Account">
+        <div class="avatar" id="Grid_Avatar" ad-tooltip="<$ accounts avatar_change />">
+            <div class="progressring"></div>
+            <img id="Image_Avatar" src="/avatar/<#? activeuser.id ?#>?v=<#? activeuser.avatarversion ?#>"/>
+        </div>
+        <div class="details">
+            <div class="name"><#? activeuser.displayname ?#></div>
+            <div class="description">@<#? activeuser.username ?#></div>
+            <button id="Button_SignOut" class="critical plain"><$ settings signout /></button>
+        </div>
+    </div> 
+    <div class="list" ad-header="<$ settings appearance />" ad-footer="">
+        <div class="stack">
+            <div><$ settings theme /></div>
+            <select class="plain" name="theme" id="Select_Theme">
+                <option value="system"><$ settings theme_system /></option>
+                <option value="light"><$ settings theme_light /></option>
+                <option value="dark"><$ settings theme_dark /></option>
+            </select>
+        </div>
+        <div class="stack">
+            <div><$ settings language /></div>
+            <select class="plain" name="language" id="Select_Language">
+                <option value="en">English</option>
+                <option value="id">Bahasa Indonesia</option>
+                <option value="kr">Korean (한국어)</option>
+                <option value="jp">Japanese (日本語)</option>
+            </select>
+        </div>
+    </div>
+    <div class="list" ad-header="<$ settings about_app />" ad-footer="">
+        <div class="stack">
+            <div><$ settings git_repository /></div>
+            <button class="plain" goto="https://github.com/agapedimas/finflow" ad-type="newtab">
+                <span>agapedimas/finflow</span>
+                <span class="icon">&#xebad;</span>
+            </button>
+        </div>
+        <div class="stack">
+            <div><$ settings version /></div>
+            <div style="opacity: 0.6"><#? appversion ?#></div>
+        </div>
+        <div class="stack vertical">
+            <div><$ settings copyright /></div>
+            <div style="opacity: 0.6;">© 2025 ℭ℟Åℤ¥༒ℭ𝔒𝔇℥℟. <$ settings copyright_text /></div>
+        </div>
+    </div>
+</div>
+
+<div class="popover" id="PopOver_AddAccount">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelAdd"><$ generic cancel /></button>
+                <button id="Button_SubmitAdd"><$ generic create /></button>
+            </div>
+            <div class="title"><$ accounts create_account_title /></div>
+        </div>
+        <div class="content">
+            <div class="list">
+                <div class="stack">
+                    <span><$ generic username /></span>
+                    <input type="text" class="plain" id="Input_Username" placeholder="<$ generic username_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ generic nickname /></span>
+                    <input type="text" class="plain" id="Input_Nickname" placeholder="<$ generic nickname_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ generic url /></span>
+                    <input type="text" class="plain" id="Input_URL" placeholder="<$ generic url_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ generic role /></span>
+                    <select class="plain" id="Select_Role"></select>
+                </div>
+                <div class="stack">
+                    <span><$ generic password /></span>
+                    <input type="text" class="plain" id="Input_Password" placeholder="<$ generic password_placeholder />"/>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    Select_Theme.value = localStorage.getItem("theme");
+    Select_Theme.onchange = function () { Theme_Change(this.value) }
+    Button_SignOut.onclick = SignOut;
+
+    function Theme_Change(theme)
+    {
+        localStorage.setItem("theme", theme);
+        CheckTheme();
+    }
+
+    function SignOut()
+    {
+        Components.ActionSheet.Open(
+        {
+            Title: "<$ settings signout_confirm_title />",
+            Description: "<$ settings signout_confirm_message />",
+            Actions: [
+                { 
+                    Title: "<$ settings signout />", Type: "Options.Critical", 
+                    Action: function()
+                    {
+                        return new Promise(function()
+                        {
+                            window.location.href = "/signout";
+                        });
+                    }
+                },
+                { 
+                    Title: "<$ generic cancel />", Type: "Footer"
+                }
+            ]
+        });     
+    }
+    
+    Select_Language.value = document.documentElement.lang;
+    Select_Language.onchange = async function()
+    {
+        await $.post("/language/", { language: this.value });
+        window.location.reload();
+    }
+
+    Grid_Avatar.onclick = function()
+    {
+        const file = document.createElement("input");
+        file.type = "file";
+        file.accept = ".png, .jpg, .jpeg, .webp";
+        file.click();
+
+        file.oninput = function()
+        {
+            file.oninput = null;
+            const files = Array.from(this.files);
+            this.value = null;
+
+            if (files.length == 0)
+                return;
+
+            if (files[0].size > 2000000)
+                return Components.Notification.Send({ Id: "avatar_failed", Title: "<$ accounts avatar_upload_error_title />", Message: "<$ accounts avatar_upload_error_message />", Icon: "\ufe64", Buttons: [{Text: "<$ generic dismiss />"}] });
+                
+            const form = new FormData();
+            form.append("file", files[0]);
+
+            Image_Avatar.parentNode.classList.add("loading");
+
+            $.ajax({
+                type: "post",
+                url: "/accounts/setavatar",
+                data: form,
+                contentType: false,
+                processData: false,
+                success: async function()
+                {
+                    const url = "/avatar/<#? activeuser.id ?#>?cache=false&time=" + Date.now();
+
+                    const avatars = document.querySelectorAll("img[src^='/avatar/<#? activeuser.id ?#>']");
+                    for (const avatar of avatars)
+                    {
+                        avatar.src = url;
+                        avatar.onload = function()
+                        {
+                            Components.Notification.Remove({ Id: "avatar_failed" });
+                            Components.Notification.Send({ Id: "avatar_success", Title: "<$ accounts avatar_upload_success_title />", Message: "<$ accounts avatar_upload_success_message />", Icon: "\uf873"});
+                            
+                            if (avatar == Image_Avatar)
+                                Image_Avatar.parentNode.classList.remove("loading");   
+                        };
+                    }
+                },
+                error: function(error)
+                {               
+                    Components.Notification.Send({ Id: "avatar_failed", Title: "<$ accounts avatar_upload_error_title />", Message: error.responseText || "<$ settings error_generic />", Icon: "\ufe64", Buttons: [{Text: "<$ generic dismiss />"}] });
+                    Image_Avatar.parentNode.classList.remove("loading");    
+                }
+            });
+        }
+    }
+</script>
