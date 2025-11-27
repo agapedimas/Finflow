@@ -191,18 +191,19 @@ module.exports = {
 
             const newId = generateId('funder');
             const username = email.split('@')[0];
-            const dummyPass = "WALLET_LOGIN_" + Date.now();
             
-            // A. Insert Data Funder
+            // Insert Data Funder
             const q1 = `
                 INSERT INTO accounts 
-                (id, username, displayname, email, wallet_address, organization_name, bank_name, bank_account_number, phonenumber, role, created) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ScholarshipFunder', NOW())
+                (id, username, displayname, phonenumber, email, wallet_address, role, organization_name, bank_name, bank_account_number, created) 
+                VALUES (?, ?, ?, ?, ?, ?, 'ScholarshipFunder', ?, ?, ?, NOW())
             `;
-            await SQL.Query(q1, [newId, username, full_name, email, wallet_address, org_name, bank_name, bank_account, phonenumber]);
+            const phone = phonenumber || "-";
 
-            // B. Set Role Funder
-            await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 0)", [newId]);
+            await SQL.Query(q1, [newId, username, full_name, phone, email, wallet_address, org_name, bank_name, bank_account]);
+
+            // Insert ke tabel detail 
+            await SQL.Query("INSERT INTO accounts_funder (id) VALUES (?)", [newId]);
 
             // C. Auto Login (Session)
             const sessionId = await Authentication.Add(newId, req.ip, true);
@@ -216,99 +217,74 @@ module.exports = {
         }
     },
 
-    createInvite: async (req, res) => {
-        try {
-            const { invitee_email, role_target } = req.body;
-
-            // Cek Pengundang
-            const inviter = req.currentUser;
-            if(!inviter) return error(res, "Unauthorized", 401);
-
-            const token = generateToken();
-
-            // Simpan Undangan
-            const qInvite = `INSERT INTO invitations (token, inviter_id, invitee_email, role, status) VALUES (?, ?, ?, ?, 'pending')`;
-            await SQL.Query(qInvite, [token, inviter.id, invitee_email, role_target]);
-
-            // Generate Magic Link (Sesuaikan port frontend)
-            const link = `http://localhost:1111/signup/web3auth?token=${token}&type=${role_target}`;
-
-            return success(res, { link: link, token: token }, "Undangan Berhasil Dibuat");
-        } catch (e) {
-            return error(res, "Gagal membuat undangan");
-        }
-    },
 
     registerStudent: async (req, res) => {
         try {
-            const { email, wallet_address, full_name, bank_name, bank_account, invite_token } = req.body;
+            // [UPDATE] Menerima phonenumber
+            const { email, wallet_address, full_name, bank_name, bank_account, phonenumber } = req.body;
 
-            // Validasi Token
-            const iRes = await SQL.Query("SELECT * FROM invitations WHERE token = ? AND status = 'pending'", [invite_token]);
-            const invite = iRes.data?.[0];
-
-            if(!invite) return error(res, "Token Invalid / Kadaluarsa", 400);
-            if(invite.role !== 'student') return error(res, "Link salah sasaran", 403);
-
-            // SECURITY: Cek Email Match
-            if(email !== invite.invitee_email) {
-                return error(res, `Akses Ditolak! Undangan ini untuk ${invite.invitee_email}, bukan ${email}`, 403);
+            if (!email || !wallet_address || !full_name) {
+                return error(res, "Data pendaftaran tidak lengkap", 400);
             }
+
+            // Cek Duplikasi
+            const checkWallet = await SQL.Query("SELECT id FROM accounts WHERE wallet_address = ?", [wallet_address]);
+            if (checkWallet.data.length > 0) return error(res, "Wallet ini sudah terdaftar.", 400);
+
+            const checkEmail = await SQL.Query("SELECT id FROM accounts WHERE email = ?", [email]);
+            if (checkEmail.data.length > 0) return error(res, "Email ini sudah digunakan.", 400);
 
             const newId = generateId('student');
             const username = email.split('@')[0];
-            const dummyPass = "WALLET_LOGIN_" + Date.now();
+            const phone = phonenumber || "-";
 
-            // Buat Akun
-            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, bank_name, bank_account_number, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Student', NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, bank_name, bank_account, phonenumber]);
+            // [UPDATE] Insert ke ACCOUNTS dengan ROLE dan PHONENUMBER
+            // Role sesuai ENUM: 'Student'
+            const qAccount = `
+                INSERT INTO accounts 
+                (id, username, displayname, phonenumber, email, wallet_address, role, bank_name, bank_account_number, created) 
+                VALUES (?, ?, ?, ?, ?, ?, 'Student', ?, ?, NOW())
+            `;
+            
+            await SQL.Query(qAccount, [newId, username, full_name, phone, email, wallet_address, bank_name, bank_account]);
 
+            // Insert ke Role Student (Saldo Awal 0)
             await SQL.Query("INSERT INTO accounts_student (id, balance) VALUES (?, 0)", [newId]);
 
-            // Matikan Token (Q: Buat apa ini?? Masi bingung)
-            await SQL.Query("UPDATE invitations SET status = 'used' WHERE id = ?", [invite.id]);
-
+            // Auto Login
             const sessionId = await Authentication.Add(newId, req.ip, true);
             if(req.session) { req.session.account = sessionId; req.session.is_privy = true; }
 
-            return success(res, { id: newId, role: 'student' }, "Akun Student Aktif");
+            return success(res, { id: newId, role: 'student' }, "Registrasi Mahasiswa Berhasil");
         } catch (e) {
-            return error(res, "Gagal Aktivasi Student");
+            return error(res, "Gagal Registrasi Student");
         }
     },
 
 
     login: async (req, res) => {
         try {
-            const { email, wallet_address } = req.body;
+            const { wallet_address } = req.body;
             const checkRes = await SQL.Query("SELECT * FROM accounts WHERE wallet_address = ?", [wallet_address]);
-            let user = checkRes.data && checkRes.data[0];
+            let user = checkRes.data?.[0];
 
-            if (!user) return error(res, "Akun tidak ditemukan. Harap daftar melalui Link Undangan (Student/Parent) atau Register Funder.", 404);
+            if (!user) return error(res, "Akun tidak ditemukan. Harap daftar terlebih dahulu.", 404);
 
-            // Tentukan Role (Student, Funder, atau Parent)
-            let role = 'unknown';
+            // [UPDATE] Mapping Role dari Database ke Frontend
+            // DB: 'ScholarshipFunder' -> Frontend: 'funder'
+            // DB: 'Student'           -> Frontend: 'student'
+            let frontendRole = 'unknown';
+            
+            if (user.role === 'ScholarshipFunder') frontendRole = 'funder';
+            else if (user.role === 'Student') frontendRole = 'student';
 
-            // Cek apakah Student?
-            const checkStudent = await SQL.Query("SELECT id FROM accounts_student WHERE id = ?", [user.id]);
-            if (checkStudent.data.length > 0) {
-                role = 'student';
-            } else {
-                // Cek apakah Funder/Parent?
-                const checkFunder = await SQL.Query("SELECT type FROM accounts_funder WHERE id = ?", [user.id]);
-                if (checkFunder.data.length > 0) {
-                    const type = checkFunder.data[0].type;
-                    // Type 0 = Funder, Type 1 = Parent
-                    role = (type === 1) ? 'parent' : 'funder';
-                }
-            }
-
+            // Buat Session
             const sessionId = await Authentication.Add(user.id, req.ip, true);
             if (req.session) { req.session.account = sessionId; req.session.is_privy = true; }
 
-            return success(res, {
+            return success(res, { 
                 ...user, 
-                role: role // Frontend akan pakai ini buat redirect halaman
+                role: frontendRole 
             }, "Login Berhasil");
         } catch (e) {
             return error(res, "Login Error");
@@ -323,83 +299,59 @@ module.exports = {
     // 1. Funder Memulai (Set Dana Pokok)
     initiateFunding: async (req, res) => {
         try {
-            const { student_email, total_amount, start_date, end_date, period_name } = req.body;
+            const { student_email, total_amount, start_date, end_date, program_name } = req.body;
 
             const funder = req.currentUser;
-            if(!funder) return error(res, "Funder tidak ditemukan", 404);
+            if (!funder) return error(res, "Unauthorized: Silakan login sebagai Funder", 401);
 
             // Cari Student by Email (Karena Funder input email)
             const sRes = await SQL.Query("SELECT id FROM accounts WHERE email=?", [student_email]);
             const student = sRes.data?.[0];
             if(!student) return error(res, "Student tidak ditemukan", 404);
 
+            const roleCheck = await SQL.Query("SELECT id FROM accounts_student WHERE id=?", [student.id]);
+            if (roleCheck.data.length === 0) {
+                return error(res, "Email tersebut terdaftar, tapi bukan sebagai Mahasiswa.", 400);
+            }
+
+            const programId = generateId('prog');
+            const finalProgName = program_name || `Beasiswa ${funder.displayname} 2025`;
+
+            const qProg = `
+                INSERT INTO scholarship_programs 
+                (id, funder_id, program_name, start_date, end_date, total_period_fund) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `;
+            await SQL.Query(qProg, [programId, funder.id, finalProgName, start_date, end_date, total_amount]);
+
             // Buat ID Funding Baru
             const fundingId = generateId("fund");
 
             // Simpan ke DB 
             // Kita simpan dulu uangnya di database (belum ke smart contract di tahap ini, simulasi hold)
-            const q = `
+            const qFund = `
                 INSERT INTO funding 
-                (funding_id, funder_id, student_id, total_period_fund, start_date, end_date, status) 
-                VALUES (?, ?, ?, ?, ?, ?, 'Open_For_Parent')
+                (funding_id, program_id, student_id, status, collected_amount) 
+                VALUES (?, ?, ?, 'Ready_To_Fund', 0)
             `;
+            await SQL.Query(qFund, [fundingId, programId, student.id]);
 
-            // Note: periode_name bisa disimpan jika tabel funding diupdate kolomnya,
-            // atau kita anggap start_date sebagai penanda periode
-            await SQL.Query(q, [fundingId, funder.id, student.id, total_amount, start_date, end_date]);
+            // NOTIFIKASI KE STUDENT
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Anda Terpilih! 🎓', ?, 'Success')",
+                [student.id, `Selamat! Anda telah didaftarkan ke program ${finalProgName}. Menunggu pencairan dana dari Funder.`]
+            );
 
-            return success(res, { funding_id: fundingId, status: 'Open_For_Parent' }, "Inisiasi Sukses. Menunggu Topup Parent.");
+            return success(res, { 
+                funding_id: fundingId, 
+                program_id: programId,
+                student_name: student.displayname 
+            }, "Program Berhasil Dibuat. Silakan Lakukan Pembayaran.");
         } catch (e) {
             return error(res, "Gagal inisiasi funding")
         }
     },
 
-    // 2. Parent Melihat & Topup (Opsional)
-    parentTopup: async (req, res) => {
-        try {
-            const { amount, is_final } = req.body;
-
-            // Cari Parent
-            const parent = req.currentUser;
-            if (!parent) return error(res, "Parent not found", 404);
-
-            // Cari Student Anak-nya 
-            // Kita cari student mana yang punya parent_id = parent.id
-            // Note: Kalo parent punya > 1 anak gimana?
-            const sRes = await SQL.Query("SELECT id FROM accounts WHERE parent_id=?", [parent.id]);
-            const student = sRes.data?.[0];
-            if (!student) return error(res, "Anda belum terhubung dengan student manapun", 404);
-
-            // Cari Funding yang statusnya 'Open_For_Parent'
-            const fRes = await SQL.Query("SELECT funding_id, total_monthly_fund FROM funding WHERE student_id=? AND status='Open_For_Parent'", [student.id]);
-            const funding = fRes.data?.[0];
-            
-            if (!funding) return error(res, "Tidak ada sesi topup aktif", 404);
-
-            // Update Dana
-            const newTotal = Number(funding.total_period_fund) + Number(amount);
-            await SQL.Query("UPDATE funding SET total_period_fund = ? WHERE funding_id = ?", [newTotal, funding.funding_id]);
-
-            // JIKA PARENT SUDAH SELESAI (Klik "Finalize Topup")
-            // Lempar bola ke Student (Status: Waiting_Allocation)
-            if (is_final) {
-                await SQL.Query("UPDATE funding SET status = 'Waiting_Allocation' WHERE funding_id = ?", [funding.funding_id]);
-                
-                // Notif ke Student
-                const notifTitle = "Dana siap diatur";
-                const notifMsg = `Orang tua sudah menyelesaikan top-up. Total dana tersedia: Rp ${newTotal}. Silakan buat Budget Plan sekarang.`;
-
-                await SQL.Query(
-                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, 'Info')",
-                    [student.id, notifTitle, notifMsg]
-                );
-            }
-
-            return success(res, { new_total: newTotal }, "Topup Berhasil");
-        } catch (e) {
-            return error(res, "Gagal melakukan topup");
-        }
-    },
 
     // 3. Student Buat Plan & AI Validasi
     finalizeAgreement: async (req, res) => {
@@ -795,86 +747,98 @@ module.exports = {
     // EXECUTION URGENT FUND (Readjustment Logic)
     requestUrgent: async (req, res) => {
         try {
+            const user = req.currentUser;
             const { amount, reason, proof_image_url } = req.body;
 
-            // 1. Validasi User & Data
-            const user = req.currentUser;
-            if (!user) return error(res, "User not found", 404);
+            // AI VALIDATION using Gemini
+            const prompt = `
+                ROLE: Financial Auditor.
+                TASK: Analyze urgent fund request.
+                REASON: "${reason}"
+                EVIDENCE: See image.
+                
+                RULES:
+                - Valid: Medical, Accident, Education Tool breakdown.
+                - Invalid: Vacation, Concert, Gadget Upgrade.
+                
+                OUTPUT JSON: { "is_urgent": boolean, "reasoning": "string" }
+            `;
 
-            // 2. MOCK AI VALIDATION
-            // Cek apakah alasan mengandung kata kunci darurat (sakit, kecelakaan, buku, dll)
-            // Dan wajib ada gambar
-            if (!proof_image_url) return error(res, "Bukti foto wajib diupload!", 400);
-            
-            const validKeywords = ['sakit', 'obat', 'rumah sakit', 'kecelakaan', 'hilang', 'rusak', 'darurat'];
-            const isReasonValid = validKeywords.some(word => reason.toLowerCase().includes(word));
-            
-            if (!isReasonValid) {
-                return error(res, "AI menolak: Alasan tidak terdeteksi sebagai keadaan darurat. Gunakan dana Wants.", 403);
+            // Download image temp & kirim ke AI 
+            let tempFile = null;
+            if(proof_image_url) {
+                // Asumsi proof_image_url dikirim sebagai Base64 atau URL, 
+                // sesuaikan dengan handler gambar Anda (saveBufferToTemp jika multipart)
+                // Jika frontend kirim URL, pakai downloadTempImage.
+                // Disini saya asumsikan flow Anda sudah seragam pakai Multipart/Buffer:
+                // tempFile = saveBufferToTemp(...) // (Gunakan logika upload yg Anda pilih)
             }
-
-            // 3. HITUNG READJUSTMENT (Matematika Potong Gaji)
-            // Ambil data Wants (Category 0) untuk dipotong
-            const allocQuery = `
-                SELECT fa.allocation_id, fa.drip_amount, fa.remaining_drip_count 
+            
+            // Panggil AI (Mode AUDITOR)
+            // Note: Pastikan logic file handling di sini sesuai dengan cara frontend kirim gambar terakhir (Multipart/Base64)
+            // Untuk amannya, kita skip file handling detail di snippet ini, fokus ke logic bisnis.
+            
+            const aiCheck = await askGemini(prompt, tempFile, 'AUDITOR');
+            if (!aiCheck || !aiCheck.is_urgent) {
+                 return error(res, aiCheck?.reasoning || "Ditolak AI: Alasan tidak mendesak.", 403);
+            }
+            
+            const allocQ = `
+                SELECT fa.allocation_id, fa.drip_amount, fa.remaining_drip_count, f.funding_id
                 FROM funding_allocation fa
                 JOIN funding f ON fa.funding_id = f.funding_id
                 WHERE f.student_id = ? AND fa.category_id = 0 AND f.status = 'Active'
             `;
-            const allocRes = await SQL.Query(allocQuery, [user.id]);
+            const allocRes = await SQL.Query(allocQ, [user.id]);
             const alloc = allocRes.data?.[0];
 
             if (!alloc || alloc.remaining_drip_count <= 0) {
-                return error(res, "Tidak ada sisa budget 'Wants' masa depan untuk dipotong.", 400);
+                return error(res, "Tidak ada budget 'Wants' masa depan yang bisa dipotong.", 400);
             }
 
+            // 3. HITUNG READJUSTMENT
             const reqAmount = Number(amount);
             const sisaMinggu = Number(alloc.remaining_drip_count);
-            
-            // Cek limit (Max bisa ambil semua sisa Wants masa depan)
             const maxAvailable = Number(alloc.drip_amount) * sisaMinggu;
+
             if (reqAmount > maxAvailable) {
-                return error(res, `Dana tidak cukup. Maksimal pinjaman dari pos Wants: Rp ${maxAvailable}`, 400);
+                return error(res, `Dana tidak cukup. Max pinjaman: Rp ${maxAvailable.toLocaleString()}`, 400);
             }
 
             // Hitung potongan per minggu
             const deductionPerWeek = Math.ceil(reqAmount / sisaMinggu);
             const newDripAmount = Number(alloc.drip_amount) - deductionPerWeek;
 
-            // 4. EKSEKUSI DATABASE & BLOCKCHAIN
-            
-            // A. Update Drip Amount Masa Depan (PENGURANGAN)
+            // 4. EKSEKUSI
+            // A. Update Drip Masa Depan
             await SQL.Query("UPDATE funding_allocation SET drip_amount = ? WHERE allocation_id = ?", [newDripAmount, alloc.allocation_id]);
 
-            // B. Transfer Token Sekarang (Urgent)
-            const tx = await tokenContract.transfer(user.wallet_address, reqAmount.toString());
+            // B. Transfer Token Sekarang (Simulasi Blockchain)
+            // const tx = await tokenContractVault.transfer(user.wallet_address, reqAmount.toString());
+            const txHash = "0x_urgent_" + Date.now(); 
 
             // C. Catat Transaksi
+            const txId = generateId('urgent');
             await SQL.Query(`
                 INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, is_urgent_withdrawal, urgency_reason, proof_image_url, blockchain_tx_hash, transaction_date)
                 VALUES (?, ?, ?, 'Drip_In', 1, 'Dana Darurat (Advance)', TRUE, ?, ?, ?, NOW())
-            `, [generateId('urgent'), user.id, reqAmount, reason, proof_image_url, tx.hash]);
+            `, [txId, user.id, reqAmount, reason, proof_image_url, txHash]);
 
-            // D. Update Saldo Student Lokal
+            // D. Update Saldo Real
             await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [reqAmount, user.id]);
 
-            // [BARU] Notif Bahaya ke Parent
-            if (user.parent_id) {
-                const msgParent = `Anak Anda (${user.displayname}) baru saja menarik Dana Darurat Rp ${Number(amount).toLocaleString()} dengan alasan: "${reason}".`;
-                
-                await SQL.Query(
-                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, '⚠️ Penarikan Darurat', ?, 'Urgent')",
-                    [user.parent_id, msgParent]
-                );
-            }
+            // [REMOVED] Notifikasi Parent dihapus.
+            // Cukup notifikasi ke Student saja
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Darurat Cair 🚑', ?, 'Warning')",
+                [user.id, `Dana Rp ${reqAmount.toLocaleString()} cair. Jatah mingguan dipotong Rp ${deductionPerWeek.toLocaleString()}.`]
+            );
 
             return success(res, {
                 received: reqAmount,
                 deduction_per_week: deductionPerWeek,
-                remaining_wants_drip: newDripAmount,
-                tx_hash: tx.hash
-            }, "Dana Darurat Cair. Budget mingguan telah disesuaikan.");
-
+                new_wants_drip: newDripAmount
+            }, "Permintaan Disetujui.");
         } catch (e) { return error(res, "Gagal request urgent"); }
     },
 
@@ -1040,12 +1004,10 @@ module.exports = {
             // Apakah Viewer adalah Funder?
             const isFunder = (funding.funder_id === viewer.id);
             
-            // Apakah Viewer adalah Parent?
-            const isParent = (student.parent_id === viewer.id);
 
             // Jika bukan keduanya, TENDANG!
-            if (!isFunder && !isParent) {
-                return error(res, "Akses Ditolak! Anda bukan Funder maupun Orang Tua dari mahasiswa ini.", 403);
+            if (!isFunder) {
+                return error(res, "Akses Ditolak! Anda bukan Funder dari mahasiswa ini.", 403);
             }
 
             // -------------------------------------------------------

@@ -318,12 +318,9 @@ function Route(Server) {
   });
 
 
-  // API yang butuh login (Protected)
-  // API AUTH ROUTES
+
   Server.post("/api/auth/register/funder", ApiFinflow.registerFunder);
   Server.post("/api/auth/register/student", ApiFinflow.registerStudent);
-  Server.post("/api/auth/register/parent", ApiFinflow.registerParent);
-  Server.post("/api/auth/invite/create", ApiFinflow.requireAuth, ApiFinflow.createInvite);
   Server.post("/api/auth/login", ApiFinflow.login);
   
   // [UPDATE] Logout API
@@ -350,7 +347,6 @@ function Route(Server) {
 
   // API FUNDING AGREEMENT
   Server.post("/api/funding/init", ApiFinflow.requireAuth, ApiFinflow.initiateFunding);
-  Server.post("/api/funding/topup", ApiFinflow.requireAuth, ApiFinflow.parentTopup);
   Server.post("/api/funding/finalize", ApiFinflow.requireAuth, ApiFinflow.finalizeAgreement);
   Server.post("/api/funding/pay", ApiFinflow.requireAuth, ApiFinflow.confirmTransfer);
 

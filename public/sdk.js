@@ -122,36 +122,14 @@ const Finflow = {
   registerStudent: async (data) => {
     const user = await _getUserInfo();
     return await _post("/auth/register/student", {
-      invite_token: data.inviteToken, // PENTING
       email: user.email,
       wallet_address: user.wallet,
       full_name: data.fullName,
       bank_name: data.bankName,
       bank_account: data.bankAccount,
-      password: "dummy_password",
+      phonenumber: data.phonenumber
     });
-  },
-
-  registerParent: async (data) => {
-    const user = await _getUserInfo();
-    return await _post("/auth/register/parent", {
-      invite_token: data.inviteToken,
-      email: user.email,
-      wallet_address: user.wallet,
-      full_name: data.fullName,
-      password: "dummy_password",
-    });
-  },
-
-  createInvite: async (targetEmail, role) => {
-        // Kita tidak perlu panggil _getUserInfo() di sini, karena backend sudah tahu
-        // siapa yang login lewat Session Cookie.
-        
-        return await _post('/auth/invite/create', {
-            invitee_email: targetEmail,
-            role_target: role // 'student' or 'parent'
-        });
-    },
+  }, 
 };
 
 // --- HELPERS ---
