@@ -325,7 +325,8 @@
         
         Text_AllocationFunderName.innerText = "<$ budgetplan allocated_funder />".format(allocation_funder.name);
         Text_AllocationFunderTotal.innerText = formatCurrency(allocation_funder.total);
-        
+        Grid_AllocationFunderCategories.innerHTML = null;
+
         for (const allocation of allocation_funder.allocations)
             appendAllocation(allocation, Grid_AllocationFunderCategories);
 
@@ -334,7 +335,8 @@
     
         const allocation_parent = DUMMY_ALLOCATIONS_PARENT || await $.get("/api/allocation/parent?month=" + month + "&year=" + year);
         Text_AllocationParentTotal.innerText = formatCurrency(allocation_parent.total);
-        
+        Grid_AllocationParentCategories.innerHTML = null;
+
         for (const allocation of allocation_parent.allocations)
             appendAllocation(allocation, Grid_AllocationParentCategories);
     }

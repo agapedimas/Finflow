@@ -1,0 +1,10 @@
+{
+    "title": "Programs",
+
+    "period": "Period",
+    "amount_total": "Total Amount per Period",
+    "amount_collected": "Collected Amount",
+    "status": "Status",
+    "joined_students": "Joined Students",
+    "invite_student": "Invite Student"
+}
