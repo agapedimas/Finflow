@@ -10,12 +10,11 @@ CREATE TABLE IF NOT EXISTS `budget_plan` (
     `month` INT UNSIGNED NOT NULL, 
     `year` YEAR NOT NULL, 
     
-    FOREIGN KEY (`planner_id`) 
-        REFERENCES `accounts_student`(`id`) 
-        ON DELETE CASCADE 
-        ON UPDATE CASCADE,
-    FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`) ON UPDATE CASCADE,
-    
-    UNIQUE KEY `uk_plan_item_month_year` (`planner_id`, `item_name`, `month`, `year`)
+    `status` ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    `ai_feedback` TEXT NULL,
+    FOREIGN KEY (`planner_id`) REFERENCES `accounts_student`(`id`),
+    FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`)
 ) 
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+
