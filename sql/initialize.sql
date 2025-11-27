@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS `accounts` (
     `wallet_address` varchar(255) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NULL,
     `password` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
     `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, 
+    `role` ENUM('Student', 'Parent', 'ScholarshipFunder') NOT NULL,
     `avatarversion` int UNSIGNED NOT NULL DEFAULT 1,
     
     -- Info Profil Tambahan
@@ -207,6 +208,20 @@ CREATE TABLE IF NOT EXISTS `invitations` (
     `status` ENUM('pending', 'used') DEFAULT 'pending',
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+-- 4.2 ACCOUNTS
+-- Funder A: ID funder-12345
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created, role) VALUES
+('funder-12345', 'funder.a', 'Bapak Funder', 'password_hash_funder', '08111234567', 'funder.a@mail.com', '2025-01-01 00:00:00', 'ScholarshipFunder');
+INSERT INTO accounts_funder (id, type) VALUES ('funder-12345', 1);
+
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created, role) VALUES
+('parent-12345', 'parent.a', 'Bapak Parent', 'password_hash_parent', '08111234567', 'parent.a@mail.com', '2025-01-01 00:00:00', 'Parent');
+INSERT INTO accounts_funder (id, type) VALUES ('parent-12345', 1);
+
+-- Student B: ID student-54321 (Student utama yang akan diuji)
+INSERT INTO accounts (id, username, displayname, password, phonenumber, email, created, role) VALUES
+('student-54321', 'student.b', 'Budi Santoso', 'password_hash_student', '08123456789', 'student.b@mail.com', '2025-01-01 00:00:00', 'Student');
+INSERT INTO accounts_student (id, balance) VALUES ('student-54321', 1000000.00); -- Saldo Awal
 
 CREATE TABLE IF NOT EXISTS `weekly_reports` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
