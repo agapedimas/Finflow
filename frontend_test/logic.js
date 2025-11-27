@@ -170,7 +170,8 @@ async function sendPostRequest(endpoint, body) {
         const res = await fetch(backendUrl + endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
+            credentials: 'include'
         });
         const json = await res.json();
         if(json.success) alert("SUKSES: " + json.message);

@@ -79,16 +79,23 @@ const SQL = {
           }
         }
 
-        const file = await FileIO.readFileSync("./sql/initialize.sql");
-        const queries = file
-          .toString()
-          .split(/(?<!\\);/g)
-          .map((o) => o.replace(/\\;/g, ";").trim())
-          .filter((o) => o != "");
+        const tableFilePath = "./sql/tables/";
+        const tables = FileIO.readdirSync(tableFilePath);
+        tables.unshift("/../initialize.sql");
+        tables.push("/../seeds.sql");
 
-        for (const query of queries) {
-          const result = await SQL.Query(query);
-          if (result.success == false) break;
+        for (const table of tables) {
+          const file = FileIO.readFileSync(tableFilePath + table);
+          const queries = file
+            .toString()
+            .split(/(?<!\\);/g)
+            .map((o) => o.replace(/\\;/g, ";").trim())
+            .filter((o) => o != "");
+
+          for (const query of queries) {
+            const result = await SQL.Query(query);
+            if (result.success == false) break;
+          }
         }
 
         resolve();

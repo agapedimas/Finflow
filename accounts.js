@@ -15,14 +15,17 @@ const Accounts =
      * @returns { Promise<Array<{
      *      id: string,
      *      username: string,
-     *      nickname: string,
+     *      displayname: string,
      *      created: string,
-     *      avatarversion: number
+     *      avatarversion: number,
+     *      phonenumber: number,
+     *      email: string,
+     *      role: "Student" | "Parent" | "ScholarshipFunder"
      * }>> } Details of accounts 
      */
     Get: async function(details)
     {
-        let query = "SELECT id, username, displayname, created, avatarversion FROM accounts";
+        let query = "SELECT id, username, displayname, created, avatarversion, phonenumber, email, role FROM accounts";
         let params = [];
 
         if (details?.id)

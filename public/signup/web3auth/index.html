@@ -1,159 +1,153 @@
 <style>
-    .root
-    {
-        background: linear-gradient(125deg, #0a84ff, #0067ce);
-    }
-    .panel
-    {
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        display: grid;
-        grid-auto-flow: row;
-        transform: translate(-50%, -50%);
-        background: var(--gray-6);
-        padding: 33px 30px;
-        border-radius: 25px;
-        border: 1px solid var(--overlay-6);
-        gap: 0.3em;
-        width: 350px;
-        box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);
-    }
-        .panel img
-        {
-            height: 1.55em;
-        }
-        .panel .title
-        {
-            font-size: 1.75em;
-            font-family: var(--font-bold);
-            margin: 0.25em 0 0;
-        }
-        .panel .subtitle
-        {
-            font-size: 1.25em;
-        }
-        .panel .inputs
-        {
-            display: grid;
-            gap: 7px;
-        }
-            .panel .inputs input,
-            .panel .inputs button
-            {
-                padding: 0.6em 0.8em;
-                border-radius: 10px;
-            }
-            .panel .inputs .error 
-            {
-                display: none;
-                color: var(--notice);
-                text-align: center;
-                margin: 0.5em 0 0 0;
-                font-size: 0.9em;
-            }
-            .panel .inputs button
-            {
-                margin: 1em 0;
-            }
-                .panel .inputs button .progressring
-                {
-                    width: 1em;
-                    height: 1em;
-                }
-                .panel:not(.loading) .inputs button .progressring
-                {
-                    display: none;
-                }
-            .panel .inputs .offersignin
-            {
-                justify-self: center;
-            }
+  .root {
+    background: linear-gradient(125deg, #0a84ff, #0067ce);
+  }
+  .panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    display: grid;
+    grid-auto-flow: row;
+    transform: translate(-50%, -50%);
+    background: var(--gray-6);
+    padding: 33px 30px;
+    border-radius: 25px;
+    border: 1px solid var(--overlay-6);
+    gap: 0.3em;
+    width: 350px;
+    box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);
+  }
+  .panel img {
+    height: 1.55em;
+  }
+  .panel .title {
+    font-size: 1.75em;
+    font-family: var(--font-bold);
+    margin: 0.25em 0 0;
+  }
+  .panel .subtitle {
+    font-size: 1.25em;
+  }
+  .panel .inputs {
+    display: grid;
+    gap: 7px;
+  }
+  .panel .inputs input,
+  .panel .inputs button {
+    padding: 0.6em 0.8em;
+    border-radius: 10px;
+  }
+  .panel .inputs .error {
+    display: none;
+    color: var(--notice);
+    text-align: center;
+    margin: 0.5em 0 0 0;
+    font-size: 0.9em;
+  }
+  .panel .inputs button {
+    margin: 1em 0;
+  }
+  .panel .inputs button .progressring {
+    width: 1em;
+    height: 1em;
+  }
+  .panel:not(.loading) .inputs button .progressring {
+    display: none;
+  }
+  .panel .inputs .offersignin {
+    justify-self: center;
+  }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@8.12.4"></script>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@8.12.4"></script>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/openlogin-adapter@8.12.4"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
 <script src="/sdk.js"></script>
 
 <div class="panel" theme="light" accent="blue">
-    <img src="/assets/logo_text.png"/>
-    <div class="title" id="Text_SignUpTitle"><$ signup title /></div>
-    <div class="subtitle"><$ signup description_signupwithgoogle /></div>
-    <div class="inputs">
-        <button id="Button_ContinueWithGoogle">
-            <img class="icon" src="/assets/logo_google.webp"/>
-            <span><$ signup signup_with_google /></span>
-        </button>
+  <img src="/assets/logo_text.png" />
+  <div class="title" id="Text_SignUpTitle"><$ signup title /></div>
+  <div class="subtitle"><$ signup description_signupwithgoogle /></div>
+  <div class="inputs">
+    <button id="Button_ContinueWithGoogle">
+      <img class="icon" src="/assets/logo_google.webp" />
+      <span><$ signup signup_with_google /></span>
+    </button>
 
-        <div class="offersignin">
-            <span><$ signup offer_signin_title /></span>
-            <a class="link" id="Button_SignIn" goto="/signin">
-                <span><$ signup offer_signin_link /></span>
-            </a>
-        </div>
+    <div class="offersignin">
+      <span><$ signup offer_signin_title /></span>
+      <a class="link" id="Button_SignIn" goto="/signin">
+        <span><$ signup offer_signin_link /></span>
+      </a>
     </div>
+  </div>
 </div>
 
 <script>
-    $(".titlebar").remove();
-    $("nav").remove();
-    $(".loading").hide();
-    
-    const funderType = new URL(window.location.href).searchParams.get("type");
+  // Bersihkan UI bawaan template
+  $(".titlebar").remove();
+  $("nav").remove();
+  $(".loading").hide();
 
-    if (funderType == "student") {
-        Text_SignUpTitle.innerText = "<$ signup title_student />";
+  // 1. Ambil Parameter URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const funderType = urlParams.get("type");
+  const inviteToken = urlParams.get("token");
+
+  console.log(funderType);
+  console.log(inviteToken);
+
+  // 2. Update Judul Sesuai Peran
+  if (funderType == "student") {
+    document.getElementById("Text_SignUpTitle").innerText = "Aktivasi Mahasiswa";
+  } else if (funderType == "parent") {
+    document.getElementById("Text_SignUpTitle").innerText = "Aktivasi Orang Tua";
+  } else if (funderType == "scholarshipfunder") {
+    document.getElementById("Text_SignUpTitle").innerText = "Daftar Funder";
+  } else {
+    // Default ke dashboard jika tidak ada tipe
+    // window.location.replace("/signup");
+  }
+
+  // 3. Handle Tombol Login Google
+  document.getElementById("Button_ContinueWithGoogle").onclick = async function () {
+    try {
+      const user = await Finflow.login(); // SDK Trigger
+      handleRedirect(user);
+    } catch (e) {
+      
     }
-    else if (funderType == "parent") {
-        Text_SignUpTitle.innerText = "<$ signup title_parent />";
-    }
-    else if (funderType == "scholarshipfunder") {
-        Text_SignUpTitle.innerText = "<$ signup title_scholarshipfunder />";
-    }
-    else {
-        window.location.replace("/signup");
+  };
+
+  // 4. Cek Status Saat Load (Auto Redirect jika sudah login)
+  window.onload = async () => {
+    // Pastikan SDK sudah dimuat
+    if (typeof Finflow === "undefined") {
+      alert("Error: File SDK tidak ditemukan. Cek path /sdk.js");
+      return;
     }
 
-    Button_ContinueWithGoogle.onclick = async function() {
-        await Finflow.login("google");
+    // Init SDK
+    const user = await Finflow.init();
+    if (user) {
+      console.log("User already logged in:", user.email);
+      handleRedirect(user);
     }
+  };
 
-    // A. Inisialisasi saat halaman load
-    window.onload = async () => {
-        // Pasang Finflow ke Window biar global
-        window.Finflow = Finflow; 
-        
-        const user = await Finflow.init();
-        if (user) {
-            console.log("User sudah login:", user.email);
-            // Update UI header (Tampilkan foto profil, dll)
-        }
-    };
-
-    // B. Saat Tombol "Login Google" diklik
-    async function handleLoginBtn() {
-        const user = await Finflow.login();
-        alert("Welcome " + user.email);
+  // 5. Fungsi Pengarah Halaman
+  function handleRedirect(user) {
+    // Arahkan ke form pendaftaran yang sesuai
+    if (funderType === "student") {
+      window.location.href = "/signup/student?token=" + inviteToken;
+    } else if (funderType === "parent") {
+      window.location.href = "/signup/parent?token=" + inviteToken;
+    } else if (funderType === "scholarshipfunder") {
+      window.location.href = "/signup/funder";
+    } else {
+      // Kalau login biasa, masuk dashboard
+      window.location.href = "/client";
     }
-
-    // C. Saat Form Register disubmit
-    async function handleRegisterSubmit() {
-        const dataInput = {
-            fullName: document.getElementById("inputNama").value,
-            orgName: document.getElementById("inputOrg").value,
-            bankName: "BCA",
-            bankAccount: "123"
-        };
-
-        const result = await Finflow.registerFunder(dataInput);
-
-        if (result.success) {
-            window.location.href = "dashboard.html";
-        } else {
-            alert(result.message);
-        }
-    }
+  }
 </script>

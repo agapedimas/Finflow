@@ -1,6 +1,82 @@
 const SQL = require("../../sql");
 const Authentication = require("../../authentication");
 const { ethers } = require("ethers");
+const fs = require("fs");
+const path = require("path");
+const GeminiModule = require("../../gemini");
+
+GeminiModule.Initialize();
+
+/**
+ * @param {string} prompt - Instruksi untuk AI
+ * @param {object} fileObj - Objek file hasil saveBufferToTemp { path, mimeType, name }
+ * @param {string} role - 'OCR' | 'AUDITOR' | 'COACH'
+ */
+async function askGemini(prompt, fileObj = null, role = 'COACH') {
+    try {
+        // 1. PILIH MODEL (Berdasarkan urutan di settings.json teman)
+        // Index 0: gemini-2.5-flash (Thinking) -> Cocok untuk AUDITOR (Analisis mendalam)
+        // Index 2: gemini-2.0-flash (Cepat)    -> Cocok untuk OCR & COACH
+        let modelIndex = 2; 
+        if (role === 'AUDITOR') modelIndex = 0;
+        
+        // 2. PANGGIL MODUL TEMAN
+        // Chat.Send(message, modelIndex, history, file)
+        const response = await GeminiModule.Chat.Send(
+            prompt, 
+            modelIndex, 
+            [], // History kosong karena ini "One-Shot Request"
+            fileObj 
+        );
+
+        // 3. AMBIL HASIL TEKS
+        const text = response.text;
+
+        // 4. AUTO-CLEAN JSON (Jika mode OCR/AUDITOR)
+        // AI sering menambahkan ```json di awal dan ``` di akhir. Kita harus buang.
+        if (role === 'AUDITOR' || role === 'OCR') {
+            try {
+                const cleanText = text.replace(/```json|```/g, '').trim();
+                return JSON.parse(cleanText);
+            } catch (err) {
+                console.error("[AI JSON ERROR] Gagal parse:", text);
+                // Return null atau objek error agar controller di bawahnya tau
+                return null;
+            }
+        }
+
+        // Jika mode COACH, kembalikan teks biasa
+        return text;
+
+    } catch (error) {
+        console.error(`[GEMINI WRAPPER ERROR] Role: ${role}`, error);
+        return null;
+    }
+}
+
+// [BARU] Helper: Simpan Buffer (dari req.files) ke File Fisik
+function saveBufferToTemp(buffer, mimetype) {
+    // 1. Tentukan ekstensi file (jpg/png)
+    const ext = mimetype.split('/')[1] || 'jpg';
+    
+    // 2. Buat nama file unik
+    const fileName = `scan_${Date.now()}.${ext}`;
+    const dirPath = path.join(__dirname, "../../temp");
+    const filePath = path.join(dirPath, fileName);
+
+    // Pastikan folder temp ada
+    if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath);
+
+    // 3. Tulis buffer langsung ke disk (Cepat!)
+    fs.writeFileSync(filePath, buffer);
+
+    // Return format object untuk modul Gemini teman Anda
+    return {
+        path: filePath,
+        mimeType: mimetype,
+        name: fileName
+    };
+}
 
 // CONFIG BLOCKCHAIN
 const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
@@ -101,14 +177,11 @@ const requireAuth = async (req, res, next) => {
 }
 module.exports = {
     requireAuth,
-    // ============================================================
-    // 1. FUNDER REGISTRATION (Pendaftaran Mandiri)
-    // Flow: Buka Web -> Login Privy -> isi Form -> Submit
-    // ============================================================
+
     registerFunder: async (req, res) => {
         try {
             // Input dari Frontend Funder
-            const { email, wallet_address, full_name, org_name, bank_name, bank_account } = req.body;
+            const { email, wallet_address, full_name, org_name, bank_name, bank_account, phonenumber } = req.body;
 
             if (!email || !wallet_address) return error(res, "Data tidak lengkap", 400);
 
@@ -123,10 +196,10 @@ module.exports = {
             // A. Insert Data Funder
             const q1 = `
                 INSERT INTO accounts 
-                (id, username, displayname, password, email, wallet_address, organization_name, bank_name, bank_account_number, created) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                (id, username, displayname, email, wallet_address, organization_name, bank_name, bank_account_number, phonenumber, role, created) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ScholarshipFunder', NOW())
             `;
-            await SQL.Query(q1, [newId, username, full_name, dummyPass, email, wallet_address, org_name, bank_name, bank_account]);
+            await SQL.Query(q1, [newId, username, full_name, email, wallet_address, org_name, bank_name, bank_account, phonenumber]);
 
             // B. Set Role Funder
             await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 0)", [newId]);
@@ -143,10 +216,6 @@ module.exports = {
         }
     },
 
-    // ============================================================
-    // 2. INVITE SYSTEM (Membuat Link Undangan)
-    // Flow: Funder -> Student, Student -> Parent
-    // ============================================================
     createInvite: async (req, res) => {
         try {
             const { invitee_email, role_target } = req.body;
@@ -162,18 +231,14 @@ module.exports = {
             await SQL.Query(qInvite, [token, inviter.id, invitee_email, role_target]);
 
             // Generate Magic Link (Sesuaikan port frontend)
-            const mockLink = `http://localhost:3000/register?role=${role_target}&token=${token}`;
+            const link = `http://localhost:1111/signup/web3auth?token=${token}&type=${role_target}`;
 
-            return success(res, { link: mockLink, token: token }, "Undangan Berhasil Dibuat");
+            return success(res, { link: link, token: token }, "Undangan Berhasil Dibuat");
         } catch (e) {
             return error(res, "Gagal membuat undangan");
         }
     },
 
-    // ============================================================
-    // 3. STUDENT & PARENT REGISTRATION (via Invite)
-    // Flow: Terima Link Undangan -> Isi Form -> Submit
-    // ============================================================
     registerStudent: async (req, res) => {
         try {
             const { email, wallet_address, full_name, bank_name, bank_account, invite_token } = req.body;
@@ -195,8 +260,8 @@ module.exports = {
             const dummyPass = "WALLET_LOGIN_" + Date.now();
 
             // Buat Akun
-            const qAccount = `INSERT INTO accounts (id, username, displayname, password, email, wallet_address, bank_name, bank_account_number, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, dummyPass, email, wallet_address, bank_name, bank_account]);
+            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, bank_name, bank_account_number, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Student', NOW())`;
+            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, bank_name, bank_account, phonenumber]);
 
             await SQL.Query("INSERT INTO accounts_student (id, balance) VALUES (?, 0)", [newId]);
 
@@ -212,10 +277,6 @@ module.exports = {
         }
     },
 
-    // ============================================================
-    // 4. PARENT REGISTRATION (via Invite)
-    // Flow: Terima Link Undangan -> Isi Form -> Submit
-    // ============================================================
     registerParent: async (req, res) => {
         try {
             const { email, wallet_address, full_name, invite_token } = req.body;
@@ -235,8 +296,8 @@ module.exports = {
             const dummyPass = "WALLET_LOGIN_" + Date.now();
 
             // Buat Akun Parent
-            const qAccount = `INSERT INTO accounts (id, username, displayname, password, email, wallet_address, created) VALUES (?, ?, ?, ?, ?, ?, NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, dummyPass, email, wallet_address]);
+            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, 'Parent', NOW())`;
+            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, phonenumber]);
 
             await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 1)", [newId]);
 
@@ -255,9 +316,6 @@ module.exports = {
         }
     },
 
-    // ============================================================
-    // LOGIN UMUM
-    // ============================================================
     login: async (req, res) => {
         try {
             const { email, wallet_address } = req.body;
@@ -610,6 +668,43 @@ module.exports = {
             console.error(e);
             return error(res, "Gagal proses transfer");
         }
+    },
+
+    getBudgets: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            
+            // 1. Ambil Plan Item
+            const q = `SELECT * FROM budget_plan WHERE planner_id = ? AND month = MONTH(NOW()) AND year = YEAR(NOW())`;
+            const items = await SQL.Query(q, [user.id]);
+
+            // 2. Ambil Total Allocated (Total Drip + Vault bulan ini)
+            // Asumsi: Ambil dari funding_allocation / 1 bulan
+            // Untuk MVP, kita hitung sum dari plan items saja atau hardcode dari funding
+            const totalAllocated = 6000000 / 6; // Simulasi (Total/6 bulan)
+
+            // 3. Format Stuffs
+            const stuffs = items.data.map(item => ({
+                id: item.id,
+                name: item.item_name,
+                amount: Number(item.price),
+                quantity: Number(item.quantity),
+                status: item.status, // pending, approved, rejected
+                feedback: item.ai_feedback,
+                categoryId: item.category_id.toString()
+            }));
+
+            // Format Final
+            const monthlyPlan = {
+                month: new Date().toLocaleString('default', { month: 'long' }), // "November"
+                year: new Date().getFullYear(),
+                allocated: totalAllocated,
+                stuffs: stuffs
+            };
+
+            return success(res, monthlyPlan);
+
+        } catch (e) { return error(res, "Gagal budget"); }
     },
 
     // EXECUTION WEEKLY DRIP (Backend membagikan token dari Vault ke Student)
@@ -1080,27 +1175,68 @@ module.exports = {
 
     // A. SMART SCAN (OCR Service) - Auto fill Form
     // Frontend memanggil ini saat user upload foto di menu "Catat Pengeluaran"
-    // Outputnya hanya JSON data, BELUM disimpan ke database
+    // ============================================================
+    // MODULE 4: OCR SCAN (BUFFER / MULTIPART VERSION)
+    // ============================================================
     scanReceipt: async (req, res) => {
+        let tempFile = null;
         try {
-            const { image_url } = req.body;
-
-            if(!image_url) return error(res, "Image URL required", 400);
-
-            // AI LOGIC
-            // Simulasi Output AI (Supaya Frontend bisa demo)
-            // Di real implementation ini hasil return dari Gemini API
-            const aiExtractedData = {
-                amount: "150000",
-                merchant: "Warung Tegal Bahari",
-                date: new Date().toISOString().split('T')[0],
-                category_id: 1,
-                description: "Makan Siang Nasi Rames"
+            // 1. Cek apakah file ada di req.files?
+            if (!req.files || !req.files.receipt_image) {
+                return error(res, "No file uploaded", 400);
             }
 
-            return success(res, aiExtractedData, "Scan Berhasil");
+            const uploadedFile = req.files.receipt_image;
+
+            // 2. Simpan Buffer ke Temp (Helper ini harus ada di file yang sama)
+            console.log("[OCR] Processing uploaded file...");
+            tempFile = saveBufferToTemp(uploadedFile.data, uploadedFile.mimetype);
+            
+            // 3. Siapkan Prompt Khusus OCR
+            const prompt = `
+                ROLE: High-Precision OCR Machine.
+                TASK: Analyze receipt image.
+                
+                OUTPUT JSON STRUCTURE:
+                {
+                    "merchant": "Store Name",
+                    "date": "YYYY-MM-DD",
+                    "time": "HH:MM" (Transaction time in 24h format e.g. 14:30. If not found, return null),
+                    "items": [
+                        {
+                            "name": "Item Name",
+                            "price": Number (Individual price * qty),
+                            "category_id": Number (Guess: 1=Needs, 0=Wants, 2=Education)
+                        }
+                    ]
+                }
+                Return ONLY raw JSON.
+            `;
+
+            // 4. Panggil Modul Gemini Teman Anda
+            // Parameter: (Prompt, IndexModel, History, FileObject)
+            // Index 2 biasanya model Flash (Cepat). Pastikan settings.json teman Anda punya model Flash di index 2.
+            const response = await GeminiModule.Chat.Send(prompt, 2, [], tempFile);
+
+            // 5. Hapus File Temp
+            try { fs.unlinkSync(tempFile.path); } catch(e){}
+
+            // 6. Parse Hasil JSON dari AI
+            let resultData = {};
+            try {
+                const cleanText = response.text.replace(/```json|```/g, '').trim();
+                resultData = JSON.parse(cleanText);
+            } catch (parseError) {
+                // Fallback jika AI mengoceh teks biasa
+                resultData = { raw_text: response.text, merchant: "Manual Check Needed", amount: 0 };
+            }
+
+            return success(res, resultData, "Scan Berhasil");
+
         } catch (e) {
-            return error(res, "Gagal memindai struk");
+            if(tempFile) try { fs.unlinkSync(tempFile.path); } catch(err){}
+            console.error(e);
+            return error(res, "Gagal scan receipt");
         }
     },
 
@@ -1109,33 +1245,73 @@ module.exports = {
     // Ada logic cek untuk pola berbahaya
     addTransaction: async (req, res) => {
         try {
+            const user = req.currentUser; 
             const { amount, category_id, description, merchant_name, transaction_date, proof_image_url } = req.body;
 
-            // 1. Validasi User & Saldo
-            const user = req.currentUser;
+            // [FIX 1] VALIDASI ANGKA KETAT
+            // Pastikan amount benar-benar angka valid
+            let expenseAmount = parseInt(amount);
+            if (isNaN(expenseAmount) || expenseAmount <= 0) {
+                return error(res, "Nominal transaksi tidak valid", 400);
+            }
+
+            // [FIX 2] FORMAT TANGGAL MYSQL (YYYY-MM-DD HH:MM:SS)
+            // Mengubah '2025-11-27T06:52:00.000Z' menjadi '2025-11-27 06:52:00'
+            let finalDate;
+            try {
+                const d = transaction_date ? new Date(transaction_date) : new Date();
+                // Trik konversi ISO ke MySQL format:
+                finalDate = d.toISOString().slice(0, 19).replace('T', ' ');
+            } catch (e) {
+                // Fallback jika tanggal error
+                finalDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            }
+
+            // 1. Ambil Saldo Terbaru
+            const balanceRes = await SQL.Query("SELECT balance FROM accounts_student WHERE id = ?", [user.id]);
             
-            if (!user) return error(res, "User not found", 404);
-            const currentBalance = Number(user.balance);
-            const expenseAmount = Number(amount);
+            if (!balanceRes.data || balanceRes.data.length === 0) {
+                return error(res, "Akun student belum diinisialisasi (Hubungi Admin)", 404);
+            }
 
-            if (currentBalance < expenseAmount) return error(res, "Saldo tidak mencukupi!", 400);
+            const currentBalance = Number(balanceRes.data[0].balance); // Pastikan jadi Number
 
-            // 2. Simpan Transaksi Dulu (Optimistic UI)
-            const finalDate = transaction_date ? transaction_date : new Date();
+            // Validasi Kecukupan Saldo
+            if (currentBalance < expenseAmount) {
+                return error(res, `Saldo tidak mencukupi! (Sisa: ${currentBalance.toLocaleString()})`, 400);
+            }
+
+            // 2. Simpan Transaksi
             const txId = generateId('tx');
             
-            await SQL.Query(`
+            const qInsert = `
                 INSERT INTO transactions 
                 (transaction_id, student_id, amount, type, category_id, merchant_name, raw_description, proof_image_url, is_verified_by_ai, transaction_date) 
                 VALUES (?, ?, ?, 'Expense', ?, ?, ?, ?, FALSE, ?)
-            `, [txId, user.id, expenseAmount, category_id, merchant_name || '', description, proof_image_url || null, finalDate]);
+            `;
+            
+            await SQL.Query(qInsert, [
+                txId, 
+                user.id, 
+                expenseAmount, 
+                category_id, 
+                merchant_name || '', 
+                description, 
+                proof_image_url || null, 
+                finalDate // <--- Tanggal yang sudah bersih
+            ]);
 
-            // 3. Update Saldo
+            // 3. Update Saldo (Hitung Matematika)
             const newBalance = currentBalance - expenseAmount;
-            await SQL.Query("UPDATE accounts_student SET balance = ? WHERE id = ?", [newBalance, user.id]);
+            
+            // [SAFETY CHECK] Pastikan hasil pengurangan valid sebelum update DB
+            if (isNaN(newBalance)) {
+                throw new Error("Calculation Error: Result is NaN");
+            }
 
+            await SQL.Query("UPDATE accounts_student SET balance = ? WHERE id = ?", [newBalance, user.id]);
             // ============================================================
-            // 🔥 AI COACH QUICK SCAN (LOGIC PENDETEKSI BAHAYA) 🔥
+            // 🔥 AI COACH QUICK SCAN (LOGIC PENDETEKSI BAHAYA) 🔥 - GANTI PAKE GEMINI
             // ============================================================
             
             // A. Ambil Data Pendukung (Budget Mingguan & Sisa Hari)
@@ -1193,13 +1369,45 @@ module.exports = {
 
         } catch (e) {
             console.error(e);
-            return error(res, "Gagal menyimpan transaksi");
+            return error(res, "Gagal menyimpan transaksi " + e.message);
         }
     },
 
     // ============================================================
     // MODULE 6: INSIGHTS & VISUALIZATION (Dashboard Data)
     // ============================================================
+    getTransactionYears: async (req, res) => {
+        try {
+            const user = req.currentUser;
+
+            // Query untuk mengambil tahun-tahun unik dari history transaksi
+            const q = `
+                SELECT DISTINCT YEAR(transaction_date) as year 
+                FROM transactions 
+                WHERE student_id = ? 
+                ORDER BY year DESC
+            `;
+            
+            const result = await SQL.Query(q, [user.id]);
+
+            // Mapping hasil DB [{year: 2025}, {year: 2024}] menjadi [2025, 2024]
+            let years = result.data.map(row => row.year);
+
+            // Fallback: Jika belum ada transaksi, minimal kembalikan tahun sekarang
+            if (years.length === 0) {
+                years = [new Date().getFullYear()];
+            }
+
+            // Return Array langsung (sesuai ekspektasi frontend Anda)
+            return res.json(years);
+
+        } catch (e) {
+            console.error(e);
+            // Return tahun ini sebagai safety net
+            return res.json([new Date().getFullYear()]);
+        }
+    },
+    
     getInsights: async (req, res) => {
         try {
             if (!req.currentUser.wallet_address) return error(res, "Wallet address required", 400);
@@ -1267,6 +1475,227 @@ module.exports = {
         } catch (e) { return error(res, "Gagal ambil laporan"); }
     },
 
+    getTransactionHistory: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            const { month, year } = req.query;
+
+            let q = `
+                SELECT 
+                    transaction_id, raw_description, amount, transaction_date, 
+                    category_id, type, proof_image_url, 
+                    is_verified_by_ai, is_urgent_withdrawal, urgency_reason
+                FROM transactions 
+                WHERE student_id = ?
+            `;
+            const params = [user.id];
+
+            if (month && year) {
+                q += ` AND MONTH(transaction_date) = ? AND YEAR(transaction_date) = ?`;
+                const monthMap = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+                const monthNum = isNaN(month) ? monthMap[month.toLowerCase()] : month;
+                params.push(monthNum, year);
+            }
+
+            q += ` ORDER BY transaction_date DESC`;
+            const history = await SQL.Query(q, params);
+            
+            // [CLEAN MAPPING] DB (Snake) -> JSON (Camel)
+            const formattedData = history.data.map(tx => {
+                // Normalisasi Tipe
+                let typeJs = 'expense';
+                if (tx.type === 'Income') typeJs = 'income';
+                if (tx.type === 'Drip_In') typeJs = 'dripIn'; 
+
+                return {
+                    id: tx.transaction_id,
+                    // Ubah ke UNIX Timestamp (Angka) sesuai request dummy
+                    transactionDate: new Date(tx.transaction_date).getTime(), 
+                    type: typeJs,
+                    rawDescription: tx.raw_description,
+                    isVerifiedByAI: Boolean(tx.is_verified_by_ai),
+                    isUrgentWithdrawal: Boolean(tx.is_urgent_withdrawal),
+                    urgencyReason: tx.urgency_reason,
+                    amount: Number(tx.amount),
+                    categoryId: tx.category_id ? tx.category_id.toString() : null
+                };
+            });
+
+            return success(res, formattedData);
+
+        } catch (e) { return error(res, "Gagal load history"); }
+    },
+
+    getWalletData: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            
+            // 1. Ambil Saldo Total (Uang Fisik di Akun)
+            const bRes = await SQL.Query("SELECT balance FROM accounts_student WHERE id=?", [user.id]);
+            const totalBalance = Number(bRes.data?.[0]?.balance || 0);
+
+            // 2. Hitung Arus Kas per Kategori (Cashflow Calculation)
+            // Rumus: Total Masuk (Drip) - Total Keluar (Expense) = Sisa Uang di Tangan
+            const qFlow = `
+                SELECT 
+                    category_id, 
+                    SUM(CASE WHEN type = 'Drip_In' OR type = 'Income' THEN amount ELSE 0 END) as total_in,
+                    SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) as total_out
+                FROM transactions 
+                WHERE student_id = ?
+                GROUP BY category_id
+            `;
+            
+            const flowData = await SQL.Query(qFlow, [user.id]);
+
+            // 3. Mapping Data
+            const flowMap = {};
+            flowData.data.forEach(row => {
+                // Hitung Net Balance (Sisa Amplop)
+                const net = Number(row.total_in) - Number(row.total_out);
+                // Pastikan tidak negatif (opsional, tapi aman untuk UI)
+                flowMap[row.category_id] = Math.max(0, net);
+            });
+
+            // 4. Struktur Kategori Default
+            // Kita gabungkan dengan nama kategori master
+            const defaultCats = [
+                { id: 0, name: "Wants" },
+                { id: 1, name: "Needs" },
+                { id: 2, name: "Education" }
+            ];
+
+            const allocations = defaultCats.map(cat => ({
+                categoryId: cat.id.toString(),
+                categoryName: cat.name,
+                // Ambil sisa uang dari map, atau 0 jika belum ada transaksi
+                balance: flowMap[cat.id] || 0 
+            }));
+
+            // [NOTE] Khusus Education: 
+            // Karena Edu dananya di Vault (bukan di wallet student), biasanya balancenya 0 atau minus (reimburse).
+            // Tapi jika ada sisa 'Drip_In' yang dialokasikan ke Edu, akan muncul disini.
+
+            return success(res, {
+                balance: totalBalance, // Saldo Total semua amplop
+                allocations: allocations // Rincian isi per amplop
+            });
+
+        } catch (e) { 
+            console.error(e);
+            return res.status(500).json({ success: false, message: "Gagal hitung cashflow" }); 
+        }
+    },
+
+    // API Categories List (Sesuai DUMMY_CATEGORIES)
+    getCategories: async (req, res) => {
+        // Hardcode sesuai dummy agar cepat
+        return success(res, [
+            { id: "0", name: "Wants", balance: 0 }, // Balance dummy 0 untuk list dropdown
+            { id: "1", name: "Needs", balance: 0 },
+            { id: "2", name: "Education", balance: 0 }
+        ]);
+    },
+
+    getExpensesData: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            
+            // [FIX] Gunakan YEARWEEK(date, 1) agar Senin dianggap awal minggu
+            const q = `
+                SELECT DAYOFWEEK(transaction_date) as day_idx, SUM(amount) as total
+                FROM transactions
+                WHERE student_id = ? 
+                AND type = 'Expense' 
+                AND YEARWEEK(transaction_date, 1) = YEARWEEK(NOW(), 1)
+                GROUP BY DAYOFWEEK(transaction_date)
+            `;
+            const dbData = await SQL.Query(q, [user.id]);
+            
+            // Mapping ke Array (Senin=0 di UI Anda, Minggu=6)
+            // Logic dummy: summary: [senin, selasa, ..., minggu]
+            let summary = [0, 0, 0, 0, 0, 0, 0]; 
+            let total = 0;
+
+            dbData.data.forEach(row => {
+                // MySQL: 1=Minggu, 2=Senin. UI: 0=Senin.
+                let jsIndex = row.day_idx === 1 ? 6 : row.day_idx - 2;
+                summary[jsIndex] = Number(row.total);
+                total += Number(row.total);
+            });
+
+            return success(res, {
+                total: total,
+                summary: summary
+            });
+
+        } catch (e) { return error(res, "Gagal expenses"); }
+    },
+
+    getFeedbackData: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            
+            // 1. Ambil Data Konteks (Saldo, Waktu, dan Breakdown Pengeluaran)
+            // Kita butuh data ini agar AI tidak halusinasi
+            const [balanceInfo, spendingData] = await Promise.all([
+                _getBalanceInfo(user.id),       
+                _getSpendingBreakdown(user.id)  
+            ]);
+
+            // 2. SIAPKAN PROMPT AI
+            const prompt = `
+                ROLE: Financial Coach for a student named ${user.displayname}.
+                CONTEXT:
+                - Current Balance: IDR ${balanceInfo.current_balance.toLocaleString()}
+                - Days until next allowance: ${balanceInfo.days_until_drip} days
+                - Spending Breakdown this week: ${JSON.stringify(spendingData)}
+                
+                TASK:
+                Analyze their financial health. 
+                - If balance is low (< 30k * days_left), set severity 'danger'.
+                - If spending on 'Wants' is high, scold them gently.
+                - If healthy, praise them.
+                
+                OUTPUT JSON ONLY:
+                {
+                    "severity": "normal" | "caution" | "danger",
+                    "content": "Your short advice here (max 20 words, use emoji)"
+                }
+            `;
+
+            // 3. PANGGIL GEMINI (Mode: AUDITOR)
+            // Menggunakan helper askGemini yang sudah kita buat
+            let aiResult = await askGemini(prompt, null, 'AUDITOR');
+
+            // 4. FALLBACK (Jika AI Gagal/Error)
+            // Kita gunakan logika matematika sederhana jika AI mati
+            if (!aiResult || !aiResult.severity) {
+                console.log("[AI FEEDBACK FAIL] Switch to manual logic");
+                const manualCheck = _analyzeHealth(balanceInfo.current_balance, balanceInfo.days_until_drip);
+                
+                // Map status manual ('red') ke format frontend ('danger')
+                const mapColor = { 'green': 'normal', 'yellow': 'caution', 'red': 'danger' };
+                aiResult = {
+                    severity: mapColor[manualCheck.status],
+                    content: manualCheck.message
+                };
+            }
+
+            return success(res, {
+                isAvailable: true,
+                severity: aiResult.severity,
+                content: aiResult.content
+            });
+
+        } catch (e) { 
+            console.error(e);
+            return success(res, { isAvailable: false }); 
+        }
+    },
+
+
+
     // ============================================================
     // MODULE 7: AI CHATBOT (RAG Context Provider)
     // Frontend kirim pesan
@@ -1304,36 +1733,58 @@ module.exports = {
     // ============================================================
     getNotificationHistory: async (req, res) => {
         try {
-            // 1. Validasi User
             const user = req.currentUser;
-            if (!user) return error(res, "User not found", 404);
+            
+            const q = `SELECT id, title, message, type, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`;
+            const dbData = await SQL.Query(q, [user.id]);
 
-            // 2. Ambil 20 Notifikasi Terakhir (Baik yang sudah dibaca maupun belum)
-            const q = `
-                SELECT title, message, type, is_read, created_at 
-                FROM notifications 
-                WHERE user_id = ? 
-                ORDER BY created_at DESC 
-                LIMIT 20
-            `;
-            const notifs = await SQL.Query(q, [user.id]);
+            // [CLEAN MAPPING]
+            const formattedData = dbData.data.map(n => ({
+                id: n.id.toString(),
+                title: n.title,
+                message: n.message,
+                isRead: Boolean(n.is_read), // CamelCase
+                type: n.type.toLowerCase(), // Lowercase
+                createdAt: new Date(n.created_at).getTime() // UNIX Timestamp
+            }));
 
-            // 3. Hitung jumlah yang belum dibaca (untuk Badge Merah)
-            const unreadCountRes = await SQL.Query(
-                "SELECT COUNT(*) as total FROM notifications WHERE user_id = ? AND is_read = 0", 
-                [user.id]
-            );
-            const unreadCount = unreadCountRes.data?.[0]?.total || 0;
-
-            // 4. Tandai semua sebagai 'read' setelah dibuka (Opsional, biasanya saat diklik baru read)
+            // Auto read (Optional)
             await SQL.Query("UPDATE notifications SET is_read = 1 WHERE user_id = ?", [user.id]);
 
-            return success(res, {
-                unread_count: unreadCount,
-                history: notifs.data || []
-            }, "History Notifikasi Loaded");
+            return success(res, formattedData); // Kirim Array object
 
         } catch (e) { return error(res, "Gagal load notifikasi"); }
+    },
+
+    // Halaman Home: Get Current Program Info
+    getCurrentProgram: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            const q = `
+                SELECT f.funder_id, f.program_name, f.end_date, a.organization_name, a.displayname
+                FROM funding f
+                JOIN accounts a ON f.funder_id = a.id
+                WHERE f.student_id = ? AND f.status IN ('Active', 'Ready_To_Fund', 'Partially_Funded')
+                LIMIT 1
+            `;
+            const result = await SQL.Query(q, [user.id]);
+            const program = result.data?.[0];
+
+            if (!program) {
+                // Return null atau default object sesuai kebutuhan frontend handling
+                return success(res, { isJoined: false });
+            }
+
+            const finalName = program.program_name || `Beasiswa ${program.organization_name || program.displayname}`;
+
+            return success(res, {
+                isJoined: true,
+                funderId: program.funder_id,
+                displayName: finalName,
+                activeUntil: new Date(program.end_date).getTime() // UNIX Timestamp
+            });
+
+        } catch (e) { return error(res, "Gagal info program"); }
     },
 
 }
@@ -1362,11 +1813,12 @@ async function _getSpendingBreakdown(userId) {
         SELECT category_id, SUM(amount) as total 
         FROM transactions 
         WHERE student_id = ? AND type = 'Expense'
+        AND MONTH(transaction_date) = MONTH(NOW()) 
+        AND YEAR(transaction_date) = YEAR(NOW())
         GROUP BY category_id
     `;
     const res = await SQL.Query(query, [userId]);
     
-    // Mapping biar rapi
     let map = { needs: 0, wants: 0, education: 0 };
     res.data.forEach(r => {
         if (r.category_id === 1) map.needs = Number(r.total);
@@ -1402,13 +1854,13 @@ async function _getTransactionHistory(userId) {
 
 // Otak AI (Pure Logic)
 function _analyzeHealth(balance, daysLeft) {
-    const dailyCost = 30000; // Asumsi
+    const dailyCost = 30000;
     const safeLimit = daysLeft * dailyCost;
 
     if (balance < safeLimit) {
         return { 
             status: 'red', 
-            message: `⚠️ PERINGATAN: Sisa uang (Rp ${balance}) KURANG dari estimasi makan (${daysLeft} hari x 30rb). Hemat Rp ${safeLimit - balance} segera!`
+            message: `⚠️ Sisa uang (Rp ${balance.toLocaleString()}) KURANG dari estimasi makan (${daysLeft} hari). Hemat segera!`
         };
     } 
     if (balance < (safeLimit + 50000)) {

@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS `allocation_categories` (
+    `id` INT UNSIGNED PRIMARY KEY, 
+    `category_name` VARCHAR(50) UNIQUE NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;

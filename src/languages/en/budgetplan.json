@@ -15,5 +15,10 @@
 
     "plan_status_approved": "Approved",
     "plan_status_rejected": "Rejected",
-    "plan_status_pending": "Pending"
+    "plan_status_pending": "Pending",
+
+    "monthlyplan": "Monthly Plan",
+    "allocation": "Allocation",
+    "allocated_parent": "Parent's Allocation",
+    "allocated_funder": "{0}'s Allocation"
 }
