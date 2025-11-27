@@ -115,6 +115,7 @@ const Finflow = {
       org_name: data.orgName,
       bank_name: data.bankName,
       bank_account: data.bankAccount,
+      phonenumber: data.phonenumber
     });
   },
 

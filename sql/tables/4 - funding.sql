@@ -1,17 +1,17 @@
 -- Perjanjian Pendanaan Funder-Student
 CREATE TABLE IF NOT EXISTS `funding` (
     `funding_id` VARCHAR(128) PRIMARY KEY NOT NULL, 
-    `program_name` VARCHAR(150) NULL;
+    `program_name` VARCHAR(150) NULL,
     `funder_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `student_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     `total_period_fund` DECIMAL(15, 2) NOT NULL,
     `start_date` DATE NOT NULL,
     `end_date` DATE NULL,
-    `status` ENUM('Open_For_Parent', 'Waiting_Allocation', 'Ready_To_Fund', 'Partially_Funded', 'Active', 'Completed', 'Canceled') NOT NULL DEFAULT 'Open_For_Parent';, 
-    `collected_amount` DECIMAL(15, 2) DEFAULT 0;
+    `status` ENUM('Open_For_Parent', 'Waiting_Allocation', 'Ready_To_Fund', 'Partially_Funded', 'Active', 'Completed', 'Canceled') NOT NULL DEFAULT 'Open_For_Parent', 
+    `collected_amount` DECIMAL(15, 2) DEFAULT 0,
 
     FOREIGN KEY (`funder_id`) REFERENCES `accounts_funder`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (`student_id`) REFERENCES `accounts_student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `accounts_student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 -- Aturan Budget dan Drip

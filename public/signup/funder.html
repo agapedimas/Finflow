@@ -18,6 +18,7 @@
 
         <input type="text" id="Input_Bank" ad-text="Nama Bank (cth: BCA)" />
         <input type="text" id="Input_Rek" ad-text="Nomor Rekening Sumber" />
+        <input type="text" id="Input_NoHP" ad-text="Nomor Handphone" />
 
         <span class="error" id="Text_ErrorSignUp" style="display:none; color:red; font-size:0.9em; text-align:center;"></span>
 
@@ -183,7 +184,8 @@
                 fullName: fullName, 
                 orgName: document.getElementById("Input_DisplayName_ScholarshipFunder").value,
                 bankName: bankName, 
-                bankAccount: document.getElementById("Input_Rek").value
+                bankAccount: document.getElementById("Input_Rek").value,
+                phonenumber: document.getElementById("Input_NoHP").value
             };
 
             // Panggil SDK

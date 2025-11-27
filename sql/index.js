@@ -81,7 +81,8 @@ const SQL = {
 
         const tableFilePath = "./sql/tables/";
         const tables = FileIO.readdirSync(tableFilePath);
-        tables.push("/../initialize.sql");
+        tables.unshift("/../initialize.sql");
+        tables.push("/../seeds.sql");
 
         for (const table of tables) {
           const file = FileIO.readFileSync(tableFilePath + table);

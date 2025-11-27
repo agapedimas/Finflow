@@ -3,7 +3,6 @@ CREATE TABLE IF NOT EXISTS `accounts`
     `id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `username` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `displayname` text COLLATE utf8mb4_bin,
-    `password` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `phonenumber` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `email` varchar(255) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     `wallet_address` varchar(255) CHARACTER SET ascii COLLATE ascii_bin UNIQUE NULL,
@@ -21,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `accounts`
     
     PRIMARY KEY (`id`), 
     UNIQUE KEY `username` (`username`),
-    UNIQUE KEY `email` (`email`)
+    UNIQUE KEY `email` (`email`),
 
     CONSTRAINT `fk_parent_link` FOREIGN KEY (`parent_id`) REFERENCES `accounts`(`id`) ON DELETE SET NULL
 ) 

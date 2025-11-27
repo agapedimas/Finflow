@@ -181,7 +181,7 @@ module.exports = {
     registerFunder: async (req, res) => {
         try {
             // Input dari Frontend Funder
-            const { email, wallet_address, full_name, org_name, bank_name, bank_account } = req.body;
+            const { email, wallet_address, full_name, org_name, bank_name, bank_account, phonenumber } = req.body;
 
             if (!email || !wallet_address) return error(res, "Data tidak lengkap", 400);
 
@@ -196,10 +196,10 @@ module.exports = {
             // A. Insert Data Funder
             const q1 = `
                 INSERT INTO accounts 
-                (id, username, displayname, password, email, wallet_address, organization_name, bank_name, bank_account_number, created) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                (id, username, displayname, email, wallet_address, organization_name, bank_name, bank_account_number, phonenumber, role, created) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ScholarshipFunder', NOW())
             `;
-            await SQL.Query(q1, [newId, username, full_name, dummyPass, email, wallet_address, org_name, bank_name, bank_account]);
+            await SQL.Query(q1, [newId, username, full_name, email, wallet_address, org_name, bank_name, bank_account, phonenumber]);
 
             // B. Set Role Funder
             await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 0)", [newId]);
@@ -260,8 +260,8 @@ module.exports = {
             const dummyPass = "WALLET_LOGIN_" + Date.now();
 
             // Buat Akun
-            const qAccount = `INSERT INTO accounts (id, username, displayname, password, email, wallet_address, bank_name, bank_account_number, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, dummyPass, email, wallet_address, bank_name, bank_account]);
+            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, bank_name, bank_account_number, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Student', NOW())`;
+            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, bank_name, bank_account, phonenumber]);
 
             await SQL.Query("INSERT INTO accounts_student (id, balance) VALUES (?, 0)", [newId]);
 
@@ -296,8 +296,8 @@ module.exports = {
             const dummyPass = "WALLET_LOGIN_" + Date.now();
 
             // Buat Akun Parent
-            const qAccount = `INSERT INTO accounts (id, username, displayname, password, email, wallet_address, created) VALUES (?, ?, ?, ?, ?, ?, NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, dummyPass, email, wallet_address]);
+            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, 'Parent', NOW())`;
+            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, phonenumber]);
 
             await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 1)", [newId]);
 
