@@ -62,7 +62,7 @@ async function Configure()
 		{
 			let lang = req.acceptsLanguages(Language.Available);
 
-			if (lang && typeof lang == "String")
+			if (lang && typeof lang == "string")
 			{
 				lang = lang.substring(0, 2);
 				req.session.language = lang; 

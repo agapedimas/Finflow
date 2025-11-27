@@ -8,437 +8,516 @@ const FileIO = require("fs");
 const Gemini = require("./gemini");
 const ApiFinflow = require("./src/controllers/api_finflow");
 
-const RAGService = require("./services/ragService"); // <<< BARIS BARU: Import file yang berisi implementasi get_budget_compliance dkk.
-
+const RAGService = require("./services/ragService"); // <<< Sudah di-import
 const transactionController = require("./controllers/transactionController");
+
+// --- UTILITY BARU: Fungsi Delay ---
+const Delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * @param { import("express").Application } Server Express instance
  * @returns { void }
  */
 function Route(Server) {
-  // DEFAULT ROUTE
-  {
-    Server.post("/ping", function (req, res) {
-      res.send();
-    });
-
-    Server.post("/signin", async function (req, res) {
-      const valid = await Authentication.CheckCredentials(req.body.username, req.body.password);
-
-      if (valid) {
-        const account = (await Accounts.Get({ username: req.body.username })).at(0);
-        const sessionId = await Authentication.Add(account.id, req.ip, true);
-        req.session.account = sessionId;
-        res.send();
-      } else {
-        res.status(401).send();
-      }
-    });
-
-    Server.post("/signup", async function(req, res) {
-      // kasih apa gitu
-      res.status(501).send();
-    })
-
-    Server.get("/signout", async function (req, res) {
-      if (req.session.account) {
-        await Authentication.Remove(req.session.account);
-        delete req.session["client"];
-      }
-
-      res.redirect("/signin");
-    });
-
-    Server.get("/client*", async function (req, res, next) {
-      const path = req.url;
-      const hasAccess = await Authentication.HasAccess(req.session.account);
-
-      if (hasAccess == false && path != "/client/manifest.json") {
-        if (path.endsWith(".js") || path.endsWith(".css")) {
-          res.setHeader("Cache-Control", "no-store");
-          return res.status(403).send();
-        } else {
-          req.session.redirect = req.url;
-          return res.redirect("/signin");
-        }
-      } else if (hasAccess == true) {
-        if (path == "/client" || path == "/signin") {
-          const redirect = req.session.redirect;
-          req.session.redirect = null;
-
-          if (redirect) return res.redirect(redirect);
-          else return res.redirect("/client" + Variables.WebHomepage);
-        }
-
-        const id = await Authentication.GetAccountId(req.session.account);
-        const account = await Accounts.Get({ id });
-
-        Object.assign(req.variables, {
-          activeuser: JSON.stringify(account[0]),
-          "activeuser.id": account[0].id,
-          "activeuser.displayname": account[0].displayname || account[0].username,
-          "activeuser.username": account[0].username,
-          "activeuser.email": account[0].email,
-          "activeuser.phonenumber": account[0].phonenumber,
-          "activeuser.url": account[0].url,
-          "activeuser.avatarversion": account[0].avatarversion,
+    // DEFAULT ROUTE
+    {
+        // ... (Semua rute default dan middleware di sini, tidak diubah)
+        Server.post("/ping", function (req, res) {
+            res.send();
         });
-      }
+        
+        // START: Route Awal yang tidak diubah
+        
+        Server.post("/signin", async function (req, res) {
+            const valid = await Authentication.CheckCredentials(req.body.username, req.body.password);
 
-      next();
+            if (valid) {
+                const account = (await Accounts.Get({ username: req.body.username })).at(0);
+                const sessionId = await Authentication.Add(account.id, req.ip, true);
+                req.session.account = sessionId;
+                res.send();
+            } else {
+                res.status(401).send();
+            }
+        });
+
+        Server.post("/signup", async function(req, res) {
+            // kasih apa gitu
+            res.status(501).send();
+        })
+
+        Server.get("/signout", async function (req, res) {
+            if (req.session.account) {
+                await Authentication.Remove(req.session.account);
+                delete req.session["client"];
+            }
+
+            res.redirect("/signin");
+        });
+
+        Server.get("/client*", async function (req, res, next) {
+            const path = req.url;
+            const hasAccess = await Authentication.HasAccess(req.session.account);
+
+            if (hasAccess == false && path != "/client/manifest.json") {
+                if (path.endsWith(".js") || path.endsWith(".css")) {
+                    res.setHeader("Cache-Control", "no-store");
+                    return res.status(403).send();
+                } else {
+                    req.session.redirect = req.url;
+                    return res.redirect("/signin");
+                }
+            } else if (hasAccess == true) {
+                if (path == "/client" || path == "/signin") {
+                    const redirect = req.session.redirect;
+                    req.session.redirect = null;
+
+                    if (redirect) return res.redirect(redirect);
+                    else return res.redirect("/client" + Variables.WebHomepage);
+                }
+
+                const id = await Authentication.GetAccountId(req.session.account);
+                const account = await Accounts.Get({ id });
+
+                Object.assign(req.variables, {
+                    activeuser: JSON.stringify(account[0]),
+                    "activeuser.id": account[0].id,
+                    "activeuser.displayname": account[0].displayname || account[0].username,
+                    "activeuser.username": account[0].username,
+                    "activeuser.email": account[0].email,
+                    "activeuser.phonenumber": account[0].phonenumber,
+                    "activeuser.url": account[0].url,
+                    "activeuser.avatarversion": account[0].avatarversion,
+                });
+            }
+
+            next();
+        });
+
+        Server.post("/client*", async function (req, res, next) {
+            const path = req.url;
+            if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+            } else {
+                next();
+            }
+        });
+
+        Server.put("/client*", async function (req, res, next) {
+            const path = req.url;
+            if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+            } else {
+                next();
+            }
+        });
+
+        Server.patch("/client*", async function (req, res, next) {
+            const path = req.url;
+            if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+            } else {
+                next();
+            }
+        });
+
+        Server.delete("/client*", async function (req, res, next) {
+            const path = req.url;
+            if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
+                res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
+            } else {
+                next();
+            }
+        });
+
+        Server.post("/language/", async function (req, res) {
+            if (Language.Available.includes(req.body.language)) {
+                req.session.language = req.body.language;
+                res.send();
+            } else {
+                res.status(404).send("Language '" + req.body.language + "' is not available.");
+            }
+        });
+
+        Server.get("/:language/*", function (req, res, next) {
+            if (Language.Available.includes(req.params.language)) {
+                req.session.language = req.params.language;
+
+                if (req.path.endsWith(".js") == false && req.path.endsWith(".css") == false) return res.redirect("/" + req.params[0]);
+
+                req.filepath = "./public/" + req.params[0];
+            }
+
+            next();
+        });
+
+        Server.get("*", function (req, res, next) {
+            if (req.query.contentOnly == "true") req.contentOnly = true;
+
+            next();
+        });
+    }
+
+    // CUSTOM ROUTE HERE
+    Server.get("/avatar/*", async function (req, res) {
+        // Set cache of avatar to 1 year, because it can be refreshed with banner version query
+        res.header("Cache-Control", "public, max-age=31536000");
+        res.header("Content-Type", "image/webp");
+
+        const paths = req.path.split("/").filter((o) => o != "");
+        const avatarPath = "./src/avatars/" + paths[1];
+
+        if (FileIO.existsSync(avatarPath)) res.sendFile(avatarPath, { root: "./" });
+        else res.sendFile("./src/avatar.webp", { root: "./" });
     });
 
-    Server.post("/client*", async function (req, res, next) {
-      const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
-        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-      } else {
-        next();
-      }
+    Server.post("/accounts/setavatar", async function (req, res) {
+        const id = req.session.account;
+        const account = await Authentication.GetAccountId(id);
+
+        if (!id || !account) return res.status(403).send();
+
+        const buffer = req.files.file.data;
+
+        if (buffer.length > 2000000) return res.status(400).send(Language.Data[req.session.language]["accounts"]["error_avatar_toobig"]);
+
+        const success = await Accounts.Avatars.Save(account, buffer);
+
+        if (success) res.send();
+        else res.status(500).send();
     });
 
-    Server.put("/client*", async function (req, res, next) {
-      const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
-        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-      } else {
-        next();
-      }
+    Server.post("/accounts/clearavatar", async function (req, res) {
+        const id = req.session.account;
+
+        if (id == null) return res.status(403).send();
+
+        const success = Accounts.Avatars.Delete(id);
+
+        if (success) res.send();
+        else res.status(500).send();
     });
 
-    Server.patch("/client*", async function (req, res, next) {
-      const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
-        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-      } else {
-        next();
-      }
+
+    // ROUTE FOR GEMINI CHATS
+    Server.get("/client/assistant/history", async function (req, res) {
+        const accountId = await Authentication.GetAccountId(req.session.account);
+        const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId])).data?.at(0)?.content || "[]");
+        res.send(history);
     });
+    
+// ====================================================================
+// START: PERBAIKAN ROUTE /client/assistant/send
+// ====================================================================
 
-    Server.delete("/client*", async function (req, res, next) {
-      const path = req.url;
-      if ((await Authentication.HasAccess(req.session.account)) == false && path != "/signin") {
-        res.status(403).send(Language.Data[req.session.language]["signin"]["error_signin"]);
-      } else {
-        next();
-      }
+    /**
+     * @path POST /client/assistant/send
+     * @description Endpoint utama untuk interaksi Gemini Chat, termasuk Function Calling multi-turn.
+     */
+    Server.post("/client/assistant/send", async function (req, res) {
+        const MAX_FUNCTION_CALLS = 3; // Batas iterasi untuk menyelesaikan function call
+        
+        // 1. Ambil History dan Variabel Penting
+        const accountId = await Authentication.GetAccountId(req.session.account);
+        if (!accountId) return res.status(403).send("Akses ditolak: Sesi tidak valid.");
+        
+        const historyData = await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId]);
+        let history = JSON.parse(historyData.data?.at(0)?.content || "[]");
+        
+        let userMessage = req.body.message; 
+        const studentId = accountId; // studentId diambil dari accountId (Sesi/Auth)
+        console.log(`Student ID: ${studentId}`);
+        
+        let finalResponse = null;
+        let errorOccurred = false;
+
+        // 🤖 MODE NORMAL GEMINI ASLI - Looping Function Calling
+        for (let i = 0; i < MAX_FUNCTION_CALLS; i++) { 
+            console.log(i);
+            try {
+                // Panggil Gemini API. userMessage hanya dikirim di iterasi pertama.
+                // model_index 0 (default)
+                console.log("user_message", userMessage);
+                const response = await Gemini.Chat.Send(userMessage, 0, history);
+                console.log("await const response DONE");
+                // 3. Cek apakah Gemini meminta pemanggilan fungsi
+                if (response.function_call && response.function_call.name) {
+                    
+                    const funcName = response.function_call.name;
+                    const funcArgs = response.function_call.args;
+                    let funcResult;
+
+                    // 4. Di iterasi pertama, simpan pesan user dan set userMessage ke null
+                    if (i === 0) {
+                        // Tambahkan pesan user ke history
+                        history.push({ role: 'user', parts: [{ text: userMessage }] }); 
+                    }
+                    
+                    console.log(`[Function Call] Memanggil: ${funcName}`);
+
+                    
+
+                    // 6. Eksekusi fungsi nyata (INJEKSI STUDENT ID DARI SESI)
+                    if (funcName === 'get_budget_compliance') {
+                        funcResult = await RAGService.get_budget_compliance(studentId); 
+                        
+                    } else if (funcName === 'get_top_spending_categories') {
+                        // funcArgs.time_frame HARUS ADA
+                        funcResult = await RAGService.get_top_spending_categories(studentId, funcArgs.time_frame); 
+                        
+                    } else if (funcName === 'compare_spending_vs_plan') {
+                        // funcArgs.month_year mungkin opsional, kita injeksi studentId
+                        funcResult = await RAGService.compare_spending_vs_plan(studentId, funcArgs.month_year);
+                        
+                    } else if (funcName === 'check_wallet_and_drip_status') {
+                        // Fungsi ini hanya butuh studentId
+                        funcResult = await RAGService.check_wallet_and_drip_status(studentId);
+                        
+                    } else {
+                        funcResult = { success: false, message: `Fungsi RAG '${funcName}' tidak ditemukan.` };
+                    }
+
+                    console.log("funcResult initialized")
+
+                    // 7. Simpan Hasil Fungsi (functionResponse) ke history (Role: 'tool')
+                    history.push({ 
+                        role: 'user', // Role di API baru adalah 'tool'
+                        parts: [{ 
+                            functionResponse: { 
+                                name: funcName, 
+                                response: { 
+                                    content: JSON.stringify(funcResult) 
+                                }
+                            } 
+                        }]
+                    });
+
+                    // Loop akan lanjut ke iterasi berikutnya (i++) untuk mendapatkan respons teks
+
+                } else {
+                    // 8. Jika tidak ada function call, keluar dari loop (Jawaban Teks Akhir Diterima)
+                    finalResponse = response;
+                    console.log(finalResponse);
+                    break; 
+                }
+
+                finalResponse = response;
+                console.log("final response: ", finalResponse)
+                
+            } catch (error) {
+                
+                // --- PENANGANAN ERROR 429/FETCH FAILED DARI index.js ---
+                if (error.status == 429 || String(error).includes("fetch failed") || String(error).includes("429")) {
+                    
+                    if (i < MAX_FUNCTION_CALLS - 1) { 
+                        const delayTime = 2500 * (i + 1); // Delay eksponensial
+                        console.warn(`[route.js] 429/Fetch Failed. Retrying in ${delayTime / 1000}s (Attempt ${i + 2})...`);
+                        await Delay(delayTime);
+                        continue; // Lanjutkan ke iterasi berikutnya
+                    } else {
+                        console.error("[route.js] Max retries reached for 429/Fetch Failed. Gagal mendapatkan respons.");
+                    }
+                }
+                
+                // --- ERROR LAIN (400, Logic Error, dll.) ---
+                console.error(`[route.js] Error selama pemrosesan: ${error.message}`, error);
+                finalResponse = { error: `Terjadi kesalahan pada asisten virtual: ${error.message}` };
+                errorOccurred = true;
+                break; // Keluar dari loop jika terjadi error fatal
+            }
+
+        } // --- END LOOP ---
+       
+        // 9. MENGIRIM RESPON AKHIR DAN PENYIMPANAN HISTORY
+        if (finalResponse && !errorOccurred) {
+            console.log(finalResponse.text);
+            if (finalResponse.finish.code == 0 && finalResponse.text) {
+                // Tambahkan respons teks akhir ke history sebelum disimpan
+                history.push({ role: 'model', parts: [{ text: finalResponse.text }] });
+
+                // Simpan history yang sudah diperbarui.
+                await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(history)]);
+
+                return res.send(finalResponse.text); // Kirim respons teks akhir ke frontend
+            }
+            else {
+                // Model merespon tapi tanpa teks (misalnya Safety Block atau error tak terduga)
+                console.error("Gemini Finish Code/Error:", finalResponse.finish.code, finalResponse.finish.error);
+                return res.status(500).send("Terjadi kesalahan pada proses asisten virtual (Respons teks kosong atau error dari model).");
+            }
+        } else {
+            // Jika loop selesai tanpa finalResponse sukses (atau error sudah diset)
+            const errorMessage = finalResponse ? finalResponse.error : "Gagal memproses permintaan chat. Coba lagi atau hubungi support.";
+            return res.status(500).send(errorMessage); 
+        }
     });
-
-    Server.post("/language/", async function (req, res) {
-      if (Language.Available.includes(req.body.language)) {
-        req.session.language = req.body.language;
-        res.send();
-      } else {
-        res.status(404).send("Language '" + req.body.language + "' is not available.");
-      }
-    });
-
-    Server.get("/:language/*", function (req, res, next) {
-      if (Language.Available.includes(req.params.language)) {
-        req.session.language = req.params.language;
-
-        if (req.path.endsWith(".js") == false && req.path.endsWith(".css") == false) return res.redirect("/" + req.params[0]);
-
-        req.filepath = "./public/" + req.params[0];
-      }
-
-      next();
-    });
-
-    Server.get("*", function (req, res, next) {
-      if (req.query.contentOnly == "true") req.contentOnly = true;
-
-      next();
-    });
-  }
-
-  // CUSTOM ROUTE HERE
-  Server.get("/avatar/*", async function (req, res) {
-    // Set cache of avatar to 1 year, because it can be refreshed with banner version query
-    res.header("Cache-Control", "public, max-age=31536000");
-    res.header("Content-Type", "image/webp");
-
-    const paths = req.path.split("/").filter((o) => o != "");
-    const avatarPath = "./src/avatars/" + paths[1];
-
-    if (FileIO.existsSync(avatarPath)) res.sendFile(avatarPath, { root: "./" });
-    else res.sendFile("./src/avatar.webp", { root: "./" });
-  });
-
-  Server.post("/accounts/setavatar", async function (req, res) {
-    const id = req.session.account;
-    const account = await Authentication.GetAccountId(id);
-
-    if (!id || !account) return res.status(403).send();
-
-    const buffer = req.files.file.data;
-
-    if (buffer.length > 2000000) return res.status(400).send(language.Data[req.session.language]["accounts"]["error_avatar_toobig"]);
-
-    const success = await Accounts.Avatars.Save(account, buffer);
-
-    if (success) res.send();
-    else res.status(500).send();
-  });
-
-  Server.post("/accounts/clearavatar", async function (req, res) {
-    const id = req.session.account;
-
-    if (id == null) return res.status(403).send();
-
-    const success = Accounts.Avatars.Delete(id);
-
-    if (success) res.send();
-    else res.status(500).send();
-  });
+// ====================================================================
+// END: PERBAIKAN ROUTE /client/assistant/send
+// ====================================================================
 
 
-  // ROUTE FOR GEMINI CHATS
-  let dumpHistory = [];
-  Server.get("/client/assistant/history", async function (req, res) {
-    const accountId = await Authentication.GetAccountId(req.session.account);
-    const history = JSON.parse((await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId])).data?.at(0)?.content || "[]");
-    res.send(history);
-  });
-  Server.post("/client/assistant/send", async function (req, res) {
-      // 1. Ambil History dan Variabel Penting
-      const accountId = await Authentication.GetAccountId(req.session.account);
-      const historyData = await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId]);
-      let history = JSON.parse(historyData.data?.at(0)?.content || "[]");
-      
-      // Variabel ini akan kita set ke NULL setelah iterasi pertama
-      let userMessage = req.body.message; 
-      const studentId = accountId; 
-      console.log(studentId);
-      let response;
-
-      // --- START: LOOP UNTUK FUNCTION CALL (RAG) ---
-      for (let i = 0; i < 3; i++) { 
-          
-          // 2. Panggil Gemini: Kirim userMessage di iterasi 0, lalu NULL di iterasi berikutnya
-          // Catatan: Asumsi gemini/index.js sudah memvalidasi dan mengabaikan message=null/""
-          response = await Gemini.Chat.Send(userMessage, 1, history);
-          
-          // 3. Cek apakah Gemini meminta pemanggilan fungsi
-          if (response.function_call && response.function_call.name) {
-              
-              const funcName = response.function_call.name;
-              const funcArgs = response.function_call.args;
-              let funcResult;
-
-              // 4. HAPUS TURN USER JIKA FUNCTION CALL TERJADI DI ITERASI PERTAMA
-              if (i === 0) {
-                  // **Tindakan Kritis:** Hapus turn user yang baru saja ditambahkan oleh Gemini.Chat.Send
-                  history.pop(); 
-              }
-
-              // 5. Simpan Function Call ke history (Role: 'model')
-              history.push({ role: 'model', parts: [{ functionCall: response.function_call }] });
-
-              // 6. Eksekusi fungsi nyata (Mapping Function)
-              if (funcName === 'get_budget_compliance') {
-                  funcResult = await RAGService.get_budget_compliance(studentId); 
-              } else if (funcName === 'get_top_spending_categories') {
-                  funcResult = await RAGService.get_top_spending_categories(studentId, funcArgs.time_frame); 
-              } else {
-                  funcResult = { success: false, message: "Fungsi RAG tidak ditemukan." };
-              }
-
-              // 7. Simpan Hasil Fungsi (functionResponse) ke history (Role: 'function')
-              history.push({ 
-                  role: 'function', 
-                  parts: [{ 
-                      functionResponse: { name: funcName, response: funcResult } 
-                  }] 
-              });
-              
-              // 8. Set userMessage ke NULL setelah iterasi pertama
-              // Ini adalah kunci untuk mencegah duplikasi di panggilan API berikutnya
-              userMessage = null; 
-
-          } else {
-              // 9. Jika tidak ada function call, keluar dari loop (Jawaban Teks Akhir Diterima)
-              break; 
-          }
-      }
-
-      // 10. Respons Akhir dan Penyimpanan History
-      if (response.finish.code == 0) {
-          res.send(response.text);
-          
-          // Simpan history yang sudah diperbarui.
-          await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(response.history || history)]);
-      }
-      else {
-          console.error(response.finish.code);
-          res.status(500).send("Terjadi kesalahan pada proses asisten virtual.");
-      }
-  });
+    // API yang butuh login (Protected)
+    // API AUTH ROUTES
+    Server.post("/api/auth/register/funder", ApiFinflow.registerFunder);
+    Server.post("/api/auth/register/student", ApiFinflow.registerStudent);
+    Server.post("/api/auth/register/parent", ApiFinflow.registerParent);
+    Server.post("/api/auth/invite/create", ApiFinflow.requireAuth, ApiFinflow.createInvite);
+    Server.post("/api/auth/login", ApiFinflow.login);
+    
+    // API FUNDING AGREEMENT
+    Server.post("/api/funding/init", ApiFinflow.requireAuth, ApiFinflow.initiateFunding);
+    Server.post("/api/funding/topup", ApiFinflow.requireAuth, ApiFinflow.parentTopup);
+    Server.post("/api/funding/finalize", ApiFinflow.requireAuth, ApiFinflow.finalizeAgreement);
+    Server.post("/api/funding/pay", ApiFinflow.requireAuth, ApiFinflow.confirmTransfer);
 
 
+    // API EXECUTION & PENYALURAN DANA
+    Server.post("/api/exec/drip", ApiFinflow.requireAuth, ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
+    Server.post("/api/exec/urgent", ApiFinflow.requireAuth, ApiFinflow.requestUrgent);
+    Server.post("/api/exec/edu/pre", ApiFinflow.requireAuth, ApiFinflow.requestEduPreApproval);
+    Server.post("/api/exec/edu/post", ApiFinflow.requireAuth, ApiFinflow.requestEduReimburse);
+    Server.post("/api/exec/withdraw", ApiFinflow.requireAuth, ApiFinflow.requestWithdraw); // Tombol Student untuk cairkan uang
 
-  // API yang butuh login (Protected)
-  // API AUTH ROUTES
-  Server.post("/api/auth/register/funder", ApiFinflow.registerFunder);
-  Server.post("/api/auth/register/student", ApiFinflow.registerStudent);
-  Server.post("/api/auth/register/parent", ApiFinflow.registerParent);
-  Server.post("/api/auth/invite/create", ApiFinflow.requireAuth, ApiFinflow.createInvite);
-  Server.post("/api/auth/login", ApiFinflow.login);
-  
-  // API FUNDING AGREEMENT
-  Server.post("/api/funding/init", ApiFinflow.requireAuth, ApiFinflow.initiateFunding);
-  Server.post("/api/funding/topup", ApiFinflow.requireAuth, ApiFinflow.parentTopup);
-  Server.post("/api/funding/finalize", ApiFinflow.requireAuth, ApiFinflow.finalizeAgreement);
-  Server.post("/api/funding/pay", ApiFinflow.requireAuth, ApiFinflow.confirmTransfer);
+    // API MONITORING FUNDER
+    Server.get("/api/monitoring/funder", ApiFinflow.requireAuth, ApiFinflow.getFunderMonitoring);
 
+    // Module 4: Transactions
+    // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
+    Server.post("/api/scan/receipt", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
 
-  // API EXECUTION & PENYALURAN DANA
-  Server.post("/api/exec/drip", ApiFinflow.requireAuth, ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
-  Server.post("/api/exec/urgent", ApiFinflow.requireAuth, ApiFinflow.requestUrgent);
-  Server.post("/api/exec/edu/pre", ApiFinflow.requireAuth, ApiFinflow.requestEduPreApproval);
-  Server.post("/api/exec/edu/post", ApiFinflow.requireAuth, ApiFinflow.requestEduReimburse);
-  Server.post("/api/exec/withdraw", ApiFinflow.requireAuth, ApiFinflow.requestWithdraw); // Tombol Student untuk cairkan uang
+    // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
+    Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
 
-  // API MONITORING FUNDER
-  Server.get("/api/monitoring/funder", ApiFinflow.requireAuth, ApiFinflow.getFunderMonitoring);
+    // API MONEY MANAGEMENT DASHBOARD
+    Server.get("/api/student/insights", ApiFinflow.requireAuth, ApiFinflow.getInsights);
+    Server.get("/api/student/report", ApiFinflow.requireAuth, ApiFinflow.getWeeklyReport);
 
-  // Module 4: Transactions
-  // 1. Scan Struk (OCR Helper) -> Frontend dapet JSON
-  Server.post("/api/scan/receipt", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
+    // Notifications
+    Server.get("/api/notifications/unread", ApiFinflow.requireAuth, ApiFinflow.getUnreadNotifications);
+    Server.get("/api/notifications/history", ApiFinflow.requireAuth, ApiFinflow.getNotificationHistory);
 
-  // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
-  Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
-
-  // API MONEY MANAGEMENT DASHBOARD
-  Server.get("/api/student/insights", ApiFinflow.requireAuth, ApiFinflow.getInsights);
-  Server.get("/api/student/report", ApiFinflow.requireAuth, ApiFinflow.getWeeklyReport);
-
-  // Notifications
-  Server.get("/api/notifications/unread", ApiFinflow.requireAuth, ApiFinflow.getUnreadNotifications);
-  Server.get("/api/notifications/history", ApiFinflow.requireAuth, ApiFinflow.getNotificationHistory);
-
-  Map(Server);
+    Map(Server);
 }
 
 function Map(Server) {
-  Server.get("*", async function (req, res) {
-    const prettyPath = PrettifyPath(req);
-    const path = prettyPath.result;
+    // ... (Fungsi Map dan PrettifyPath tidak diubah)
+    Server.get("*", async function (req, res) {
+        const prettyPath = PrettifyPath(req);
+        const path = prettyPath.result;
 
-    if (prettyPath.refresh) {
-      res.redirect("/" + prettyPath.result);
-      return;
-    }
+        if (prettyPath.refresh) {
+            res.redirect("/" + prettyPath.result);
+            return;
+        }
 
-    const rootPath = req.filepath ? "" : "./public/";
-    const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
-    const isJS = path.endsWith(".js") && FileIO.existsSync(rootPath + path);
-    const isCSS = path.endsWith(".css") && FileIO.existsSync(rootPath + path);
-    const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
-    const isImage = /(\.png|\.webp|\.jpg|\.bmp|\.jpeg)$/g.test(path);
-    const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
+        const rootPath = req.filepath ? "" : "./public/";
+        const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
+        const isJS = path.endsWith(".js") && FileIO.existsSync(rootPath + path);
+        const isCSS = path.endsWith(".css") && FileIO.existsSync(rootPath + path);
+        const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
+        const isImage = /(\.png|\.webp|\.jpg|\.bmp|\.jpeg)$/g.test(path);
+        const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
 
-    if (isHTML) {
-      let data;
-      if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
-      else data = FileIO.readFileSync(rootPath + path + ".html");
+        if (isHTML) {
+            let data;
+            if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
+            else data = FileIO.readFileSync(rootPath + path + ".html");
 
-      data = data.toString();
-      data = Functions.Page_Compile(pageType, data, req.session?.language, path, req.contentOnly == true);
+            data = data.toString();
+            data = Functions.Page_Compile(pageType, data, req.session?.language, path, req.contentOnly == true);
 
-      if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
+            if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
 
-      res.send(data);
-    } else if (isJS || isCSS) {
-      if (isJS) res.header("Content-Type", "text/javascript; charset=utf-8");
-      else if (isCSS) res.header("Content-Type", "text/css");
+            res.send(data);
+        } else if (isJS || isCSS) {
+            if (isJS) res.header("Content-Type", "text/javascript; charset=utf-8");
+            else if (isCSS) res.header("Content-Type", "text/css");
 
-      let data = FileIO.readFileSync(rootPath + path).toString();
-      data = Language.Compile(data, req.session.language);
-      res.send(data);
-    } else {
-      if (FileIO.existsSync(rootPath + path)) {
-        res.sendFile(rootPath + path, { root: "./" });
-      } else {
-        if (isImage) res.status(404).sendFile("./src/blank.png", { root: "./" });
-        else res.status(404).sendFile("./public/404.shtml", { root: "./" });
-      }
-    }
-  });
+            let data = FileIO.readFileSync(rootPath + path).toString();
+            data = Language.Compile(data, req.session.language);
+            res.send(data);
+        } else {
+            if (FileIO.existsSync(rootPath + path)) {
+                res.sendFile(rootPath + path, { root: "./" });
+            } else {
+                if (isImage) res.status(404).sendFile("./src/blank.png", { root: "./" });
+                else res.status(404).sendFile("./public/404.shtml", { root: "./" });
+            }
+        }
+    });
 
-  Server.post("*", async function (req, res, next) {
-    let path = PrettifyPath(req).result;
+    Server.post("*", async function (req, res, next) {
+        let path = PrettifyPath(req).result;
 
-    const rootPath = req.filepath ? "" : "./public/";
-    const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
-    const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
-    const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
+        const rootPath = req.filepath ? "" : "./public/";
+        const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
+        const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
+        const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
 
-    if (isHTML) {
-      let data;
-      if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
-      else data = FileIO.readFileSync(rootPath + path + ".html");
+        if (isHTML) {
+            let data;
+            if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
+            else data = FileIO.readFileSync(rootPath + path + ".html");
 
-      data = data.toString();
-      data = Functions.Page_Compile(pageType, data, req.session?.language, path, true);
+            data = data.toString();
+            data = Functions.Page_Compile(pageType, data, req.session?.language, path, true);
 
-      if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
+            if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
 
-      res.send(data);
-    } else {
-      if (FileIO.existsSync(rootPath + path)) {
-        res.sendFile(rootPath + path, { root: "./" });
-      } else {
-        res.status(404).send();
-      }
-    }
-  });
+            res.send(data);
+        } else {
+            if (FileIO.existsSync(rootPath + path)) {
+                res.sendFile(rootPath + path, { root: "./" });
+            } else {
+                res.status(404).send();
+            }
+        }
+    });
 }
 
 /**
  * Make the URL tidy
  * @param { string } path
  * @returns { {
- *      refresh: boolean,
- *      result: string
+ * refresh: boolean,
+ * result: string
  * }}
  */
 function PrettifyPath(req) {
-  if (req.filepath)
+    if (req.filepath)
+        return {
+            refresh: false,
+            result: req.filepath,
+        };
+
+    let path = req.path;
+    let refresh = false;
+
+    if (path.startsWith("//")) refresh = true;
+
+    while (path.startsWith("/")) path = path.substring(1);
+
+    if (path.includes("//")) {
+        refresh = true;
+        path = path.replaceAll("//", "/");
+    }
+    if (path.endsWith("/")) {
+        refresh = true;
+        path = path.substring(0, path.length - 1);
+    }
+    if (path.endsWith(".html")) {
+        refresh = true;
+        path = path.substring(0, path.length - 5);
+    }
+    if (path.endsWith(".shtml")) {
+        refresh = true;
+        path = path.substring(0, path.length - 6);
+    }
+
     return {
-      refresh: false,
-      result: req.filepath,
+        refresh: refresh,
+        result: path,
     };
-
-  let path = req.path;
-  let refresh = false;
-
-  if (path.startsWith("//")) refresh = true;
-
-  while (path.startsWith("/")) path = path.substring(1);
-
-  if (path.includes("//")) {
-    refresh = true;
-    path = path.replaceAll("//", "/");
-  }
-  if (path.endsWith("/")) {
-    refresh = true;
-    path = path.substring(0, path.length - 1);
-  }
-  if (path.endsWith(".html")) {
-    refresh = true;
-    path = path.substring(0, path.length - 5);
-  }
-  if (path.endsWith(".shtml")) {
-    refresh = true;
-    path = path.substring(0, path.length - 6);
-  }
-
-  return {
-    refresh: refresh,
-    result: path,
-  };
 }
 
 module.exports = Route;
