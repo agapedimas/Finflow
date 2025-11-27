@@ -1,0 +1,18 @@
+{
+    "avatar_change": "Ubah avatar",
+    "avatar_upload_error_title": "Gagal Mengunggah Avatar",
+    "avatar_upload_error_message": "Ukuran file maksimum adalah 2 MB.",
+    "avatar_upload_success_title": "Avatar Diubah",
+    "avatar_upload_success_message": "Avatar berhasil diatur.",
+
+    "create_account_title": "Buat Akun",
+    "create_account_error_title": "Gagal Membuat Akun",
+    "delete_account_confirm_title": "Apakah Anda yakin ingin menghapus akun ini?",
+    "delete_account_confirm_message": "Ini akan menghapus akses mereka, tetapi kursus, topik, dan masalah yang telah mereka buat akan tetap tersedia.",
+    "delete_error_title": "Penghapusan Gagal",
+
+    "error_generic": "Terjadi kesalahan.",
+    "error_parameter_missing": "{0} harus ditentukan.",
+    "error_create_nopermission": "Anda tidak memiliki izin untuk membuat akun.",
+    "error_delete_nopermission": "Anda tidak memiliki izin untuk menghapus akun."
+}

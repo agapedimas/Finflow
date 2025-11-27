@@ -1,47 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Finflow - Sign Up</title>
+<ad-title><$ signup title /></ad-title>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-
-    <script src="../sdk.js"></script>
-  </head>
-  <body>
-    <ad-title><$ signup title /></ad-title>
-
-    <div class="panel" theme="light" accent="blue">
-      <img src="/assets/logo_text.png" />
-      <div class="title"><$ signup title /></div>
-      <div class="subtitle"><$ signup description_role /></div>
-
-      <div class="inputs">
-        <button id="Button_SignUp_Student" onclick="window.location.href='signup/web3auth/index?type=student'"><$ signup role_student /></button>
-
-        <button id="Button_SignUp_Parent" onclick="window.location.href='signup/web3auth/index?type=parent'"><$ signup role_parent /></button>
-
-        <button id="Button_SignUp_ScholarshipFunder" onclick="window.location.href='signup/web3auth/index?type=scholarshipfunder'"><$ signup role_scholarshipfunder /></button>
-
-        <div class="offersignin">
-          <span><$ signup offer_signin_title /></span>
-          <a class="link" id="Button_SignIn" href="/signin.html">
-            <span><$ signup offer_signin_link /></span>
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <style>
-      .root {
+<style>
+    .root
+    {
         background: linear-gradient(125deg, #0a84ff, #0067ce);
-      }
-      .panel {
+    }
+    .panel
+    {
         position: fixed;
         top: 50%;
         left: 50%;
@@ -54,57 +20,73 @@
         border: 1px solid var(--overlay-6);
         gap: 0.3em;
         width: 350px;
-        box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);
+        box-shadow: 0 5px 35px 0px rgba(0, 0, 0, 0.075);    
         max-height: calc(100vh - var(--padding));
         max-height: calc(100dvh - var(--padding));
         overflow: auto;
-      }
-      .panel img {
-        height: 1.55em;
-      }
-      .panel .title {
-        font-size: 1.75em;
-        font-family: var(--font-bold);
-        margin: 0.25em 0 0;
-      }
-      .panel .subtitle {
-        font-size: 1.25em;
-        margin: 0 0 1em;
-      }
-      .panel .inputs {
-        display: grid;
-        gap: 7px;
-      }
-      .panel .inputs button {
-        padding: 0.6em 0.8em;
-        border-radius: 10px;
-        cursor: pointer; /* Tambahan UX */
-      }
-      .panel .inputs .offersignin {
-        margin-top: 1em;
-        justify-self: center;
-      }
-      /* Tambahan agar link terlihat bisa diklik */
-      .link {
-        cursor: pointer;
-        color: blue;
-        text-decoration: underline;
-      }
-    </style>
+    }
+        .panel img
+        {
+            height: 1.55em;
+        }
+        .panel .title
+        {
+            font-size: 1.75em;
+            font-family: var(--font-bold);
+            margin: 0.25em 0 0;
+        }
+        .panel .subtitle
+        {
+            font-size: 1.25em;
+            margin: 0 0 1em;
+        }
+        .panel .inputs
+        {
+            display: grid;
+            gap: 7px;
+        }
+            .panel .inputs button
+            {
+                padding: 0.6em 0.8em;
+                border-radius: 10px;
+            }
+            .panel .inputs .offersignin
+            {
+                margin-top: 1em;
+                justify-self: center;
+            }
+</style>
 
-    <script>
-      // Setup jQuery AJAX agar Cookie terbawa (PENTING untuk Session Backend)
-      $.ajaxSetup({
-        xhrFields: { withCredentials: true },
-        crossDomain: true,
-      });
+<script>
+    $(".titlebar").remove();
+    $("nav").remove();
+    $(".loading").hide();
+</script>
 
-      // UI Cleanup Template
-      $(".titlebar").remove();
-      $("nav").remove();
-      $(".loading").hide();
+<div class="panel" theme="light" accent="blue">
+    <img src="/assets/logo_text.png"/>
+    <div class="title"><$ signup title /></div>
+    <div class="subtitle"><$ signup description_role /></div>
+    <div class="inputs">
+        <button id="Button_SignUp_Student" goto="/signup/web3auth?type=student"><$ signup role_student /></button>
+        <button id="Button_SignUp_ScholarshipFunder" goto="/signup/web3auth?type=scholarshipfunder"><$ signup role_scholarshipfunder /></button>
 
-      // --- LOGIC AUTO-REDIRECT ---
+        <div class="offersignin">
+            <span><$ signup offer_signin_title /></span>
+            <a class="link" id="Button_SignIn" goto="/signin">
+                <span><$ signup offer_signin_link /></span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="/sdk.js"></script>
+
+<script>
+  // --- LOGIC AUTO-REDIRECT ---
       // Jika user sudah login, jangan tampilkan menu signup, langsung lempar ke dashboard
       window.onload = async () => {
         try {
@@ -120,13 +102,11 @@
               const role = loginRes.data.role;
               if (role === "student") window.location.href = "/student";
               else if (role === "funder") window.location.href = "/funder";
-              else window.location.href = "/gclient";
+              else window.location.href = "/client";
             }
           }
         } catch (e) {
           console.log("Belum login / Init error:", e);
         }
       };
-    </script>
-  </body>
-</html>
+</script>

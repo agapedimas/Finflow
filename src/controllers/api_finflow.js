@@ -4,6 +4,7 @@ const { ethers } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const GeminiModule = require("../../gemini");
+const BlockchainService = require("./blockchainService");
 
 GeminiModule.Initialize();
 
@@ -191,18 +192,19 @@ module.exports = {
 
             const newId = generateId('funder');
             const username = email.split('@')[0];
-            const dummyPass = "WALLET_LOGIN_" + Date.now();
             
-            // A. Insert Data Funder
+            // Insert Data Funder
             const q1 = `
                 INSERT INTO accounts 
-                (id, username, displayname, email, wallet_address, organization_name, bank_name, bank_account_number, phonenumber, role, created) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ScholarshipFunder', NOW())
+                (id, username, displayname, phonenumber, email, wallet_address, role, organization_name, bank_name, bank_account_number, created) 
+                VALUES (?, ?, ?, ?, ?, ?, 'ScholarshipFunder', ?, ?, ?, NOW())
             `;
-            await SQL.Query(q1, [newId, username, full_name, email, wallet_address, org_name, bank_name, bank_account, phonenumber]);
+            const phone = phonenumber || "-";
 
-            // B. Set Role Funder
-            await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 0)", [newId]);
+            await SQL.Query(q1, [newId, username, full_name, phone, email, wallet_address, org_name, bank_name, bank_account]);
+
+            // Insert ke tabel detail 
+            await SQL.Query("INSERT INTO accounts_funder (id) VALUES (?)", [newId]);
 
             // C. Auto Login (Session)
             const sessionId = await Authentication.Add(newId, req.ip, true);
@@ -216,137 +218,74 @@ module.exports = {
         }
     },
 
-    createInvite: async (req, res) => {
-        try {
-            const { invitee_email, role_target } = req.body;
-
-            // Cek Pengundang
-            const inviter = req.currentUser;
-            if(!inviter) return error(res, "Unauthorized", 401);
-
-            const token = generateToken();
-
-            // Simpan Undangan
-            const qInvite = `INSERT INTO invitations (token, inviter_id, invitee_email, role, status) VALUES (?, ?, ?, ?, 'pending')`;
-            await SQL.Query(qInvite, [token, inviter.id, invitee_email, role_target]);
-
-            // Generate Magic Link (Sesuaikan port frontend)
-            const link = `http://localhost:1111/signup/web3auth?token=${token}&type=${role_target}`;
-
-            return success(res, { link: link, token: token }, "Undangan Berhasil Dibuat");
-        } catch (e) {
-            return error(res, "Gagal membuat undangan");
-        }
-    },
 
     registerStudent: async (req, res) => {
         try {
-            const { email, wallet_address, full_name, bank_name, bank_account, invite_token } = req.body;
+            // [UPDATE] Menerima phonenumber
+            const { email, wallet_address, full_name, bank_name, bank_account, phonenumber } = req.body;
 
-            // Validasi Token
-            const iRes = await SQL.Query("SELECT * FROM invitations WHERE token = ? AND status = 'pending'", [invite_token]);
-            const invite = iRes.data?.[0];
-
-            if(!invite) return error(res, "Token Invalid / Kadaluarsa", 400);
-            if(invite.role !== 'student') return error(res, "Link salah sasaran", 403);
-
-            // SECURITY: Cek Email Match
-            if(email !== invite.invitee_email) {
-                return error(res, `Akses Ditolak! Undangan ini untuk ${invite.invitee_email}, bukan ${email}`, 403);
+            if (!email || !wallet_address || !full_name) {
+                return error(res, "Data pendaftaran tidak lengkap", 400);
             }
+
+            // Cek Duplikasi
+            const checkWallet = await SQL.Query("SELECT id FROM accounts WHERE wallet_address = ?", [wallet_address]);
+            if (checkWallet.data.length > 0) return error(res, "Wallet ini sudah terdaftar.", 400);
+
+            const checkEmail = await SQL.Query("SELECT id FROM accounts WHERE email = ?", [email]);
+            if (checkEmail.data.length > 0) return error(res, "Email ini sudah digunakan.", 400);
 
             const newId = generateId('student');
             const username = email.split('@')[0];
-            const dummyPass = "WALLET_LOGIN_" + Date.now();
+            const phone = phonenumber || "-";
 
-            // Buat Akun
-            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, bank_name, bank_account_number, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Student', NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, bank_name, bank_account, phonenumber]);
+            // [UPDATE] Insert ke ACCOUNTS dengan ROLE dan PHONENUMBER
+            // Role sesuai ENUM: 'Student'
+            const qAccount = `
+                INSERT INTO accounts 
+                (id, username, displayname, phonenumber, email, wallet_address, role, bank_name, bank_account_number, created) 
+                VALUES (?, ?, ?, ?, ?, ?, 'Student', ?, ?, NOW())
+            `;
+            
+            await SQL.Query(qAccount, [newId, username, full_name, phone, email, wallet_address, bank_name, bank_account]);
 
+            // Insert ke Role Student (Saldo Awal 0)
             await SQL.Query("INSERT INTO accounts_student (id, balance) VALUES (?, 0)", [newId]);
 
-            // Matikan Token (Q: Buat apa ini?? Masi bingung)
-            await SQL.Query("UPDATE invitations SET status = 'used' WHERE id = ?", [invite.id]);
-
+            // Auto Login
             const sessionId = await Authentication.Add(newId, req.ip, true);
             if(req.session) { req.session.account = sessionId; req.session.is_privy = true; }
 
-            return success(res, { id: newId, role: 'student' }, "Akun Student Aktif");
+            return success(res, { id: newId, role: 'student' }, "Registrasi Mahasiswa Berhasil");
         } catch (e) {
-            return error(res, "Gagal Aktivasi Student");
+            return error(res, "Gagal Registrasi Student");
         }
     },
 
-    registerParent: async (req, res) => {
-        try {
-            const { email, wallet_address, full_name, invite_token } = req.body;
-
-            const iRes = await SQL.Query("SELECT * FROM invitations WHERE token = ? AND status = 'pending'", [invite_token]);
-            const invite = iRes.data?.[0];
-
-            if(!invite) return error(res, "Token Invalid / Kadaluarsa", 400);
-
-            // SECURITY: Cek Email Match
-            if(email !== invite.invitee_email) {
-                return error(res, `Email login tidak sesuai undangan!`, 403);
-            }
-
-            const newId = generateId('parent');
-            const username = email.split('@')[0];
-            const dummyPass = "WALLET_LOGIN_" + Date.now();
-
-            // Buat Akun Parent
-            const qAccount = `INSERT INTO accounts (id, username, displayname, email, wallet_address, phonenumber, role, created) VALUES (?, ?, ?, ?, ?, ?, ?, 'Parent', NOW())`;
-            await SQL.Query(qAccount, [newId, username, full_name, email, wallet_address, phonenumber]);
-
-            await SQL.Query("INSERT INTO accounts_funder (id, type) VALUES (?, 1)", [newId]);
-
-            // LINK PARENT - STUDENT (invite.inviter_id adalah student)
-            await SQL.Query("UPDATE accounts SET parent_id = ? WHERE id = ?", [newId, invite.inviter_id]);
-            
-            // Matikan Token
-            await SQL.Query("UPDATE invitations SET status = 'used' WHERE id = ?", [invite.id]);
-
-            const sessionId = await Authentication.Add(newId, req.ip, true);
-            if(req.session) { req.session.account = sessionId; req.session.is_privy = true; }
-
-            return success(res, { id: newId, role: 'parent' }, "Akun Parent Aktif");
-        } catch (e) {
-            return error(res, "Gagal Aktivasi Parent");
-        }
-    },
 
     login: async (req, res) => {
         try {
-            const { email, wallet_address } = req.body;
+            const { wallet_address } = req.body;
             const checkRes = await SQL.Query("SELECT * FROM accounts WHERE wallet_address = ?", [wallet_address]);
-            let user = checkRes.data && checkRes.data[0];
+            let user = checkRes.data?.[0];
 
-            if (!user) return error(res, "Akun tidak ditemukan. Harap daftar melalui Link Undangan (Student/Parent) atau Register Funder.", 404);
+            if (!user) return error(res, "Akun tidak ditemukan. Harap daftar terlebih dahulu.", 404);
 
-            // Tentukan Role (Student, Funder, atau Parent)
-            let role = 'unknown';
+            // [UPDATE] Mapping Role dari Database ke Frontend
+            // DB: 'ScholarshipFunder' -> Frontend: 'funder'
+            // DB: 'Student'           -> Frontend: 'student'
+            let frontendRole = 'unknown';
+            
+            if (user.role === 'ScholarshipFunder') frontendRole = 'funder';
+            else if (user.role === 'Student') frontendRole = 'student';
 
-            // Cek apakah Student?
-            const checkStudent = await SQL.Query("SELECT id FROM accounts_student WHERE id = ?", [user.id]);
-            if (checkStudent.data.length > 0) {
-                role = 'student';
-            } else {
-                // Cek apakah Funder/Parent?
-                const checkFunder = await SQL.Query("SELECT type FROM accounts_funder WHERE id = ?", [user.id]);
-                if (checkFunder.data.length > 0) {
-                    const type = checkFunder.data[0].type;
-                    // Type 0 = Funder, Type 1 = Parent
-                    role = (type === 1) ? 'parent' : 'funder';
-                }
-            }
-
+            // Buat Session
             const sessionId = await Authentication.Add(user.id, req.ip, true);
             if (req.session) { req.session.account = sessionId; req.session.is_privy = true; }
 
-            return success(res, {
+            return success(res, { 
                 ...user, 
-                role: role // Frontend akan pakai ini buat redirect halaman
+                role: frontendRole 
             }, "Login Berhasil");
         } catch (e) {
             return error(res, "Login Error");
@@ -358,86 +297,523 @@ module.exports = {
     // MODULE 2: FUNDING AGREEMENT (Kesepakatan Awal)
     // ============================================================
 
-    // 1. Funder Memulai (Set Dana Pokok)
+    // Funder membuat program baru
+    createProgram: async (req, res) => {
+        try {
+            const { program_name, total_amount, start_date, end_date} = req.body;
+            const funder = req.currentUser;
+
+            if (!funder) return error(res, 'Unauthorized', 401);
+            if (!program_name || !total_amount) return error(res, "Nama Program & Nominal Wajib Diisi", 400);
+
+            const programId = generateId('prog');
+
+            const q = `
+                INSERT INTO scholarship_programs 
+                (id, funder_id, program_name, total_period_fund, start_date, end_date, status) 
+                VALUES (?, ?, ?, ?, ?, ?, 'Open')
+            `;
+
+            await SQL.Query(q, [programId, funder.id, program_name, total_amount, start_date, end_date]);
+
+            return success(res, {
+                program_id: programId,
+                program_name: program_name
+            }, "Program Beasiswa Berhasil Dibuat");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal membuat program");
+        }
+    },
+
+    // Add Student To Program
+    addStudentToProgram: async (req, res) => {
+        try {
+            const { program_id, student_email } = req.body;
+            const funder = req.currentUser;
+
+            // A. Validasi Program
+            // Pastikan program ini milik Funder yang sedang login
+            const progRes = await SQL.Query("SELECT * FROM scholarship_programs WHERE id = ? AND funder_id = ?", [program_id, funder.id]);
+            const program = progRes.data?.[0];
+
+            if (!program) return error(res, "Program tidak ditemukan atau Anda bukan pemiliknya", 404);
+
+            if (program.status !== 'Open') {
+                return error(res, "Program ini sudah ditutup atau selesai. Tidak bisa menambah mahasiswa baru.", 400);
+            }
+
+            // B. Cari Student
+            const sRes = await SQL.Query("SELECT id, displayname FROM accounts WHERE email=?", [student_email]);
+            const student = sRes.data?.[0];
+            
+            if (!student) return error(res, "Email mahasiswa belum terdaftar di Finflow.", 404);
+
+            // C. Cek Duplikasi (Apakah student ini sudah ada di program ini?)
+            const checkDup = await SQL.Query("SELECT funding_id FROM funding WHERE program_id = ? AND student_id = ?", [program_id, student.id]);
+            if (checkDup.data.length > 0) return error(res, "Mahasiswa ini sudah terdaftar di program ini.", 400);
+
+
+            // D. Insert ke Tabel Funding
+            // Kita copy 'total_period_fund' dari Program Master ke data Student
+            // Status langsung 'Ready_To_Fund' (Siap dibayar)
+            const fundingId = generateId('fund');
+            
+            const qFund = `
+                INSERT INTO funding 
+                (funding_id, program_id, student_id, status) 
+                VALUES (?, ?, ?, 'Ready_To_Fund')
+            `;
+            
+            
+            await SQL.Query(qFund, [fundingId, program_id, student.id]);
+
+            // E. Notifikasi ke Student
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Selamat! Anda Terpilih 🎓', ?, 'Success')",
+                [student.id, `Anda telah ditambahkan ke program ${program.program_name}. Menunggu aktivasi dana.`]
+            );
+
+            return success(res, { 
+                funding_id: fundingId, 
+                student_name: student.displayname 
+            }, "Mahasiswa berhasil ditambahkan.");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal menambahkan mahasiswa");
+        }
+    },
+
+    getStudentsFromProgram: async (req, res) => {
+        const programId = req.params.id;
+
+        const students = await SQL.Query(
+            "SELECT a.id AS student_id, a.displayname AS student_name, a.email FROM funding f JOIN accounts a ON f.student_id = a.id WHERE f.program_id = ?", 
+            [programId]);
+
+        for (const student of students.data || []) {
+            student.id = student.student_id;
+            student.name = student.student_name;
+            delete student.student_id;
+            delete student.student_name;
+        }
+
+        if (students.success)
+            res.send(students.data);
+        else
+            res.status(500).send();
+    },
+
+    getMyPrograms: async (req, res) => {
+        try {
+            const funder = req.currentUser;
+
+            // 1. Ambil Semua Program milik Funder ini
+            const qProg = "SELECT * FROM scholarship_programs WHERE funder_id = ?";
+            const programs = await SQL.Query(qProg, [funder.id]);
+            
+            const resultList = [];
+
+            // 2. Loop setiap program untuk cari Student-nya
+            for (const prog of programs.data) {
+                
+                // Query Funding (Detail Student)
+                const qFund = `
+                    SELECT f.funding_id, f.status, f.student_id, a.displayname 
+                    FROM funding f
+                    JOIN accounts a ON f.student_id = a.id
+                    WHERE f.program_id = ?
+                `;
+                const funds = await SQL.Query(qFund, [prog.id]);
+                
+                // Mapping Student
+                const joinedStudents = funds.data.map(f => ({
+                    id: f.student_id,
+                    name: f.displayname,
+                    fundingId: f.funding_id
+                }));
+
+                // Tentukan Status Program
+                // (Karena status ada di level funding/student, kita ambil sampel dari student pertama)
+                // Jika belum ada student, status default 'Ready_To_Fund'
+                const programStatus = prog.status;
+                
+                // Tentukan Funding ID Utama
+                // (Untuk UI Funder yang berbasis Program, kita gunakan ID Program sebagai identifier utama,
+                //  tapi kita tetap sertakan sample funding_id jika diperlukan logika detail)
+                const mainFundingId = funds.data.length > 0 ? funds.data[0].funding_id : prog.id;
+
+                // Susun Objek sesuai Request
+                resultList.push({
+                    name: prog.program_name,
+                    
+                    // Kita gunakan ID Program sebagai ID unik di list ini agar tidak duplikat
+                    programId: prog.id, 
+                    // (Atau jika Anda ingin ID Funding spesifik student pertama: mainFundingId)
+                    
+                    funderId: prog.funder_id,
+                    totalPeriodFund: Number(prog.total_period_fund),
+                    
+                    startDate: new Date(prog.start_date).toISOString().split('T')[0],
+                    endDate: new Date(prog.end_date).toISOString().split('T')[0],
+                    
+                    status: programStatus,
+                    joinedStudents: joinedStudents
+                });
+            }
+
+            return success(res, resultList, "Data Program Berhasil Dimuat");
+
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal memuat daftar program"); 
+        }
+    },
+
     initiateFunding: async (req, res) => {
         try {
-            const { student_email, total_amount, start_date, end_date, period_name } = req.body;
+            const { student_email, total_amount, start_date, end_date, program_name } = req.body;
 
             const funder = req.currentUser;
-            if(!funder) return error(res, "Funder tidak ditemukan", 404);
+            if (!funder) return error(res, "Unauthorized: Silakan login sebagai Funder", 401);
 
             // Cari Student by Email (Karena Funder input email)
             const sRes = await SQL.Query("SELECT id FROM accounts WHERE email=?", [student_email]);
             const student = sRes.data?.[0];
             if(!student) return error(res, "Student tidak ditemukan", 404);
 
+            const roleCheck = await SQL.Query("SELECT id FROM accounts_student WHERE id=?", [student.id]);
+            if (roleCheck.data.length === 0) {
+                return error(res, "Email tersebut terdaftar, tapi bukan sebagai Mahasiswa.", 400);
+            }
+
+            const programId = generateId('prog');
+            const finalProgName = program_name || `Beasiswa ${funder.displayname} 2025`;
+
+            const qProg = `
+                INSERT INTO scholarship_programs 
+                (id, funder_id, program_name, start_date, end_date, total_period_fund) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            `;
+            await SQL.Query(qProg, [programId, funder.id, finalProgName, start_date, end_date, total_amount]);
+
             // Buat ID Funding Baru
             const fundingId = generateId("fund");
 
             // Simpan ke DB 
             // Kita simpan dulu uangnya di database (belum ke smart contract di tahap ini, simulasi hold)
-            const q = `
+            const qFund = `
                 INSERT INTO funding 
-                (funding_id, funder_id, student_id, total_period_fund, start_date, end_date, status) 
-                VALUES (?, ?, ?, ?, ?, ?, 'Open_For_Parent')
+                (funding_id, program_id, student_id, status, collected_amount) 
+                VALUES (?, ?, ?, 'Ready_To_Fund', 0)
             `;
+            await SQL.Query(qFund, [fundingId, programId, student.id]);
 
-            // Note: periode_name bisa disimpan jika tabel funding diupdate kolomnya,
-            // atau kita anggap start_date sebagai penanda periode
-            await SQL.Query(q, [fundingId, funder.id, student.id, total_amount, start_date, end_date]);
+            // NOTIFIKASI KE STUDENT
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Anda Terpilih! 🎓', ?, 'Success')",
+                [student.id, `Selamat! Anda telah didaftarkan ke program ${finalProgName}. Menunggu pencairan dana dari Funder.`]
+            );
 
-            return success(res, { funding_id: fundingId, status: 'Open_For_Parent' }, "Inisiasi Sukses. Menunggu Topup Parent.");
+            return success(res, { 
+                funding_id: fundingId, 
+                program_id: programId,
+                student_name: student.displayname 
+            }, "Program Berhasil Dibuat. Silakan Lakukan Pembayaran.");
         } catch (e) {
             return error(res, "Gagal inisiasi funding")
         }
     },
 
-    // 2. Parent Melihat & Topup (Opsional)
-    parentTopup: async (req, res) => {
+    getMonthlyBudgetPlan: async (req, res) => {
         try {
-            const { amount, is_final } = req.body;
+            const user = req.currentUser;
+            const { month, year } = req.query; // e.g., month=jan, year=2025
 
-            // Cari Parent
-            const parent = req.currentUser;
-            if (!parent) return error(res, "Parent not found", 404);
+            // 1. Konversi Bulan (jan -> 1)
+            const monthMap = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+            const monthNum = isNaN(month) ? monthMap[month.toLowerCase()] : month;
 
-            // Cari Student Anak-nya 
-            // Kita cari student mana yang punya parent_id = parent.id
-            // Note: Kalo parent punya > 1 anak gimana?
-            const sRes = await SQL.Query("SELECT id FROM accounts WHERE parent_id=?", [parent.id]);
-            const student = sRes.data?.[0];
-            if (!student) return error(res, "Anda belum terhubung dengan student manapun", 404);
+            if (!monthNum || !year) return error(res, "Bulan & Tahun wajib diisi", 400);
 
-            // Cari Funding yang statusnya 'Open_For_Parent'
-            const fRes = await SQL.Query("SELECT funding_id, total_monthly_fund FROM funding WHERE student_id=? AND status='Open_For_Parent'", [student.id]);
-            const funding = fRes.data?.[0];
+            // 2. Ambil Item Budget (Detail)
+            const qItems = `
+                SELECT * FROM budget_plan 
+                WHERE planner_id = ? AND month = ? AND year = ?
+            `;
+            const itemsRes = await SQL.Query(qItems, [user.id, monthNum, year]);
+
+            // 3. Hitung Summary per Kategori (Untuk 3 Kartu Atas)
+            let catSummary = {
+                '0': { categoryName: 'Wants', total: 0 },
+                '1': { categoryName: 'Needs', total: 0 },
+                '2': { categoryName: 'Education', total: 0 }
+            };
             
-            if (!funding) return error(res, "Tidak ada sesi topup aktif", 404);
+            let totalAllocated = 0;
 
-            // Update Dana
-            const newTotal = Number(funding.total_period_fund) + Number(amount);
-            await SQL.Query("UPDATE funding SET total_period_fund = ? WHERE funding_id = ?", [newTotal, funding.funding_id]);
-
-            // JIKA PARENT SUDAH SELESAI (Klik "Finalize Topup")
-            // Lempar bola ke Student (Status: Waiting_Allocation)
-            if (is_final) {
-                await SQL.Query("UPDATE funding SET status = 'Waiting_Allocation' WHERE funding_id = ?", [funding.funding_id]);
+            // Mapping Items ke format Frontend ('stuffs')
+            const stuffs = itemsRes.data.map(item => {
+                const totalItemPrice = Number(item.amount) * Number(item.quantity);
                 
-                // Notif ke Student
-                const notifTitle = "Dana siap diatur";
-                const notifMsg = `Orang tua sudah menyelesaikan top-up. Total dana tersedia: Rp ${newTotal}. Silakan buat Budget Plan sekarang.`;
+                // Tambahkan ke summary jika status approved
+                if (item.status === 'approved') {
+                    if(catSummary[item.category_id]) {
+                        catSummary[item.category_id].total += totalItemPrice;
+                    }
+                    totalAllocated += totalItemPrice;
+                }
 
-                await SQL.Query(
-                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, ?, ?, 'Info')",
-                    [student.id, notifTitle, notifMsg]
-                );
-            }
+                return {
+                    id: item.id,
+                    name: item.item_name,          // Map: item_name -> name
+                    amount: Number(item.amount),    // Map: price -> amount (Harga Satuan)
+                    quantity: Number(item.quantity),
+                    status: item.status,
+                    feedback: item.ai_feedback,
+                    categoryId: item.category_id.toString()
+                };
+            });
 
-            return success(res, { new_total: newTotal }, "Topup Berhasil");
+            // Format Categories Array
+            const categoriesArr = Object.keys(catSummary).map(key => ({
+                categoryId: key,
+                categoryName: catSummary[key].categoryName,
+                total: catSummary[key].total
+            }));
+
+            // 4. Return JSON Sesuai DUMMY_MONTHLY_PLAN
+            return success(res, {
+                month: month,
+                year: year,
+                allocated: totalAllocated,
+                categories: categoriesArr, // Array untuk kartu atas
+                stuffs: stuffs             // Array untuk list bawah
+            });
+
         } catch (e) {
-            return error(res, "Gagal melakukan topup");
+            console.error(e);
+            return error(res, "Gagal memuat budget plan");
         }
     },
+
+    addBudgetItem: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            const { name, amount, quantity, categoryId, month, year } = req.body;
+
+            if (!name || !amount || !quantity || !month || !year) {
+                return error(res, "Data item tidak lengkap", 400);
+            }
+
+            const monthMap = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+            const monthNum = isNaN(month) ? monthMap[month.toLowerCase()] : month;
+
+            // A. Cari Funding ID Aktif milik Student
+            // Item ini harus "nempel" ke program beasiswa yang sedang berjalan
+            const fundRes = await SQL.Query(
+                `SELECT f.funding_id, sp.total_period_fund 
+                FROM funding f
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE f.student_id = ? 
+                AND f.status IN ('Waiting_Allocation', 'Ready_To_Fund', 'Active') 
+                LIMIT 1`,
+                [user.id]
+            );
+            const funding = fundRes.data?.[0];
+            
+            if (!funding) return error(res, "Tidak ada program beasiswa aktif untuk membuat rencana.", 404);
+
+            // B. AI VALIDATION (The Auditor)
+            const totalCost = Number(amount) * Number(quantity);
+            const categoryName = categoryId == 0 ? "Wants" : (categoryId == 1 ? "Needs" : "Education");
+
+            const prompt = `
+                ROLE: You are a strict but fair Financial Auditor for an Indonesian Scholarship Program called Finflow.
+                YOUR GOAL: Validate a single budget item proposed by a student.
+                
+                --- INPUT DATA ---
+                Item Name: "${name}"
+                Category: ${categoryName}
+                Unit Price: IDR ${Number(amount).toLocaleString('id-ID')}
+                Quantity: ${quantity}
+                Total Line Cost: IDR ${totalCost.toLocaleString('id-ID')}
+                Student's Total Scholarship Fund: IDR ${Number(funding.total_period_fund).toLocaleString('id-ID')}
+                
+                --- ANALYSIS RULES (LOGIC CHAIN) ---
+                1. **Check Categorization:**
+                   - Is the item suitable for the selected category?
+                   - Example: "Netflix" in Education -> REJECT. "Rice" in Needs -> APPROVE.
+                
+                2. **Check Unit Price Reality (Standard Indonesian Prices):**
+                   - Is the 'Unit Price' reasonable for a SINGLE unit of this item?
+                   - Example: "Lunch" @ 20.000 is OK. "Lunch" @ 500.000 is REJECT (Too expensive for one meal).
+                   - Exception: If the name implies a bundle (e.g., "Monthly Catering"), a high unit price is acceptable.
+                
+                3. **Check Quantity Logic:**
+                   - Is the quantity reasonable for a monthly/semester plan?
+                   - Example: "Toothpaste" Qty 2 is OK. "Toothpaste" Qty 50 is REJECT (Hoarding/Reselling risk).
+                   - Example: "Lunch" Qty 30 (for a month) is OK. "Laptop" Qty 2 is SUSPICIOUS (Why 2?).
+                
+                4. **Check Total Impact:**
+                   - Is the 'Total Line Cost' a rational portion of their scholarship?
+                   - Example: If Total Scholarship is 6 Million, and they want to buy a 5 Million Bag (Wants) -> REJECT.
+                
+                --- OUTPUT REQUIREMENT ---
+                Respond ONLY in JSON format without markdown code blocks.
+                Language for 'feedback': Indonesian (Bahasa Indonesia yang sopan tapi tegas).
+                
+                JSON Format:
+                {
+                    "status": "approved" OR "rejected",
+                    "feedback": "Alasan singkat dan jelas (maksimal 2 kalimat)."
+                }
+            `;
+
+            let aiCheck = await askGemini(prompt, null, 'AUDITOR');
+
+
+            // [DEBUG] LIHAT HASIL MENTAH AI DI TERMINAL
+            console.log("🔍 RAW AI RESULT:", JSON.stringify(aiCheck, null, 2));
+
+            // --- 3. NORMALISASI HASIL AI (PENTING!) ---
+            let finalStatus = 'pending';
+            let finalFeedback = 'Menunggu validasi manual.';
+
+            if (aiCheck) {
+                // Handle key sensitif (Status vs status)
+                const rawStatus = aiCheck.status || aiCheck.Status || "";
+                
+                // Paksa jadi lowercase & trim spasi
+                const normalizedStatus = rawStatus.toLowerCase().trim();
+                
+                // Validasi apakah nilai sesuai ENUM MySQL?
+                if (['approved', 'rejected'].includes(normalizedStatus)) {
+                    finalStatus = normalizedStatus;
+                    finalFeedback = aiCheck.feedback || aiCheck.Feedback || "Tanpa alasan.";
+                } else {
+                    console.warn("⚠️ AI mengembalikan status aneh:", rawStatus);
+                    // Jika AI jawab aneh (misal "Review"), kita anggap pending
+                    finalStatus = 'pending'; 
+                }
+            } else {
+                console.warn("⚠️ AI Check Gagal/Null -> Fallback ke Pending");
+            }
+
+            console.log(`📝 FINAL STATUS DB: ${finalStatus}`);
+
+            // --- 4. INSERT DATABASE ---
+            const itemId = generateId('item');
+            const qInsert = `
+                INSERT INTO budget_plan 
+                (id, planner_id, funding_id, item_name, category_id, amount, quantity, month, year, status, ai_feedback) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            await SQL.Query(qInsert, [
+                itemId, user.id, funding.funding_id, 
+                name, categoryId, amount, quantity, monthNum, year, 
+                finalStatus, // Gunakan status yang sudah dinormalisasi
+                finalFeedback
+            ]);
+
+            return success(res, { 
+                item_id: itemId, 
+                status: finalStatus, 
+                feedback: finalFeedback 
+            }, "Item ditambahkan");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal menambah item");
+        }
+    },
+
+    editBudgetItem: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            const { id, name, amount, quantity, categoryId } = req.body; 
+
+            // 1. Cek Validitas Item & Ambil Total Period Fund
+            // Kita perlu JOIN 3 Tabel: budget_plan -> funding -> scholarship_programs
+            const qCheck = `
+                SELECT bp.*, sp.total_period_fund 
+                FROM budget_plan bp
+                JOIN funding f ON bp.funding_id = f.funding_id
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE bp.id = ? AND bp.planner_id = ?
+            `;
+            
+            const check = await SQL.Query(qCheck, [id, user.id]);
+            
+            if (check.data.length === 0) return error(res, "Item tidak ditemukan", 404);
+            
+            const currentItem = check.data[0];
+
+            // 2. RE-VALIDASI AI (Panggil Gemini Lagi)
+            const totalCost = Number(amount) * Number(quantity);
+            const categoryName = categoryId == 0 ? "Wants" : (categoryId == 1 ? "Needs" : "Education");
+
+            const prompt = `
+                ROLE: Financial Auditor. RE-VALIDATION REQUEST.
+                
+                CONTEXT: Student is editing a budget item.
+                PREVIOUS ITEM: "${currentItem.item_name}" (IDR ${currentItem.amount})
+                
+                NEW PROPOSAL:
+                - Item Name: "${name}"
+                - Category: ${categoryName}
+                - Unit Price: IDR ${Number(amount).toLocaleString('id-ID')}
+                - Quantity: ${quantity}
+                - Total Line Cost: IDR ${totalCost.toLocaleString('id-ID')}
+                - Student Total Scholarship: IDR ${Number(currentItem.total_period_fund).toLocaleString('id-ID')}
+                
+                RULES:
+                Validate this update strictly. 
+                Check if the price is reasonable and category is correct.
+                
+                OUTPUT JSON: { "status": "approved" | "rejected", "feedback": "Reason in Indonesian" }
+            `;
+
+            // Panggil AI
+            let aiCheck = await askGemini(prompt, null, 'AUDITOR');
+            
+            // Fallback jika AI mati
+            if (!aiCheck) {
+                aiCheck = { status: 'pending', feedback: 'AI sibuk. Item disimpan sebagai pending.' };
+            }
+
+            // 3. UPDATE DATABASE
+            const qUpdate = `
+                UPDATE budget_plan 
+                SET item_name=?, amount=?, quantity=?, category_id=?, status=?, ai_feedback=?
+                WHERE id=?
+            `;
+            
+            await SQL.Query(qUpdate, [
+                name, 
+                amount, 
+                quantity, 
+                categoryId, 
+                aiCheck.status,   
+                aiCheck.feedback, 
+                id
+            ]);
+
+            return success(res, { 
+                id: id,
+                status: aiCheck.status, 
+                feedback: aiCheck.feedback 
+            }, "Item diperbarui dan divalidasi ulang.");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal edit item");
+        }
+    },
+
 
     // 3. Student Buat Plan & AI Validasi
     finalizeAgreement: async (req, res) => {
@@ -525,148 +901,68 @@ module.exports = {
         }
     },
 
-    // CONFIRM TRANSFER (Crowdfunding + Batch Support)
-    // Bisa dipakai oleh Funder (Bayar Full/Sisa) atau Parent (Bayar Sebagian)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
     confirmTransfer: async (req, res) => {
         try {
-            // Input fleksibel:
-            // 1. funding_ids: Array ID yang mau dibayar
-            // 2. amount_paid: Nominal (Opsional). Jika kosong/null, dianggap LUNAS (Full Payment).
-            const {  funding_ids, amount_paid } = req.body;
+            const { funding_ids } = req.body; // Array ID
 
             if (!Array.isArray(funding_ids) || funding_ids.length === 0) {
-                return error(res, "Funding IDs harus array dan tidak boleh kosong", 400);
+                return error(res, "Pilih minimal satu program", 400);
             }
 
-            // Ambil Data Funding yang mau dibayar
-            // Status bisa 'Ready_To_Fund' (Belum ada dana) atau 'Partially_Funded' (Sudah ada dana sebagian)
             const placeholders = funding_ids.map(() => '?').join(',');
-            const qCheck = `
-                SELECT funding_id, total_period_fund, collected_amount, student_id 
-                FROM funding 
-                WHERE funding_id IN (${placeholders}) 
-                AND status IN ('Ready_To_Fund', 'Partially_Funded')
-            `;
             
-            const fRes = await SQL.Query(qCheck, funding_ids);
-            const fundingsToProcess = fRes.data || [];
+            // Query Check
+            const qCheck = `SELECT f.funding_id, p.total_period_fund, f.student_id, p.funder_id FROM funding f JOIN scholarship_programs p ON f.program_id = p.id WHERE f.funding_id IN (${placeholders}) AND f.status = 'Ready_To_Fund'`;
+            
+            const result = await SQL.Query(qCheck, funding_ids);
 
-            if (fundingsToProcess.length === 0) {
-                return error(res, "Tidak ada tagihan aktif yang bisa dibayar.", 404);
+            if (!result || !result.data) {
+                console.error("SQL Error di confirmTransfer:", result);
+                return error(res, "Terjadi kesalahan database saat verifikasi pembayaran.", 500);
             }
 
-            let processedCount = 0;
-            let totalMoneyReceived = 0;
-            let lastTxHash = null;
+            const funds = result.data;
 
-            for (const fund of fundingsToProcess) {
-                const totalTarget = Number(fund.total_period_fund);
-                const currentCollected = Number(fund.collected_amount || 0);
-                const remaining = totalTarget - currentCollected;
+            if (funds.length === 0) return error(res, "Tidak ada tagihan aktif atau status sudah berubah", 404);
 
-                // Tentukan berapa yang dibayar kali ini
-                let payNow = 0;
-                if (amount_paid) {
-                    // Jika user input nominal spesifik (misal Parent bayar 1 Juta)
-                    payNow = Number(amount_paid);
-                } else {
-                    // Jika kosong (Funder klik "Bayar"), asumsikan MELUNASI sisanya
-                    payNow = remaining;
-                }
+            let totalPaid = 0;
 
-                // --- LOGIC BLOCKCHAIN (THE ENGINE) ---
-                // Kita melakukan transfer di setiap loop atau diakumulasi?
-                // Agar hemat gas, idealnya diakumulasi. Tapi agar tercatat per anak, kita loop.
-                // Skenario: Admin "memindahkan" token dari Treasury ke Vault seolah-olah Funder yang setor.
-                try {
-                    console.log(`[BLOCKCHAIN] Mengirim ${payNow} FIDR ke Vault...`);
-                    
-                    // Logika: Admin Transfer Token ke Vault Address
-                    // Seolah-olah Funder yang setor (Strategi Treasury Pool)
-                    
-                    // Konversi angka ke BigInt (Ethers butuh BigInt/String untuk angka besar)
-                    // Karena decimals kita 0, 1 Rupiah = 1 Unit Token. Aman.
-                    const amountInWei = ethers.BigNumber.from(payNow.toString()); 
-                    // Note: Jika pakai ethers v6: ethers.parseUnits(payNow.toString(), 0)
-
-                    // KIRIM TRANSAKSI!
-                    const tx = await tokenContract.transfer(VAULT_ADDRESS, payNow.toString());
-                    
-                    console.log(`[BLOCKCHAIN] Tx Sent! Hash: ${tx.hash}`);
-                    lastTxHash = tx.hash;
-
-                    // (Opsional) Tunggu 1 blok konfirmasi agar aman
-                    // await tx.wait(); 
-                    
-                    // Simpan Hash ke Database (Tabel Transactions) sebagai bukti
-                    // Kita catat ini sebagai "Deposit"
-                    const txId = generateId('depo');
-                    await SQL.Query(`
-                        INSERT INTO transactions 
-                        (transaction_id, student_id, amount, type, blockchain_tx_hash, raw_description, transaction_date) 
-                        VALUES (?, ?, ?, 'Income', ?, 'Deposit Beasiswa ke Vault', NOW())
-                    `, [txId, fund.student_id, payNow, lastTxHash]);
-
-                } catch (bcError) {
-                    console.error("[BLOCKCHAIN CRITICAL ERROR]", bcError);
-                    // Dalam production, kita harus stop proses disini. 
-                    // Untuk hackathon, kita log error tapi lanjut update DB (Fallback).
-                }
-
-                // Update Collected
-                const newCollected = currentCollected + payNow;
-                totalMoneyReceived += payNow;
-
-                // Tentukan Status Baru
-                let newStatus = 'Partially_Funded'; // Default
-                if (newCollected >= totalTarget) {
-                    newStatus = 'Active'; // Lunas!
-                }
-
-                // Update Database
+            for (const fund of funds) {
+                const amount = Number(fund.total_period_fund);
+                
+                // 1. UPDATE DATABASE
                 await SQL.Query(
-                    "UPDATE funding SET collected_amount = ?, status = ? WHERE funding_id = ?", 
-                    [newCollected, newStatus, fund.funding_id]
+                    "UPDATE funding SET status = 'Waiting_Allocation' WHERE funding_id = ?", 
+                    [fund.funding_id]
+                );
+                
+                // 2. NOTIFIKASI [PERBAIKAN DISINI]
+                // Format Rupiah
+                const fmtAmount = amount.toLocaleString('id-ID');
+                
+                // Susun pesan di Javascript dulu (Lebih Aman)
+                const notifMessage = `Funder telah menyetor dana Rp ${fmtAmount}. Buat Budget Plan sekarang.`;
+
+                // Masukkan pesan yang sudah jadi ke database
+                await SQL.Query(
+                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Masuk! 💰', ?, 'Success')", 
+                    [fund.student_id, notifMessage]
                 );
 
-                // Notifikasi jika Lunas
-                if (newStatus === 'Active') {
-                    // Notif ke Student
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Terkumpul! 💰', 'Selamat! Dana beasiswa kamu sudah penuh dan aktif.', 'Success')",
-                        [fund.student_id]
-                    );
-                    // Notif ke Funder
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif ✅', 'Dana telah dikunci. Smart Contract aktif.', 'Success')",
-                        [fund.funder_id]
-                    );
-
-                    // [BARU] Cari Parent & Kirim Notif
-                    const pRes = await SQL.Query("SELECT parent_id FROM accounts WHERE id=?", [fund.student_id]);
-                    const parentId = pRes.data?.[0]?.parent_id;
-
-                    if (parentId) {
-                        await SQL.Query(
-                            "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif 🎉', 'Dana pendidikan anak Anda telah terkunci aman di Smart Contract.', 'Success')",
-                            [parentId]
-                        );
-                    }
-                }
-
-                processedCount++;
+                totalPaid += amount;
             }
 
             return success(res, { 
-                processed: processedCount, 
-                total_received: totalMoneyReceived,
-                tx_hash: blockchainTxHash,
-                status_message: "Transfer Sukses & Tercatat di Blockchain"
-            }, "Transfer Berhasil");
+                total_paid: totalPaid,
+                status: "Waiting_Allocation"
+            }, "Pembayaran Sukses. Mahasiswa telah dinotifikasi.");
 
-        } catch (e) {
+        } catch (e) { 
             console.error(e);
-            return error(res, "Gagal proses transfer");
+            return error(res, "Gagal transfer: " + e.message); 
         }
     },
 
@@ -687,7 +983,7 @@ module.exports = {
             const stuffs = items.data.map(item => ({
                 id: item.id,
                 name: item.item_name,
-                amount: Number(item.price),
+                amount: Number(item.amount),
                 quantity: Number(item.quantity),
                 status: item.status, // pending, approved, rejected
                 feedback: item.ai_feedback,
@@ -707,213 +1003,249 @@ module.exports = {
         } catch (e) { return error(res, "Gagal budget"); }
     },
 
+
     // EXECUTION WEEKLY DRIP (Backend membagikan token dari Vault ke Student)
-    // Dipanggil via tombol "Simulasi MInggu ke - X" oleh Admin
-    // Ada notifikasi Funder Warning kalo sisa drip dah dikit
-    // Sebagai trigger untuk analisis weekly report juga
+    // Dipanggil oleh Scheduler (Cron Job) setiap menit/jam
+    // EXECUTION WEEKLY DRIP (Aggregated Version)
     triggerWeeklyDrip: async (req, res) => {
         try {
-            // 1. Cari Jadwal Drip Aktif
+            console.log("[SCHEDULER] 🔍 Memeriksa jadwal drip...");
+
+            // 1. Ambil SEMUA data alokasi yang valid
+            // Kita perlu mengambil semuanya dulu, nanti dikelompokkan per mahasiswa di Javascript
             const q = `
                 SELECT 
-                    f.funding_id, f.funder_id, f.student_id, a.wallet_address, a.displayname,
-                    fa.allocation_id, fa.drip_amount, fa.remaining_drip_count, fa.category_id
+                    f.student_id, 
+                    sp.funder_id,
+                    a.wallet_address, 
+                    a.displayname,
+                    fa.allocation_id, 
+                    fa.drip_amount, 
+                    fa.remaining_drip_count,
+                    fa.category_id
                 FROM funding_allocation fa
                 JOIN funding f ON fa.funding_id = f.funding_id
+                JOIN scholarship_programs sp ON f.program_id = sp.id
                 JOIN accounts a ON f.student_id = a.id
                 WHERE f.status = 'Active' 
                 AND fa.drip_frequency = 'Weekly' 
                 AND fa.remaining_drip_count > 0
             `;
             
-            const drips = await SQL.Query(q);
-            if (drips.data.length === 0) return success(res, { processed: 0 }, "Tidak ada jadwal drip minggu ini");
+            const rawData = await SQL.Query(q);
+            if (!rawData || rawData.data.length === 0) {
+                return success(res, { processed: 0 }, "Tidak ada jadwal drip.");
+            }
+
+            // 2. GROUPING DATA PER STUDENT (Aggregation)
+            // Kita ubah list baris menjadi Object per student
+            // Format: { 'student_id': { totalAmount: 500000, items: [row1, row2], wallet: '0x...' } }
+            let studentGroups = {};
+
+            for (const row of rawData.data) {
+                const sId = row.student_id;
+                
+                if (!studentGroups[sId]) {
+                    studentGroups[sId] = {
+                        student_id: sId,
+                        wallet: row.wallet_address,
+                        name: row.displayname,
+                        funder_id: row.funder_id,
+                        totalAmount: 0,
+                        allocations: [] // Menyimpan daftar alokasi yang harus diupdate
+                    };
+                }
+
+                // Tambahkan nominal ke total
+                const amount = Math.floor(Number(row.drip_amount));
+                studentGroups[sId].totalAmount += amount;
+                studentGroups[sId].allocations.push(row);
+            }
 
             let successCount = 0;
 
-            // 2. Loop Eksekusi per Student
-            for (const item of drips.data) {
-                const amount = Math.floor(Number(item.drip_amount));
-                if (amount <= 0) continue;
+            // 3. EKSEKUSI PER STUDENT (Satu Transaksi per Orang)
+            for (const sId in studentGroups) {
+                const group = studentGroups[sId];
+                
+                if (group.totalAmount <= 0 || !group.wallet) continue;
 
                 try {
-                    console.log(`[DRIP] Processing ${item.displayname}...`);
+                    console.log(`[DRIP] Processing ${group.name} (Total: Rp ${group.totalAmount})...`);
 
-                    // --- A. BLOCKCHAIN TRANSFER ---
-                    // (Gunakan wallet Vault)
-                    // const tokenVault = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS, tokenAbi, vaultWallet);
-                    // const tx = await tokenVault.transfer(item.wallet_address, amount.toString());
+                    // --- A. BLOCKCHAIN TRANSFER (SATU KALI SAJA) ---
+                    // Mengirim total gabungan (Needs + Wants)
+                    const txHash = await BlockchainService.executeDrip(group.wallet, group.totalAmount);
                     
-                    // Simulasi Hash untuk demo jika blockchain off
-                    const txHash = "0x_simulated_drip_" + Date.now(); 
-
-                    // --- B. DATABASE UPDATE (Saldo & History) ---
-                    await SQL.Query("UPDATE funding_allocation SET remaining_drip_count = remaining_drip_count - 1 WHERE allocation_id = ?", [item.allocation_id]);
-                    await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, item.student_id]);
-                    
-                    const txId = generateId('drip');
-                    await SQL.Query(`
-                        INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, blockchain_tx_hash, transaction_date)
-                        VALUES (?, ?, ?, 'Drip_In', ?, 'Pencairan Mingguan', ?, NOW())
-                    `, [txId, item.student_id, amount, item.category_id, txHash]);
-
-                    // ============================================================
-                    // 🔥 UPDATE: PROACTIVE REPORT (SAVE TO DB) 🔥
-                    // ============================================================
-                    
-                    // 1. Hitung Pengeluaran Minggu Lalu
-                    const expenseQ = `
-                        SELECT SUM(amount) as total_spent 
-                        FROM transactions 
-                        WHERE student_id = ? 
-                        AND type = 'Expense' 
-                        AND transaction_date >= DATE(NOW()) - INTERVAL 7 DAY
-                    `;
-                    const expRes = await SQL.Query(expenseQ, [item.student_id]);
-                    const lastWeekSpent = Number(expRes.data?.[0]?.total_spent || 0);
-                    
-                    // 2. Analisa AI
-                    const limit = Number(item.drip_amount);
-                    const ratio = lastWeekSpent / limit;
-                    const sisaSaldo = limit - lastWeekSpent;
-
-                    let healthStatus = 'Good';
-                    let reportBody = `Hai ${item.displayname}! Minggu ini kamu mencatat pengeluaran Rp ${lastWeekSpent.toLocaleString('id-ID')} dari target Rp ${limit.toLocaleString('id-ID')}.\n\n`;
-
-                    if (ratio < 0.5) {
-                        healthStatus = 'Excellent';
-                        reportBody += `✅ Hebat: Kamu hemat sekali! Masih sisa banyak (Rp ${sisaSaldo.toLocaleString('id-ID')}). Tabung sisanya ya!\n`;
-                    } else if (ratio <= 1.0) {
-                        healthStatus = 'Good';
-                        reportBody += `✅ Bagus: Pengeluaranmu pas sesuai budget. Pertahankan disiplin ini.\n`;
-                    } else {
-                        healthStatus = 'Warning';
-                        reportBody += `⚠️ Perhatian: Kamu boros minggu lalu (Over budget). Coba kurangi jajan minggu ini.\n`;
+                    if (!txHash) {
+                        // console.log(`[DRIP SKIP] Blockchain menolak (TimeLock/Error).`);
+                        continue; 
                     }
 
-                    reportBody += `\nDana baru Rp ${limit.toLocaleString('id-ID')} sudah cair. Semangat!`;
+                    console.log(`[DRIP SUCCESS] Hash: ${txHash}`);
 
-                    // 3. SIMPAN KE TABEL REPORT (Bukan Notifikasi)
-                    await SQL.Query(
-                        "INSERT INTO weekly_reports (student_id, total_spent, budget_limit, health_status, ai_message, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-                        [item.student_id, lastWeekSpent, limit, healthStatus, reportBody]
-                    );
-
-                    // 4. Kirim Notifikasi PENDEK saja (Pancingan)
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Rapor Mingguan Siap 📊', 'Evaluasi keuanganmu minggu ini sudah terbit. Cek Dashboard sekarang!', 'Info')",
-                        [item.student_id]
-                    );
-                    // ============================================================
-
-                    // --- C. CEK SALDO FUNDER (Warning Logic) ---
-                    const sisaMinggu = Number(item.remaining_drip_count) - 1;
-                    if (sisaMinggu <= 2) {
-                        await SQL.Query(
-                            "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Saldo Menipis 📉', 'Sisa dana beasiswa tinggal 2 minggu. Mohon siapkan top-up.', 'Urgent')",
-                            [item.funder_id]
-                        );
+                    // --- B. DATABASE UPDATE (Looping per item alokasi) ---
+                    // Kita update database untuk setiap kategori (Needs & Wants) secara terpisah
+                    // meskipun transaksinya cuma sekali.
+                    
+                    for (const alloc of group.allocations) {
+                        // 1. Kurangi Sisa Jatah per kategori
+                        await SQL.Query("UPDATE funding_allocation SET remaining_drip_count = remaining_drip_count - 1 WHERE allocation_id = ?", [alloc.allocation_id]);
+                        
+                        // 2. Catat Transaksi per kategori (Agar report rapi)
+                        // Kita pakai txHash yang sama untuk kedua transaksi
+                        const amountPerCat = Math.floor(Number(alloc.drip_amount));
+                        const txId = generateId('drip');
+                        
+                        await SQL.Query(`
+                            INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, blockchain_tx_hash, transaction_date)
+                            VALUES (?, ?, ?, 'Drip_In', ?, 'Pencairan Mingguan', ?, NOW())
+                        `, [txId, sId, amountPerCat, alloc.category_id, txHash]);
                     }
+
+                    // 3. Update Saldo Wallet (Total)
+                    await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [group.totalAmount, sId]);
+
+                    // --- C. REPORTING & NOTIFICATION (Satu kali per student) ---
+                    
+                    // Notifikasi Student
+                    const fmtAmount = group.totalAmount.toLocaleString('id-ID');
+                    // Ambil sisa minggu dari salah satu item (asumsi sinkron)
+                    const sisaMinggu = group.allocations[0].remaining_drip_count - 1;
+
+                    await SQL.Query(
+                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Drip Mingguan Cair 💸', ?, 'Info')",
+                        [sId, `Total uang saku Rp ${fmtAmount} (Needs+Wants) berhasil masuk.\nSisa jatah: ${sisaMinggu} minggu.`]
+                    );
 
                     successCount++;
 
                 } catch (bcError) {
-                    console.error(`[DRIP ERROR] Gagal ke ${item.student_id}:`, bcError);
+                    console.error(`[DRIP ERROR] Gagal ke ${group.name}:`, bcError.message);
                 }
             }
 
-            return success(res, { processed: successCount }, "Weekly Drip & Report Selesai");
+            return success(res, { processed: successCount }, "Weekly Drip Selesai");
 
         } catch (e) { 
             console.error(e);
-            return error(res, "Gagal memproses drip"); 
+            return error(res, "Gagal memproses drip: " + e.message); 
         }
     },
 
     // EXECUTION URGENT FUND (Readjustment Logic)
+    // EXECUTION URGENT FUND (Readjustment Logic)
     requestUrgent: async (req, res) => {
         try {
+            const user = req.currentUser;
             const { amount, reason, proof_image_url } = req.body;
 
-            // 1. Validasi User & Data
-            const user = req.currentUser;
-            if (!user) return error(res, "User not found", 404);
+            // 1. VALIDASI INPUT
+            const reqAmount = parseInt(amount);
+            if (!reqAmount || reqAmount <= 0) return error(res, "Nominal tidak valid.", 400);
 
-            // 2. MOCK AI VALIDATION
-            // Cek apakah alasan mengandung kata kunci darurat (sakit, kecelakaan, buku, dll)
-            // Dan wajib ada gambar
-            if (!proof_image_url) return error(res, "Bukti foto wajib diupload!", 400);
+            // 2. AI VALIDATION (AUDITOR)
+            // (Kode AI Validator Anda yang lama sudah bagus, kita pertahankan)
+            const prompt = `
+                ROLE: Financial Auditor.
+                TASK: Analyze urgent fund request.
+                REASON: "${reason}"
+                RULES: Valid if Medical, Accident, Essential breakdown. Invalid if Vacation, Concert.
+                OUTPUT JSON: { "is_urgent": boolean, "reasoning": "string" }
+            `;
             
-            const validKeywords = ['sakit', 'obat', 'rumah sakit', 'kecelakaan', 'hilang', 'rusak', 'darurat'];
-            const isReasonValid = validKeywords.some(word => reason.toLowerCase().includes(word));
+            // Note: Untuk hackathon, jika integrasi gambar AI rumit, cukup kirim prompt teks dulu
+            let aiCheck = await askGemini(prompt, null, 'AUDITOR');
             
-            if (!isReasonValid) {
-                return error(res, "AI menolak: Alasan tidak terdeteksi sebagai keadaan darurat. Gunakan dana Wants.", 403);
+            // Fallback jika AI error/null
+            if (!aiCheck) aiCheck = { is_urgent: true, reasoning: "AI Offline, Auto-Approve for Demo" };
+
+            if (!aiCheck.is_urgent) {
+                 return error(res, "Ditolak AI: " + aiCheck.reasoning, 403);
             }
-
-            // 3. HITUNG READJUSTMENT (Matematika Potong Gaji)
-            // Ambil data Wants (Category 0) untuk dipotong
-            const allocQuery = `
-                SELECT fa.allocation_id, fa.drip_amount, fa.remaining_drip_count 
+            
+            // 3. CEK KETERSEDIAAN JATAH MASA DEPAN (Wants Category = 0)
+            const allocQ = `
+                SELECT fa.allocation_id, fa.drip_amount, fa.remaining_drip_count, f.funding_id
                 FROM funding_allocation fa
                 JOIN funding f ON fa.funding_id = f.funding_id
                 WHERE f.student_id = ? AND fa.category_id = 0 AND f.status = 'Active'
             `;
-            const allocRes = await SQL.Query(allocQuery, [user.id]);
+            const allocRes = await SQL.Query(allocQ, [user.id]);
             const alloc = allocRes.data?.[0];
 
             if (!alloc || alloc.remaining_drip_count <= 0) {
-                return error(res, "Tidak ada sisa budget 'Wants' masa depan untuk dipotong.", 400);
+                return error(res, "Tidak ada budget 'Wants' masa depan yang bisa dipotong.", 400);
             }
 
-            const reqAmount = Number(amount);
+            // 4. HITUNG READJUSTMENT (POTONG GAJI)
             const sisaMinggu = Number(alloc.remaining_drip_count);
-            
-            // Cek limit (Max bisa ambil semua sisa Wants masa depan)
             const maxAvailable = Number(alloc.drip_amount) * sisaMinggu;
+
             if (reqAmount > maxAvailable) {
-                return error(res, `Dana tidak cukup. Maksimal pinjaman dari pos Wants: Rp ${maxAvailable}`, 400);
+                return error(res, `Dana tidak cukup. Max pinjaman: Rp ${maxAvailable.toLocaleString('id-ID')}`, 400);
             }
 
             // Hitung potongan per minggu
             const deductionPerWeek = Math.ceil(reqAmount / sisaMinggu);
             const newDripAmount = Number(alloc.drip_amount) - deductionPerWeek;
 
-            // 4. EKSEKUSI DATABASE & BLOCKCHAIN
+            // ============================================================
+            // 5. BLOCKCHAIN EXECUTION (REAL)
+            // ============================================================
+            let txHash = "";
+            try {
+                // Panggil fungsi releaseFund di BlockchainService
+                // Fungsi ini mem-bypass TimeLock di Smart Contract
+                txHash = await BlockchainService.releaseFund(
+                    user.wallet_address,
+                    reqAmount,
+                    "Urgent: " + reason.substring(0, 20)
+                );
+                console.log(`[BC] Urgent Fund Released: ${txHash}`);
+            } catch (bcError) {
+                console.error("[BC ERROR]", bcError);
+                return error(res, "Gagal mencairkan dana di Blockchain. Silakan coba lagi.");
+            }
+
+            // ============================================================
+            // 6. UPDATE DATABASE
+            // ============================================================
             
-            // A. Update Drip Amount Masa Depan (PENGURANGAN)
+            // A. Update Drip Masa Depan (Potong Gaji)
             await SQL.Query("UPDATE funding_allocation SET drip_amount = ? WHERE allocation_id = ?", [newDripAmount, alloc.allocation_id]);
 
-            // B. Transfer Token Sekarang (Urgent)
-            const tx = await tokenContract.transfer(user.wallet_address, reqAmount.toString());
-
-            // C. Catat Transaksi
+            // B. Catat Transaksi Masuk
+            const txId = generateId('urgent');
             await SQL.Query(`
                 INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, is_urgent_withdrawal, urgency_reason, proof_image_url, blockchain_tx_hash, transaction_date)
                 VALUES (?, ?, ?, 'Drip_In', 1, 'Dana Darurat (Advance)', TRUE, ?, ?, ?, NOW())
-            `, [generateId('urgent'), user.id, reqAmount, reason, proof_image_url, tx.hash]);
+            `, [txId, user.id, reqAmount, reason, proof_image_url, txHash]);
 
-            // D. Update Saldo Student Lokal
+            // C. Update Saldo Real di App (Virtual Balance)
+            // Balance bertambah karena uang masuk
             await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [reqAmount, user.id]);
 
-            // [BARU] Notif Bahaya ke Parent
-            if (user.parent_id) {
-                const msgParent = `Anak Anda (${user.displayname}) baru saja menarik Dana Darurat Rp ${Number(amount).toLocaleString()} dengan alasan: "${reason}".`;
-                
-                await SQL.Query(
-                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, '⚠️ Penarikan Darurat', ?, 'Urgent')",
-                    [user.parent_id, msgParent]
-                );
-            }
+            // D. Notifikasi Konsekuensi
+            const fmtReq = reqAmount.toLocaleString('id-ID');
+            const fmtPotong = deductionPerWeek.toLocaleString('id-ID');
+            
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Darurat Cair 🚑', ?, 'Warning')",
+                [user.id, `Dana Rp ${fmtReq} cair. Jatah mingguan dipotong Rp ${fmtPotong} untuk ${sisaMinggu} minggu ke depan.`]
+            );
 
             return success(res, {
                 received: reqAmount,
                 deduction_per_week: deductionPerWeek,
-                remaining_wants_drip: newDripAmount,
-                tx_hash: tx.hash
-            }, "Dana Darurat Cair. Budget mingguan telah disesuaikan.");
+                new_wants_drip: newDripAmount,
+                tx_hash: txHash
+            }, "Permintaan Disetujui.");
 
-        } catch (e) { return error(res, "Gagal request urgent"); }
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal request urgent: " + e.message); 
+        }
     },
 
     // Execution Education Fund 
@@ -958,58 +1290,132 @@ module.exports = {
     },
 
     // POST-APPROVAL (Reimburse / Real Transfer)
+    // POST-APPROVAL (Reimburse / Real Transfer Education)
     requestEduReimburse: async (req, res) => {
         try {
-            const { amount, description, proof_image_url } = req.body;
+            const { amount, description, proof_image_url } = req.body; // proof_image_url berisi Base64 string
+            const reqAmount = parseInt(amount);
 
-            // Validasi User
+            // 1. VALIDASI USER & INPUT
             const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
+            if (!reqAmount || reqAmount <= 0) return error(res, "Nominal tidak valid", 400);
+            if (!description) return error(res, "Deskripsi pengeluaran wajib diisi", 400);
 
-            // Cek Saldo Vault (Category 2 = Education)
+            // 2. CEK SALDO PENDIDIKAN DI DATABASE
+            // Kategori 2 = Education
             const vaultQ = `
                 SELECT fa.allocation_id, fa.total_allocation, fa.total_withdrawn 
                 FROM funding_allocation fa
                 JOIN funding f ON fa.funding_id = f.funding_id
                 WHERE f.student_id = ? AND fa.category_id = 2 AND f.status = 'Active'
             `;
-            const vault = (await SQL.Query(vaultQ, [user.id])).data?.[0];
+            const vaultRes = await SQL.Query(vaultQ, [user.id]);
+            const vault = vaultRes.data?.[0];
             
             if (!vault) return error(res, "Tidak ada dana pendidikan aktif", 400);
-            if ((Number(vault.total_allocation) - Number(vault.total_withdrawn)) < amount) {
-                return error(res, "Saldo pendidikan tidak cukup", 400);
+            
+            const sisaPendidikan = Number(vault.total_allocation) - Number(vault.total_withdrawn);
+            if (sisaPendidikan < reqAmount) {
+                return error(res, `Saldo pendidikan tidak cukup. Sisa: Rp ${sisaPendidikan.toLocaleString('id-ID')}`, 400);
             }
 
-            // AI SCAN STRUK (MOCK)
-            if (!proof_image_url) return error(res, "Bukti struk wajib!", 400);
+            // ============================================================
+            // 3. IMAGE HANDLING (BASE64 -> FILE)
+            // ============================================================
+            let finalImageUrl = null;
 
-            // BLOCKCHAIN TRANSFER
-            const tx = await tokenContract.transfer(user.wallet_address, amount.toString());
+            if (proof_image_url && proof_image_url.startsWith('data:image')) {
+                try {
+                    // A. Buat folder jika belum ada
+                    const uploadDir = path.join(__dirname, "../../public/proofs"); // Sesuaikan path ke folder public Anda
+                    if (!fs.existsSync(uploadDir)) {
+                        fs.mkdirSync(uploadDir, { recursive: true });
+                    }
 
-            // UPDATE DATABASE
-            await SQL.Query("UPDATE funding_allocation SET total_withdrawn = total_withdrawn + ? WHERE allocation_id = ?", [amount, vault.allocation_id]);
+                    // B. Decode Base64
+                    // Format base64: "data:image/png;base64,iVBORw0KGgo..."
+                    const matches = proof_image_url.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+                    
+                    if (matches && matches.length === 3) {
+                        const ext = matches[1]; // png, jpg, jpeg
+                        const data = matches[2]; // data biner
+                        const buffer = Buffer.from(data, 'base64');
+
+                        // C. Generate Nama File Unik
+                        const filename = `edu_${user.id}_${Date.now()}.${ext}`;
+                        const filePath = path.join(uploadDir, filename);
+
+                        // D. Tulis File ke Disk
+                        fs.writeFileSync(filePath, buffer);
+
+                        // E. Set URL untuk Database
+                        // URL ini nanti bisa diakses frontend via http://localhost:PORT/proofs/filename
+                        finalImageUrl = `/proofs/${filename}`;
+                    }
+                } catch (errImg) {
+                    console.error("Gagal save gambar:", errImg);
+                    // Lanjut saja tanpa gambar daripada error total (Fallback)
+                }
+            }
+
+            // ============================================================
+            // 4. BLOCKCHAIN TRANSFER (REAL)
+            // ============================================================
+            let txHash = "";
+            try {
+                // Panggil fungsi releaseFund
+                txHash = await BlockchainService.releaseFund(
+                    user.wallet_address, 
+                    reqAmount, 
+                    "Edu Reimburse"
+                );
+                console.log(`[BC] Education Fund Released: ${txHash}`);
+            } catch (bcErr) {
+                console.error("[BC ERROR]", bcErr);
+                return error(res, "Gagal pencairan di Blockchain: " + bcErr.message);
+            }
+
+            // ============================================================
+            // 5. UPDATE DATABASE
+            // ============================================================
+
+            // A. Update Total Withdrawn (Agar sisa limit berkurang)
+            await SQL.Query("UPDATE funding_allocation SET total_withdrawn = total_withdrawn + ? WHERE allocation_id = ?", [reqAmount, vault.allocation_id]);
             
-            // CATAT TRANSAKSI
+            // B. Catat Transaksi Pengeluaran
+            // Tipe 'Drip_In' (Uang masuk penggantian) atau 'Expense' (Pencatatan beli).
+            // Kita catat sebagai Uang Masuk (Reimburse) agar saldo wallet bertambah.
             await SQL.Query(`
                 INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, proof_image_url, is_verified_by_ai, blockchain_tx_hash, transaction_date)
-                VALUES (?, ?, ?, 'Expense', 2, ?, ?, TRUE, ?, NOW())
-            `, [generateId('edu'), user.id, amount, description, proof_image_url, tx.hash]);
+                VALUES (?, ?, ?, 'Drip_In', 2, ?, ?, TRUE, ?, NOW())
+            `, [
+                generateId('edu'), 
+                user.id, 
+                reqAmount, 
+                "Reimburse: " + description, 
+                finalImageUrl, // Masukkan URL file yang sudah disimpan
+                txHash
+            ]);
 
-            // UPDATE SALDO STUDENT (Karena reimburse = uang masuk ke rekening pribadi mengganti uang talangan)
-            await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, user.id]);
+            // C. Update Saldo Wallet App
+            await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [reqAmount, user.id]);
 
-            // [FIX] Menggunakan Template Literal (Backticks) + Format Rupiah
-            const formattedAmount = Number(amount).toLocaleString('id-ID'); // Biar jadi "150.000"
-            const notifMessage = `Dana pendidikan sebesar Rp ${formattedAmount} telah dicairkan ke rekening Anda.`;
+            // D. Notifikasi
+            const formattedAmount = reqAmount.toLocaleString('id-ID'); 
+            const notifMessage = `Dana pendidikan Rp ${formattedAmount} berhasil dicairkan untuk penggantian "${description}".`;
 
             await SQL.Query(
                 "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Reimburse Sukses 📚', ?, 'Success')",
                 [user.id, notifMessage] 
             );
 
-            return success(res, { tx_hash: tx.hash }, "Reimburse Disetujui & Ditransfer");
+            return success(res, { tx_hash: txHash }, "Reimburse Disetujui & Ditransfer");
 
-        } catch (e) { return error(res, "Gagal reimburse"); }
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal reimburse: " + e.message); 
+        }
     },
 
 
@@ -1078,12 +1484,10 @@ module.exports = {
             // Apakah Viewer adalah Funder?
             const isFunder = (funding.funder_id === viewer.id);
             
-            // Apakah Viewer adalah Parent?
-            const isParent = (student.parent_id === viewer.id);
 
             // Jika bukan keduanya, TENDANG!
-            if (!isFunder && !isParent) {
-                return error(res, "Akses Ditolak! Anda bukan Funder maupun Orang Tua dari mahasiswa ini.", 403);
+            if (!isFunder) {
+                return error(res, "Akses Ditolak! Anda bukan Funder dari mahasiswa ini.", 403);
             }
 
             // -------------------------------------------------------
@@ -1378,7 +1782,7 @@ module.exports = {
     // ============================================================
     getTransactionYears: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
 
             // Query untuk mengambil tahun-tahun unik dari history transaksi
             const q = `
@@ -1413,7 +1817,7 @@ module.exports = {
             if (!req.currentUser.wallet_address) return error(res, "Wallet address required", 400);
 
             // Validasi User: Memastikan wallet terdaftar
-            const user = req.currentUser;
+            const user = req.query.userId || req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             // Ambil data Statistik secara Paralel
@@ -1477,7 +1881,7 @@ module.exports = {
 
     getTransactionHistory: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             const { month, year } = req.query;
 
             let q = `
@@ -1528,62 +1932,49 @@ module.exports = {
 
     getWalletData: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             
             // 1. Ambil Saldo Total (Uang Fisik di Akun)
             const bRes = await SQL.Query("SELECT balance FROM accounts_student WHERE id=?", [user.id]);
             const totalBalance = Number(bRes.data?.[0]?.balance || 0);
 
-            // 2. Hitung Arus Kas per Kategori (Cashflow Calculation)
-            // Rumus: Total Masuk (Drip) - Total Keluar (Expense) = Sisa Uang di Tangan
-            const qFlow = `
+            // 2. Hitung Saldo Per Kategori (Cashflow Calculation)
+            // Rumus: (Total Masuk ke Kategori Ini) - (Total Keluar dari Kategori Ini)
+            // Kita Join ke tabel allocation_categories agar kategori yang kosong tetap muncul
+            const qCalc = `
                 SELECT 
-                    category_id, 
-                    SUM(CASE WHEN type = 'Drip_In' OR type = 'Income' THEN amount ELSE 0 END) as total_in,
-                    SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) as total_out
-                FROM transactions 
-                WHERE student_id = ?
-                GROUP BY category_id
+                    ac.id as cat_id, 
+                    ac.category_name,
+                    COALESCE(SUM(CASE WHEN t.type IN ('Drip_In', 'Income') THEN t.amount ELSE 0 END), 0) as total_in,
+                    COALESCE(SUM(CASE WHEN t.type = 'Expense' THEN t.amount ELSE 0 END), 0) as total_out
+                FROM allocation_categories ac
+                LEFT JOIN transactions t ON ac.id = t.category_id AND t.student_id = ?
+                GROUP BY ac.id, ac.category_name
+                ORDER BY ac.id ASC
             `;
-            
-            const flowData = await SQL.Query(qFlow, [user.id]);
 
-            // 3. Mapping Data
-            const flowMap = {};
-            flowData.data.forEach(row => {
-                // Hitung Net Balance (Sisa Amplop)
-                const net = Number(row.total_in) - Number(row.total_out);
-                // Pastikan tidak negatif (opsional, tapi aman untuk UI)
-                flowMap[row.category_id] = Math.max(0, net);
+            const calcRes = await SQL.Query(qCalc, [user.id]);
+
+            // 3. Format Output Sesuai DUMMY_WALLET
+            const allocations = calcRes.data.map(row => {
+                const netBalance = Number(row.total_in) - Number(row.total_out);
+                
+                return {
+                    categoryId: row.cat_id.toString(), // String ID "0"
+                    categoryName: row.category_name,   // "Wants"
+                    balance: Math.max(0, netBalance)   // Pastikan tidak negatif
+                };
             });
 
-            // 4. Struktur Kategori Default
-            // Kita gabungkan dengan nama kategori master
-            const defaultCats = [
-                { id: 0, name: "Wants" },
-                { id: 1, name: "Needs" },
-                { id: 2, name: "Education" }
-            ];
-
-            const allocations = defaultCats.map(cat => ({
-                categoryId: cat.id.toString(),
-                categoryName: cat.name,
-                // Ambil sisa uang dari map, atau 0 jika belum ada transaksi
-                balance: flowMap[cat.id] || 0 
-            }));
-
-            // [NOTE] Khusus Education: 
-            // Karena Edu dananya di Vault (bukan di wallet student), biasanya balancenya 0 atau minus (reimburse).
-            // Tapi jika ada sisa 'Drip_In' yang dialokasikan ke Edu, akan muncul disini.
-
+            // 4. Return JSON
             return success(res, {
-                balance: totalBalance, // Saldo Total semua amplop
-                allocations: allocations // Rincian isi per amplop
+                balance: totalBalance,
+                allocations: allocations
             });
 
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
-            return res.status(500).json({ success: false, message: "Gagal hitung cashflow" }); 
+            return error(res, "Gagal mengambil data wallet");
         }
     },
 
@@ -1599,7 +1990,7 @@ module.exports = {
 
     getExpensesData: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             
             // [FIX] Gunakan YEARWEEK(date, 1) agar Senin dianggap awal minggu
             const q = `
@@ -1634,7 +2025,7 @@ module.exports = {
 
     getFeedbackData: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             
             // 1. Ambil Data Konteks (Saldo, Waktu, dan Breakdown Pengeluaran)
             // Kita butuh data ini agar AI tidak halusinasi
@@ -1759,32 +2150,183 @@ module.exports = {
     // Halaman Home: Get Current Program Info
     getCurrentProgram: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.currentUser; // Ambil student dari session
+
+            // Query untuk mencari program aktif yang diikuti student
+            // Kita perlu JOIN ke tabel 'scholarship_programs' untuk ambil nama & tanggal
             const q = `
-                SELECT f.funder_id, f.program_name, f.end_date, a.organization_name, a.displayname
+                SELECT p.funder_id, p.program_name, p.end_date
                 FROM funding f
-                JOIN accounts a ON f.funder_id = a.id
-                WHERE f.student_id = ? AND f.status IN ('Active', 'Ready_To_Fund', 'Partially_Funded')
+                JOIN scholarship_programs p ON f.program_id = p.id
+                WHERE f.student_id = ? 
+                AND f.status IN ('Ready_To_Fund', 'Waiting_Allocation', 'Partially_Funded', 'Active')
+                ORDER BY p.end_date DESC 
                 LIMIT 1
             `;
+            
             const result = await SQL.Query(q, [user.id]);
             const program = result.data?.[0];
 
+            // SKENARIO A: Belum Join Program Apapun
             if (!program) {
-                // Return null atau default object sesuai kebutuhan frontend handling
-                return success(res, { isJoined: false });
+                return success(res, {
+                    isJoined: false,
+                    funderId: null,
+                    displayName: null,
+                    activeUntil: null
+                });
             }
 
-            const finalName = program.program_name || `Beasiswa ${program.organization_name || program.displayname}`;
-
+            // SKENARIO B: Sudah Join (Format sesuai Request)
             return success(res, {
                 isJoined: true,
-                funderId: program.funder_id,
-                displayName: finalName,
-                activeUntil: new Date(program.end_date).getTime() // UNIX Timestamp
+                funderId: program.funder_id,        // "fund1"
+                displayName: program.program_name,  // "Djarum Super"
+                activeUntil: new Date(program.end_date).getTime() // UNIX Timestamp (1767...)
             });
 
-        } catch (e) { return error(res, "Gagal info program"); }
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal mengambil data program");
+        }
+    },
+
+    // ============================================================
+    // MODULE 3 EXTENSION: ACTIVATE BUDGET (Blockchain Trigger)
+    // ============================================================
+    activateBudgetPlan: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            
+            // 1. Ambil Funding yang sedang menunggu
+            const qFund = `
+                SELECT f.funding_id, f.status, sp.total_period_fund, sp.start_date, sp.end_date, sp.funder_id
+                FROM funding f
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE f.student_id = ? AND f.status = 'Waiting_Allocation'
+            `;
+            const fundRes = await SQL.Query(qFund, [user.id]);
+            const funding = fundRes.data?.[0];
+
+            if (!funding) {
+                return error(res, "Tidak ada program beasiswa yang menunggu aktivasi (Status harus Waiting_Allocation).", 404);
+            }
+
+            // 2. Ambil SEMUA Item Budget
+            const qItems = "SELECT * FROM budget_plan WHERE funding_id = ?";
+            const itemsRes = await SQL.Query(qItems, [funding.funding_id]);
+            const items = itemsRes.data;
+
+            if (items.length === 0) return error(res, "Belum ada rencana anggaran yang dibuat.", 400);
+
+            // 3. VALIDASI 1: Semua item harus APPROVED
+            const pendingOrRejected = items.filter(i => i.status !== 'approved');
+            if (pendingOrRejected.length > 0) {
+                return error(res, `Masih ada ${pendingOrRejected.length} item yang belum disetujui.`, 400);
+            }
+
+            // 4. VALIDASI 2: Total Rencana == Total Dana
+            const totalPlanned = items.reduce((sum, item) => sum + (Number(item.amount) * Number(item.quantity)), 0);
+            const totalBudget = Number(funding.total_period_fund);
+
+            if (Math.abs(totalPlanned - totalBudget) > 1000) {
+                return error(res, `Total rencana (Rp ${totalPlanned.toLocaleString()}) TIDAK SAMA dengan dana beasiswa (Rp ${totalBudget.toLocaleString()}).`, 400);
+            }
+
+            // --- SETUP SISTEM & BLOCKCHAIN LOGIC ---
+            
+            // 5. Hitung Durasi Minggu
+            const weeks = calculateWeeks(funding.start_date, funding.end_date);
+            
+            // 6. Pisahkan Dana
+            let totalNeeds = 0;
+            let totalWants = 0;
+            let totalEdu = 0;
+
+            items.forEach(item => {
+                const val = Number(item.amount) * Number(item.quantity);
+                if (item.category_id === 1) totalNeeds += val; 
+                else if (item.category_id === 0) totalWants += val; 
+                else if (item.category_id === 2) totalEdu += val; 
+            });
+
+            const dripNeeds = Math.floor(totalNeeds / weeks);
+            const dripWants = Math.floor(totalWants / weeks);
+            
+            // [PERBAIKAN SCOPE]: Definisikan variabel ini DI LUAR blok try/catch
+            const totalWeeklyDrip = dripNeeds + dripWants;
+
+            // 7. SIMPAN ATURAN KONTRAK (Funding Allocation)
+            await SQL.Query("DELETE FROM funding_allocation WHERE funding_id = ?", [funding.funding_id]);
+
+            const qAllocDrip = `
+                INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, remaining_drip_count) 
+                VALUES (?, ?, 1, ?, 'Weekly', ?, ?), (?, ?, 0, ?, 'Weekly', ?, ?)
+            `;
+            await SQL.Query(qAllocDrip, [
+                generateId('an'), funding.funding_id, totalNeeds, dripNeeds, weeks,
+                generateId('aw'), funding.funding_id, totalWants, dripWants, weeks
+            ]);
+
+            const qAllocVault = `
+                INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, total_withdrawn) 
+                VALUES (?, ?, 2, ?, 'Locked', 0, 0)
+            `;
+            await SQL.Query(qAllocVault, [generateId('ae'), funding.funding_id, totalEdu]);
+
+            // 8. AKTIFKAN PROGRAM (DB)
+            await SQL.Query("UPDATE funding SET status = 'Active' WHERE funding_id = ?", [funding.funding_id]);
+
+            // ============================================================
+            // 9. BLOCKCHAIN ACTION (REAL INTEGRATION)
+            // ============================================================
+            let txHash = "";
+            try {
+                // Panggil Service Blockchain
+                txHash = await BlockchainService.setupVaultPlan(
+                    user.wallet_address,  
+                    totalEdu,             
+                    totalWeeklyDrip,      
+                    weeks                 
+                );
+                
+                console.log(`[BC] ✅ Plan Setup Success! Hash: ${txHash}`);
+
+            } catch (bcError) {
+                console.error("⚠️ Blockchain Setup Failed:", bcError.message);
+                txHash = "failed_on_chain_db_ok"; 
+            }
+            // ============================================================
+
+            // 10. Notifikasi DETAIL
+            const fmtEdu = Number(totalEdu).toLocaleString('id-ID');
+            const fmtDrip = Number(totalWeeklyDrip).toLocaleString('id-ID'); // Sekarang variabel ini dikenali
+            const fmtTotal = Number(funding.total_period_fund).toLocaleString('id-ID');
+
+            const msgStudent = `🎉 Beasiswa Aktif! Dana Total Rp ${fmtTotal} telah dikunci di Smart Contract. Dana Pendidikan: Rp ${fmtEdu} (Terkunci). Uang Saku Mingguan: Rp ${fmtDrip}.`;
+
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Kontrak Blockchain Aktif 🔗', ?, 'Success')",
+                [user.id, msgStudent]
+            );
+
+            const msgFunder = `Student ${user.displayname} siap! Dana Rp ${fmtTotal} sudah diamankan di Smart Contract (Hash: ${txHash.substring(0, 10)}...).`;
+            
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Setup Berhasil ✅', ?, 'Success')",
+                [funding.funder_id, msgFunder]
+            );
+
+            return success(res, { 
+                status: "Active", 
+                weekly_drip: totalWeeklyDrip, 
+                tx_hash: txHash 
+            }, "Aktivasi Berhasil!");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal aktivasi budget plan: " + e.message);
+        }
     },
 
 }

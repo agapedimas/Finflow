@@ -20,5 +20,12 @@
     "monthlyplan": "Monthly Plan",
     "allocation": "Allocation",
     "allocated_parent": "Parent's Allocation",
-    "allocated_funder": "{0}'s Allocation"
+    "allocated_funder": "{0}'s Allocation",
+
+    "activate_scholarship": "Activate Scholarship",
+
+    "no_plans_title": "No Plans Yet",
+    "no_plans_message": "You haven't planned any expenses this month.",
+    "server_error_title": "Something Went Wrong",
+    "server_error_message": "Please try again later."
 }

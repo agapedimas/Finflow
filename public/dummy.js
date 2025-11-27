@@ -215,7 +215,24 @@ const DUMMY_ALLOCATIONS_PARENT = {
 const DUMMY_MONTHLY_PLAN = {
     "month": "November",      
     "year": 2025,             
-    "allocated": 2000000,  
+    "allocated": 2000000,
+    "categories": [
+        {
+            "categoryId": "0",
+            "categoryName": "Education",
+            "total": 2500000 
+        },
+        {
+            "categoryId": "1",
+            "categoryName": "Wants",
+            "total": 500000 
+        },
+        {
+            "categoryId": "2",
+            "categoryName": "Needs",
+            "total": 400000 
+        }
+    ],
     "stuffs": [
         {
             "id": "ggasfakjfha",
@@ -246,3 +263,22 @@ const DUMMY_MONTHLY_PLAN = {
         },
     ]
 };
+
+const DUMMY_PROGRAMS = [
+    {
+        "name": "Program Beasiswa Semester Ganjil 25-26",
+        "fundingId": "fund_budi",
+        "funderId": "funder_01",
+        "totalPeriodFund": 6000000.00,
+        "startDate": "2025-01-01",
+        "endDate": "2026-01-02",
+        "status": "Active",
+        "collectedAmount": 0,
+        "joinedStudents": [
+            {
+                "id": "student-12345",
+                "name": "Budi Santoso"
+            }
+        ]
+    }
+]

@@ -1,33 +1,4 @@
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-
-<script src="/sdk.js"></script>
-
 <ad-title><$ signup title /></ad-title>
-
-<div class="panel" theme="light" accent="blue">
-    <img src="/assets/logo_text.png"/>
-    <div class="title" id="Text_SignUpTitle"><$ signup title /></div>
-    <div class="subtitle"><$ signup description /></div>
-    <div class="inputs">
-        <input type="email" id="Input_Email" ad-text="Email Terverifikasi" name="email" readonly style="background-color: #f0f0f0; cursor: not-allowed;"/>
-        
-        <input type="text" id="Input_PICName" ad-text="Nama Penanggung Jawab" name="picname"/>
-        <input type="text" id="Input_DisplayName_ScholarshipFunder" ad-text="Nama Organisasi / Yayasan" name="displayname"/>
-
-        <input type="text" id="Input_Bank" ad-text="Nama Bank (cth: BCA)" />
-        <input type="text" id="Input_Rek" ad-text="Nomor Rekening Sumber" />
-        <input type="text" id="Input_NoHP" ad-text="Nomor Handphone" />
-
-        <span class="error" id="Text_ErrorSignUp" style="display:none; color:red; font-size:0.9em; text-align:center;"></span>
-
-        <button class="accent" id="Button_SignUp">
-            <div class="progressring"></div>
-            <span>Selesaikan Pendaftaran</span>
-        </button>
-    </div>
-</div>
 
 <style>
     .root
@@ -128,7 +99,37 @@
     $(".titlebar").remove();
     $("nav").remove();
     $(".loading").hide();
+</script>
 
+<div class="panel" theme="light" accent="blue">
+    <img src="/assets/logo_text.png"/>
+    <div class="title" id="Text_SignUpTitle"><$ signup title_scholarshipfunder /></div>
+    <div class="subtitle"><$ signup complete_data_funder /></div>
+    <div class="inputs">
+        <input type="email" id="Input_Email" ad-text="<$ generic email />" name="email" readonly style="background-color: #f0f0f0; cursor: not-allowed;"/>
+        
+        <input type="text" id="Input_PICName" ad-text="<$ generic picname />" name="picname"/>
+        <input type="text" id="Input_DisplayName_ScholarshipFunder" ad-text="<$ generic organizationname />" name="displayname"/>
+
+        <input type="text" id="Input_Bank" ad-text="<$ generic bankname />" />
+        <input type="text" id="Input_Rek" ad-text="<$ generic bankaccountnumber/>" />
+        <input type="text" id="Input_NoHP" ad-text="<$ generic phonenumber />" />
+
+        <span class="error" id="Text_ErrorSignUp" style="display:none; color:red; font-size:0.9em; text-align:center;"></span>
+
+        <button class="accent" id="Button_SignUp">
+            <div class="progressring"></div>
+            <span><$ generic submit /></span>
+        </button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="/sdk.js"></script>
+
+<script>
     // --- LOGIC PENGISI EMAIL OTOMATIS ---
     window.onload = async () => {
         console.log("⏳ Mengecek status login...");
@@ -140,8 +141,7 @@
         console.log("👤 Data User dari SDK:", user);
 
         if (!user) {
-            alert("Sesi habis. Silakan login ulang.");
-            window.location.replace("/web3auth/index.html?type=scholarshipfunder");
+            window.location.replace("/web3auth");
         } else {
             // 3. ISI KOLOM EMAIL
             const emailInput = document.getElementById("Input_Email");

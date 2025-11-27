@@ -51,26 +51,26 @@
     width: 1em;
     height: 1em;
   }
-  .panel:not(.loading) .inputs button .progressring {
-    display: none;
+  .panel:not(.loading) .inputs button .progressring,
+  .panel.loading .inputs button .icon
+  {
+      display: none;
   }
   .panel .inputs .offersignin {
     justify-self: center;
   }
+    #w3a-parent-container {
+        display: none;
+    }
 </style>
-
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-
-<script src="/sdk.js"></script>
 
 <div class="panel" theme="light" accent="blue">
   <img src="/assets/logo_text.png" />
   <div class="title" id="Text_SignUpTitle"><$ signup title /></div>
   <div class="subtitle"><$ signup description_signupwithgoogle /></div>
   <div class="inputs">
-    <button id="Button_ContinueWithGoogle">
+    <button id="Button_ContinueWithGoogle" disabled>
+      <div class="progressring"></div>
       <img class="icon" src="/assets/logo_google.webp" />
       <span><$ signup signup_with_google /></span>
     </button>
@@ -100,31 +100,45 @@
 
   // 2. Update Judul Sesuai Peran
   if (funderType == "student") {
-    document.getElementById("Text_SignUpTitle").innerText = "Aktivasi Mahasiswa";
-  } else if (funderType == "parent") {
-    document.getElementById("Text_SignUpTitle").innerText = "Aktivasi Orang Tua";
+    document.getElementById("Text_SignUpTitle").innerText = "<$ signup title_student />";
   } else if (funderType == "scholarshipfunder") {
-    document.getElementById("Text_SignUpTitle").innerText = "Daftar Funder";
+    document.getElementById("Text_SignUpTitle").innerText = "<$ signup title_scholarshipfunder />";
   } else {
     // Default ke dashboard jika tidak ada tipe
     // window.location.replace("/signup");
   }
+</script>
 
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="/sdk.js"></script>
+
+<script>
   // 3. Handle Tombol Login Google
-  document.getElementById("Button_ContinueWithGoogle").onclick = async function () {
+  Button_ContinueWithGoogle.disabled = false;
+  Button_ContinueWithGoogle.onclick = async function () {
     try {
+      $(".panel").addClass("loading");
+      Button_ContinueWithGoogle.disabled = true;
+      setTimeout(function() {
+          const googleButton = document.querySelector("#w3a-parent-container button:has(img[alt='login-google-active'])");
+          googleButton.click();
+      }, 500);
+            
       const user = await Finflow.login(); // SDK Trigger
       handleRedirect(user);
     } catch (e) {
-      
     }
+    $(".panel").removeClass("loading");
+    Button_ContinueWithGoogle.disabled = false;
   };
 
   // 4. Cek Status Saat Load (Auto Redirect jika sudah login)
   window.onload = async () => {
     // Pastikan SDK sudah dimuat
     if (typeof Finflow === "undefined") {
-      alert("Error: File SDK tidak ditemukan. Cek path /sdk.js");
+      // alert("Error: File SDK tidak ditemukan. Cek path /sdk.js");
       return;
     }
 
@@ -140,9 +154,9 @@
   function handleRedirect(user) {
     // Arahkan ke form pendaftaran yang sesuai
     if (funderType === "student") {
-      window.location.href = "/signup/student?token=" + inviteToken;
+      window.location.href = "/signup/student" ;
     } else if (funderType === "parent") {
-      window.location.href = "/signup/parent?token=" + inviteToken;
+      window.location.href = "/signup/parent";
     } else if (funderType === "scholarshipfunder") {
       window.location.href = "/signup/funder";
     } else {

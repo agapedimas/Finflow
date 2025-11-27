@@ -7,7 +7,7 @@ const CONFIG = {
   WEB3AUTH_CLIENT_ID: "BGQqw1_xgioq69pdr-MA7fO099Eg0cfi-Ko4xucSzRwfqIqLnz1Gv0r3D6QVndbWZNHfg2QAKRVuWJRUB40pRFA",
 
   // URL BACKEND
-  BACKEND_URL: "http://localhost:1111/api",
+  BACKEND_URL: window.location.origin + "/api",
 
   CHAIN_CONFIG: {
     chainNamespace: "eip155",
@@ -60,7 +60,7 @@ const Finflow = {
   login: async () => {
     if (!web3auth) throw new Error("SDK belum siap. Cek koneksi internet.");
     provider = await web3auth.connect();
-
+    
     // Auto-login ke backend untuk dapat Session Cookie
     const user = await _getUserInfo();
     const result = await Finflow.backendLogin(user);
@@ -71,9 +71,23 @@ const Finflow = {
   logout: async () => {
         console.log("Logging out...");
 
-        // 1. Logout dari Web3Auth (Membersihkan sesi Google di Browser)
-        if (web3auth) {
-            await web3auth.logout();
+        try {
+            // [PERBAIKAN PENTING]
+            // 1. Cek apakah instance Web3Auth hilang (karena refresh)?
+            if (!web3auth) {
+                console.log("Web3Auth instance null, re-initializing for logout...");
+                // Paksa init ulang agar kita bisa memanggil fungsi logout-nya
+                await Finflow.init();
+            }
+
+            // 2. Logout dari Web3Auth (Pembersihan Sesi Google)
+            // Sekarang web3auth pasti sudah ada
+            if (web3auth && web3auth.connected) {
+                await web3auth.logout();
+                console.log("✅ Web3Auth Session Cleared");
+            }
+        } catch (e) {
+            console.warn("Web3Auth logout warning (ignore if already logged out):", e);
         }
 
         // 2. Panggil Backend untuk Hapus Session Database
@@ -88,11 +102,12 @@ const Finflow = {
 
         // 3. Bersihkan LocalStorage (Jejak-jejak Frontend)
         provider = null;
+        web3auth = null;
         localStorage.clear();
         sessionStorage.clear();
 
         // 4. Redirect ke Halaman Login
-        window.location.href = "/signin.html"; // Atau /index.html
+        window.location.href = "/signin"; // Atau /index.html
     },
 
   // 3. API WRAPPERS
@@ -122,36 +137,14 @@ const Finflow = {
   registerStudent: async (data) => {
     const user = await _getUserInfo();
     return await _post("/auth/register/student", {
-      invite_token: data.inviteToken, // PENTING
       email: user.email,
       wallet_address: user.wallet,
       full_name: data.fullName,
       bank_name: data.bankName,
       bank_account: data.bankAccount,
-      password: "dummy_password",
+      phonenumber: data.phonenumber
     });
-  },
-
-  registerParent: async (data) => {
-    const user = await _getUserInfo();
-    return await _post("/auth/register/parent", {
-      invite_token: data.inviteToken,
-      email: user.email,
-      wallet_address: user.wallet,
-      full_name: data.fullName,
-      password: "dummy_password",
-    });
-  },
-
-  createInvite: async (targetEmail, role) => {
-        // Kita tidak perlu panggil _getUserInfo() di sini, karena backend sudah tahu
-        // siapa yang login lewat Session Cookie.
-        
-        return await _post('/auth/invite/create', {
-            invitee_email: targetEmail,
-            role_target: role // 'student' or 'parent'
-        });
-    },
+  }, 
 };
 
 // --- HELPERS ---

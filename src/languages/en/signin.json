@@ -8,6 +8,8 @@
     "error_server": "We're having trouble right now. Please try again later.",
     "error_signin": "Please sign in to continue",
 
+    "signin_with_google": "Continue with Google",
+
     "offer_signup_title": "Don't have an account?",
     "offer_signup_link": "Sign up"
 }

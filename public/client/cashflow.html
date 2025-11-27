@@ -18,7 +18,7 @@
       "total wallet"
       "total feedback";
     grid-auto-columns: 425px auto;
-    grid-auto-rows: 155px max-content;
+    grid-auto-rows: 190px max-content;
     gap: 15px;
     max-width: 900px;
   }
@@ -149,6 +149,31 @@
     letter-spacing: 0.025em;
     font-weight: 500;
   }
+  #Card_Wallet > #Grid_WalletActions {
+      display: grid;
+      grid-auto-flow: column;
+      justify-items: end;
+      margin-top: 1em;
+  }
+      #Card_Wallet > #Grid_WalletActions button {
+          position: relative;
+          border-radius: 30px;
+          text-transform: uppercase;
+          font-size: 0.85em;
+          letter-spacing: 0.015em;
+          font-weight: 500;
+          overflow: hidden;
+      }
+          #Card_Wallet > #Grid_WalletActions button::before {
+              content: "";
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: var(--accent);
+              opacity: 0.1;
+          }   
   #Card_Feedback {
     grid-area: feedback;
     display: grid;
@@ -193,7 +218,7 @@
   @media screen and (max-width: 1175px) {
     #Cards_Overview {
       grid-auto-columns: 350px auto;
-      grid-auto-rows: 135px max-content;
+      grid-auto-rows: 170px max-content;
       font-size: 0.85em;
     }
     #Card_ExpensesTotal .chart .days .day .bar {
@@ -225,7 +250,7 @@
         "wallet"
         "feedback";
       grid-auto-columns: auto;
-      grid-auto-rows: 225px 135px max-content;
+      grid-auto-rows: 225px max-content max-content;
     }
     #Card_ExpensesTotal .chart .days .day .bar {
       width: 20px;
@@ -269,8 +294,27 @@
 
   #Header_MonthlyReport,
   #List_MonthlyReport {
-    max-width: 800px;
+    position: relative;
+    max-width: 900px;
   }
+    #List_MonthlyReport .emptytitle {
+      font-family: var(--font-bold);
+      font-size: 1.5em;    
+      text-align: center;
+      margin: 2.5em 0 0;
+    }
+    #List_MonthlyReport .emptymessage {
+      font-size: 1.12em;
+      color: var(--foreground-description);
+      text-align: center;
+      margin: 0.25em 0;
+    }
+    #List_MonthlyReport .progressring {
+      position: absolute;
+      left: 50%;
+      top: 40px;
+      width: 25px;
+    }
   #List_MonthlyReport .stack .thumbnail {
     width: 35px;
     height: 35px;
@@ -347,7 +391,8 @@
   }
   #PopOver_InputManual #Button_AddNewTransaction {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
+    border-radius: 10px;
   }
 
   #PopOver_InputCamera {
@@ -404,6 +449,59 @@
   #PopOver_InputCamera #Image_InputCameraPreview {
     width: 100%;
   }
+
+    :where(#PopOver_RequestDrip) {
+    }
+        :where(#PopOver_RequestDrip) .stack {
+            grid-auto-columns: 100px auto !important;
+        }
+            :where(#PopOver_RequestDrip) .stack > span {
+                font-weight: 600;
+            }
+            :where(#PopOver_RequestDrip) .stack > label:has(select) {
+                display: inline-grid;
+                grid-auto-flow: column;
+                justify-items: start;
+                text-align: left !important;
+                justify-content: space-between;
+                opacity: 1;
+            }
+            :where(#PopOver_RequestDrip) .stack :where(label:has(select:disabled), input:disabled) {
+                opacity: 0.6 !important;
+                pointer-events: none;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview[src=""] {
+                display: none;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview {
+                width: 50px;
+                height: 50px;
+                object-fit: cover;
+                border-radius: 7px;
+                transition: 0.075s filter;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:hover {
+                filter: brightness(0.8);
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:active {
+                filter: brightness(0.6);
+            }
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof {
+                padding: 0;
+            }
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof:has(~ #Image_InputProofPreview:not([src=""])) {
+                display: none;
+            }
+
+    #Sheet_RequestDripProofPreview {
+        width: auto;
+    }
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large {
+            max-width: min(100%, 800px);
+        }
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large[src=""] {
+            display: none;
+        }
 </style>
 
 <div class="content">
@@ -453,11 +551,14 @@
         <span class="label"><$ generic balance /></span>
         <span id="Text_WalletBalance">&nbsp;</span>
         <div id="Grid_WalletCategories"></div>
+        <div id="Grid_WalletActions">
+            <button id="Button_RequestDrip" class="plain"><$ cashflow request_drip_title /></button>
+        </div>
       </div>
       <div class="card" id="Card_Feedback">
         <span class="label"><$ cashflow overview_feedback_title /></span>
         <span class="description" id="Text_Feedback">&nbsp;</span>
-        <button class="plain"><$ cashflow overview_feedback_ask /></button>
+        <button class="plain" id="Button_AskFeedback"><$ cashflow overview_feedback_ask /></button>
       </div>
     </div>
   </section>
@@ -585,6 +686,54 @@
   </div>
 </div>
 
+<div class="popover" id="PopOver_RequestDrip">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelRequestDrip"><$ generic cancel /></button>
+                <button id="Button_SubmitRequestDrip">
+                    <span><$ generic submit /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+            <div class="title"><$ cashflow request_drip_title /></div>
+        </div>
+        <div class="content">
+            <div class="list">
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_purpose /></span>
+                    <input id="Input_RequestDripPurpose" type="text" class="plain" placeholder="<$ cashflow request_drip_input_purpose_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_amount /></span>
+                    <input id="Input_RequestDripAmount" type="text" class="plain" placeholder="<$ cashflow request_drip_input_amount_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_proof /></span>
+                    <div>
+                        <button id="Button_AddImageProof" class="plain">
+                            <span class="icon">&#xf8dd;</span>
+                            <span><$ generic add /></span>
+                        </button>
+                        <img id="Image_InputProofPreview"/>
+                    </div>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_urgency_title /></span>
+                    <select id="Select_RequestDripUrgency" class="plain">
+                      <option value="urgent"><$ cashflow request_drip_urgency_urgent /></option>
+                      <option value="request_education"><$ cashflow request_drip_urgency_request_education /></option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sheet" id="Sheet_RequestDripProofPreview">
+    <img id="Image_InputProofPreview_Large"/>
+</div>
+
 <script>
   let categories = [
     { id: 0, name: "Wants" },
@@ -628,17 +777,10 @@
   Button_AddNewTransaction.onclick = function () {
     const listTemplate = Template_TransactionForm.content.children[0].cloneNode(true);
     const amountInput = listTemplate.querySelector(".amount > input");
-    amountInput.onfocus = function () {
-      this.value = this.value.replace(/[^0-9]/g, "");
-    };
     amountInput.oninput = function () {
       PopOver_InputManual.isinputchanged = true;
-      this.value = this.value.replace(/[^0-9]/g, "");
     };
-    amountInput.onblur = function () {
-      const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
-      this.value = value.substring(0, value.length - 3);
-    };
+    registerCurrencyInput(amountInput);
 
     /*
         const categorySelect = listTemplate.querySelector(".category > select");
@@ -682,6 +824,7 @@
     PopOver_InputManual.close();
   };
   Button_SubmitAddTransaction.onclick = async function () {
+    PopOver_InputManual.iscloseable = false;
     PopOver_InputManual.isloading = true;
     Button_CancelAddTransaction.disabled = true;
     Button_SubmitAddTransaction.disabled = true;
@@ -691,17 +834,16 @@
     const transactionRows = [...Grid_TransactionList.children];
     let successCount = 0;
 
-    alert(transactionRows);
 
     // LOOPING & PENGIRIMAN DATA
     for (const row of transactionRows) {
       const nameInput = row.querySelector(".name input").value;
-      const amountStr = row.querySelector(".amount input").value.replace(/[^0-9]/g, "");
+      const amountInput = row.querySelector(".amount input").valueInt;
       const catId = row.querySelector(".category select").value;
       const timeVal = row.querySelector(".time input").value;
 
       // Validasi: Jangan kirim kalau nama/harga kosong
-      if (!nameInput || !amountStr) continue;
+      if (!nameInput || !amountInput) continue;
 
       try {
         // 3. PANGGIL API BACKEND
@@ -709,7 +851,7 @@
         // Kita kirim satu per satu sesuai baris yang diisi user
         await $.post("/api/transaction/add", {
           description: nameInput, // Mapping: name -> description
-          amount: parseInt(amountStr), // Pastikan jadi angka integer
+          amount: amountInput, // Pastikan jadi angka integer
           category_id: catId,
           // Ubah format tanggal input HTML ke format ISO yang dimengerti Database
           transaction_date: new Date(timeVal).toISOString(),
@@ -723,6 +865,7 @@
 
     // Matikan loading & Tutup Popup
     PopOver_InputManual.isloading = false;
+    PopOver_InputManual.iscloseable = false;
     PopOver_InputManual.close(true);
 
     // Buka kunci tombol (opsional, karena popup sudah tutup)
@@ -849,13 +992,14 @@
         // Buka Popover agar user bisa review sebelum save
         PopOver_InputCamera.close(true);
         PopOver_InputManual.open(Button_NewTransaction);
-        alert(`AI menemukan ${ai.items ? ai.items.length : 1} item. Silakan cek kategorinya.`);
+        // alert(`AI menemukan ${ai.items ? ai.items.length : 1} item. Silakan cek kategorinya.`);
       } else {
-        alert("AI Gagal: " + res.message);
+        console.error(res.message);
+        // alert("AI Gagal: " + res.message);
       }
     } catch (error) {
       console.error(error);
-      alert("Gagal upload gambar.");
+      // alert("Gagal upload gambar.");
     }
 
     PopOver_InputCamera.iscloseable = true;
@@ -882,6 +1026,9 @@
     await takeShotCamera();
     PopOver_InputCamera.content.navigateTo(1);
   };
+  Button_AskFeedback.onclick = function() {
+    window.location.href = "/client/assistant";
+  }
 
   function removeCurrentTransaction(event) {
     event.target.parentNode.remove();
@@ -966,9 +1113,162 @@
     });
   }
 
+    Button_RequestDrip.onclick = function() {
+        Input_RequestDripPurpose.value = null;
+        Input_RequestDripAmount.value = formatCurrency(0);
+        Image_InputProofPreview.src = "";
+        Image_InputProofPreview.file = null;
+
+        PopOver_RequestDrip.open(this);
+        PopOver_RequestDrip.onopened = function() {
+            Input_RequestDripPurpose.focus();
+        }
+    }
+    registerCurrencyInput(Input_RequestDripAmount);
+    Button_CancelRequestDrip.onclick = function() {
+        PopOver_RequestDrip.close(true);
+    }
+    Button_SubmitRequestDrip.onclick = async function() {
+        // 1. Kunci UI (Loading State)
+        Button_CancelRequestDrip.disabled = 
+        Button_SubmitRequestDrip.disabled =
+        Input_RequestDripPurpose.disabled =
+        Input_RequestDripAmount.disabled =
+        Button_AddImageProof.disabled = true;
+        
+        PopOver_RequestDrip.isloading = true;
+        PopOver_RequestDrip.iscloseable = false;
+
+        try {
+            // 2. Ambil Data Input
+            const purpose = Input_RequestDripPurpose.value;
+            const amount = Input_RequestDripAmount.valueInt; // Mengambil integer dari input currency
+            const urgencyType = Select_RequestDripUrgency.value; // 'urgent' atau 'request_education'
+            const file = Image_InputProofPreview.file;
+
+            // Validasi Sederhana
+            if (!purpose || !amount || amount <= 0) {
+                throw new Error("Mohon lengkapi tujuan dan nominal yang valid.");
+            }
+
+            // 3. Konversi Gambar ke Base64 (Agar bisa dikirim via JSON)
+            // Backend mengharapkan 'proof_image_url'
+            let base64Image = null;
+            if (file) {
+                base64Image = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                // Opsional: Throw error jika gambar wajib
+                // throw new Error("Bukti pendukung (foto) wajib diunggah.");
+            }
+
+            // 4. Tentukan Endpoint & Payload Berdasarkan Tipe Request
+            let endpoint = "";
+            let payload = {};
+
+            if (urgencyType === 'urgent') {
+                // --- FLOW DANA DARURAT ---
+                endpoint = "/api/exec/urgent";
+                payload = {
+                    amount: amount,
+                    reason: purpose,
+                    proof_image_url: base64Image // Base64 string
+                };
+            } else {
+                // --- FLOW DANA PENDIDIKAN (REIMBURSE) ---
+                endpoint = "/api/exec/edu/post";
+                payload = {
+                    amount: amount,
+                    description: purpose,
+                    proof_image_url: base64Image
+                };
+            }
+
+            // 5. Kirim Request ke Backend
+            const res = await $.post(endpoint, payload);
+
+            if (res.success) {
+                PopOver_RequestDrip.close(true);
+                
+                // Pesan Sukses Berbeda Tergantung Tipe
+                let msg = "";
+                if (urgencyType === 'urgent') {
+                    // Data dari backend: received, deduction_per_week
+                    const d = res.data;
+                    msg = `✅ DANA DARURAT CAIR!\n\n` +
+                          `Diterima: Rp ${formatCurrency(d.received)}\n` +
+                          `⚠️ Konsekuensi: Drip mingguan Anda berikutnya dipotong Rp ${formatCurrency(d.deduction_per_week)}.`;
+                } else {
+                    // Data dari backend: tx_hash
+                    msg = `📚 REIMBURSE PENDIDIKAN SUKSES!\n\n` +
+                          `Dana telah dikirim dari Smart Contract.\n` +
+                          `Hash: ${res.data.tx_hash ? res.data.tx_hash.substring(0, 15) + "..." : "-"}`;
+                }
+
+                alert(msg);
+                
+                // Refresh halaman untuk update saldo & history
+                window.location.reload(); 
+
+            } else {
+                throw new Error(res.message);
+            }
+
+        } catch (error) {
+            console.error(error);
+            const errMsg = error.responseJSON ? error.responseJSON.message : error.message;
+            alert("Gagal: " + errMsg);
+        } finally {
+            // 6. Buka Kunci UI
+            Button_CancelRequestDrip.disabled = 
+            Button_SubmitRequestDrip.disabled =
+            Input_RequestDripPurpose.disabled =
+            Input_RequestDripAmount.disabled =
+            Button_AddImageProof.disabled = false;
+            
+            PopOver_RequestDrip.isloading = false;
+            PopOver_RequestDrip.iscloseable = true;
+        }
+    }
+    Button_AddImageProof.onclick = function() {
+        const inputElement = document.createElement("input");
+        inputElement.type = "file";
+        inputElement.accept = "image/png, image/jpeg, image/jpg";
+        inputElement.click();
+
+        inputElement.oninput = function() {
+            const file = inputElement.files[0];
+            Image_InputProofPreview.file = file;
+
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function () {
+                    Image_InputProofPreview.src = reader.result;
+                };
+            }
+            else {
+                Image_InputProofPreview.src = "";
+            }
+        }
+    }
+    Image_InputProofPreview.onclick = function() {
+        Image_InputProofPreview_Large.src = "";
+        const reader = new FileReader();
+        reader.readAsDataURL(Image_InputProofPreview.file);
+        reader.onload = function () {
+            Image_InputProofPreview_Large.src = reader.result;
+        };
+        Sheet_RequestDripProofPreview.open();
+    }
+
   function initializeOverviewCards() {
     initalizeExpensesCard();
-    initializeFeedbackCard();
+    //initializeFeedbackCard(); dimatiin dulu biar ga boros token
     initializeWalletCard();
   }
 
@@ -1213,7 +1513,15 @@
       else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50) Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
     }
 
-    List_MonthlyReport.innerHTML = "<div style='padding:20px; text-align:center; opacity:0.5'>Loading...</div>";
+    const progressRingElement = document.createElement("div");
+    progressRingElement.classList.add("progressring");
+    List_MonthlyReport.innerHTML = null;
+    List_MonthlyReport.append(progressRingElement);
+
+    const emptyTitleElement = document.createElement("div");
+    emptyTitleElement.classList.add("emptytitle");
+    const emptyMessageElement = document.createElement("div");
+    emptyMessageElement.classList.add("emptymessage");
 
     try {
       let transactions = [];
@@ -1230,11 +1538,17 @@
           appendReportList(transaction);
         }
       } else {
-        List_MonthlyReport.innerHTML = "<div style='padding:20px; text-align:center; opacity:0.5'>Belum ada transaksi bulan ini.</div>";
+        emptyTitleElement.innerText = "<$ cashflow no_transactions_title />";
+        emptyMessageElement.innerText = "<$ cashflow no_transactions_message />";
+        List_MonthlyReport.append(emptyTitleElement);
+        List_MonthlyReport.append(emptyMessageElement);
       }
     } catch (e) {
       console.error("Gagal ambil transaksi:", e);
-      List_MonthlyReport.innerHTML = "<div style='padding:20px; text-align:center; color:red'>Gagal memuat data.</div>";
+        emptyTitleElement.innerText = "<$ cashflow server_error_title />";
+        emptyMessageElement.innerText = "<$ cashflow server_error_message />";
+        List_MonthlyReport.append(emptyTitleElement);
+        List_MonthlyReport.append(emptyMessageElement);
     }
   }
 

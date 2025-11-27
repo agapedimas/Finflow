@@ -1,17 +1,25 @@
+CREATE TABLE IF NOT EXISTS `scholarship_programs` (
+    `id` VARCHAR(128) PRIMARY KEY NOT NULL,
+    `funder_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    
+    `program_name` VARCHAR(150) NOT NULL, -- "Beasiswa Genap 2025"
+    `start_date` DATE NOT NULL,
+    `end_date` DATE NOT NULL,
+    `total_period_fund` DECIMAL(15, 2) NOT NULL,
+    `status` ENUM('Open', 'Closed', 'Completed', 'Canceled') NOT NULL DEFAULT 'Open',
+    
+    FOREIGN KEY (`funder_id`) REFERENCES `accounts_funder`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
 -- Perjanjian Pendanaan Funder-Student
 CREATE TABLE IF NOT EXISTS `funding` (
-    `funding_id` VARCHAR(128) PRIMARY KEY NOT NULL, 
-    `program_name` VARCHAR(150) NULL,
-    `funder_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
+    `funding_id` VARCHAR(128) PRIMARY KEY NOT NULL,
+    `program_id` VARCHAR(128) NOT NULL, 
     `student_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
-    `total_period_fund` DECIMAL(15, 2) NOT NULL,
-    `start_date` DATE NOT NULL,
-    `end_date` DATE NULL,
-    `status` ENUM('Open_For_Parent', 'Waiting_Allocation', 'Ready_To_Fund', 'Partially_Funded', 'Active', 'Completed', 'Canceled') NOT NULL DEFAULT 'Open_For_Parent', 
-    `collected_amount` DECIMAL(15, 2) DEFAULT 0,
+    `status` ENUM('Ready_To_Fund', 'Waiting_Allocation', 'Active', 'Completed', 'Canceled') NOT NULL DEFAULT 'Ready_To_Fund',
 
-    FOREIGN KEY (`funder_id`) REFERENCES `accounts_funder`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-    FOREIGN KEY (`student_id`) REFERENCES `accounts_student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+    FOREIGN KEY (`program_id`) REFERENCES `scholarship_programs`(`id`) ON DELETE CASCADE,
+    FOREIGN KEY (`student_id`) REFERENCES `accounts_student`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 -- Aturan Budget dan Drip
@@ -21,7 +29,7 @@ CREATE TABLE IF NOT EXISTS `funding_allocation` (
     `category_id` INT UNSIGNED NOT NULL,
     `total_allocation` DECIMAL(15, 2) NOT NULL,
     `drip_frequency` ENUM('Monthly', 'Weekly', 'Locked') NOT NULL,
-    `drip_amount` DECIMAL(10, 2) NULL, 
+    `drip_amount` DECIMAL(15, 2) NULL, 
     `remaining_drip_count` INT DEFAULT 0, -- Sisa berapa kali drip lagi?
     `total_withdrawn` DECIMAL(15,2) DEFAULT 0, -- Total yang sudah diambil
     

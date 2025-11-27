@@ -118,6 +118,32 @@
                     letter-spacing: 0.025em;
                     font-weight: 500;
                 }
+        #Cards_Wallet > #Grid_WalletActions {
+            display: grid;
+            grid-auto-flow: column;
+            justify-items: end;
+            margin-top: 1em;
+        }
+            #Cards_Wallet > #Grid_WalletActions button {
+                position: relative;
+                border-radius: 30px;
+                text-transform: uppercase;
+                font-size: 0.85em;
+                letter-spacing: 0.015em;
+                font-weight: 500;
+                overflow: hidden;
+            }
+                #Cards_Wallet > #Grid_WalletActions button::before {
+                    content: "";
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-color: var(--accent);
+                    opacity: 0.1;
+                }    
+        
 
     #Cards_Recommendations {
         display: grid;
@@ -184,6 +210,59 @@
                 border-radius: 100%;
                 background: red;
             }
+    
+    :where(#PopOver_RequestDrip) {
+    }
+        :where(#PopOver_RequestDrip) .stack {
+            grid-auto-columns: 100px auto !important;
+        }
+            :where(#PopOver_RequestDrip) .stack > span {
+                font-weight: 600;
+            }
+            :where(#PopOver_RequestDrip) .stack > label:has(select) {
+                display: inline-grid;
+                grid-auto-flow: column;
+                justify-items: start;
+                text-align: left !important;
+                justify-content: space-between;
+                opacity: 1;
+            }
+            :where(#PopOver_RequestDrip) .stack :where(label:has(select:disabled), input:disabled) {
+                opacity: 0.6 !important;
+                pointer-events: none;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview[src=""] {
+                display: none;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview {
+                width: 50px;
+                height: 50px;
+                object-fit: cover;
+                border-radius: 7px;
+                transition: 0.075s filter;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:hover {
+                filter: brightness(0.8);
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:active {
+                filter: brightness(0.6);
+            }
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof {
+                padding: 0;
+            }
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof:has(~ #Image_InputProofPreview:not([src=""])) {
+                display: none;
+            }
+
+    #Sheet_RequestDripProofPreview {
+        width: auto;
+    }
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large {
+            max-width: min(100%, 800px);
+        }
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large[src=""] {
+            display: none;
+        }
 </style>
 
 <div class="content">
@@ -207,6 +286,9 @@
             <span class="label"><$ generic balance /></span>
             <span id="Text_WalletBalance">&nbsp;</span>
             <div id="Grid_WalletCategories"></div>
+            <div id="Grid_WalletActions">
+                <button id="Button_RequestDrip" class="plain"><$ cashflow request_drip_title /></button>
+            </div>
         </div>
     </section>
     <section ad-header="<$ home recommendations_title />">
@@ -231,6 +313,54 @@
     </div>
 </div>
 
+<div class="popover" id="PopOver_RequestDrip">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelRequestDrip"><$ generic cancel /></button>
+                <button id="Button_SubmitRequestDrip">
+                    <span><$ generic submit /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+            <div class="title"><$ cashflow request_drip_title /></div>
+        </div>
+        <div class="content">
+            <div class="list">
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_purpose /></span>
+                    <input id="Input_RequestDripPurpose" type="text" class="plain" placeholder="<$ cashflow request_drip_input_purpose_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_amount /></span>
+                    <input id="Input_RequestDripAmount" type="text" class="plain" placeholder="<$ cashflow request_drip_input_amount_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_proof /></span>
+                    <div>
+                        <button id="Button_AddImageProof" class="plain">
+                            <span class="icon">&#xf8dd;</span>
+                            <span><$ generic add /></span>
+                        </button>
+                        <img id="Image_InputProofPreview"/>
+                    </div>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_urgency_title /></span>
+                    <select id="Select_RequestDripUrgency" class="plain">
+                      <option value="urgent"><$ cashflow request_drip_urgency_urgent /></option>
+                      <option value="request_education"><$ cashflow request_drip_urgency_request_education /></option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sheet" id="Sheet_RequestDripProofPreview">
+    <img id="Image_InputProofPreview_Large"/>
+</div>
+
 <script>
     Button_Notifications.onclick = function() {
         PopOver_Notifications.open(this);
@@ -243,6 +373,97 @@
             initializeNotifications();
     }
 
+    Button_RequestDrip.onclick = function() {
+        Input_RequestDripPurpose.value = null;
+        Input_RequestDripAmount.value = formatCurrency(0);
+        Image_InputProofPreview.src = "";
+        Image_InputProofPreview.file = null;
+
+        PopOver_RequestDrip.open(this);
+        PopOver_RequestDrip.onopened = function() {
+            Input_RequestDripPurpose.focus();
+        }
+    }
+    registerCurrencyInput(Input_RequestDripAmount);
+    Button_CancelRequestDrip.onclick = function() {
+        PopOver_RequestDrip.close(true);
+    }
+    Button_SubmitRequestDrip.onclick = async function() {
+        Button_CancelRequestDrip.disabled = 
+        Button_SubmitRequestDrip.disabled =
+        Input_RequestDripPurpose.disabled =
+        Input_RequestDripAmount.disabled =
+        Button_AddImageProof.disabled =
+        PopOver_RequestDrip.isloading = true;
+        PopOver_RequestDrip.iscloseable = false;
+
+        try {
+            const data = {
+              purpose: Input_RequestDripPurpose.value,
+              amount: Input_RequestDripAmount.valueInt,
+              urgency: Select_RequestDripUrgency.value
+            };
+            // const result = await $.post("", data);
+            PopOver_RequestDrip.close(true);
+            
+            Components.ActionSheet.Open(
+            {
+                Title: "Title Here",
+                Description: "Message Here",
+                Actions: [
+                    { 
+                        Title: "<$ generic done />", Type: "Options.Accent", 
+                        Action: async function()
+                        {
+                          // Actions when user click Done button
+                        }
+                    }
+                ]
+            });  
+        }
+        catch (error) {
+        }
+
+        Button_CancelRequestDrip.disabled = 
+        Button_SubmitRequestDrip.disabled =
+        Input_RequestDripPurpose.disabled =
+        Input_RequestDripAmount.disabled =
+        Button_AddImageProof.disabled =
+        PopOver_RequestDrip.isloading = false;
+        PopOver_RequestDrip.iscloseable = true;
+    }
+    Button_AddImageProof.onclick = function() {
+        const inputElement = document.createElement("input");
+        inputElement.type = "file";
+        inputElement.accept = "image/png, image/jpeg, image/jpg";
+        inputElement.click();
+
+        inputElement.oninput = function() {
+            const file = inputElement.files[0];
+            Image_InputProofPreview.file = file;
+
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function () {
+                    Image_InputProofPreview.src = reader.result;
+                };
+            }
+            else {
+                Image_InputProofPreview.src = "";
+            }
+        }
+    }
+    Image_InputProofPreview.onclick = function() {
+        Image_InputProofPreview_Large.src = "";
+        const reader = new FileReader();
+        reader.readAsDataURL(Image_InputProofPreview.file);
+        reader.onload = function () {
+            Image_InputProofPreview_Large.src = reader.result;
+        };
+        Sheet_RequestDripProofPreview.open();
+    }
+
     initializeNotifications();
     initializeProgramInfoCards();
     initializeWalletCards();
@@ -251,9 +472,9 @@
     async function initializeNotifications() {
         PopOver_Notifications.initialized = true;
 
-        const notifications = DUMMY_NOTIFICATIONS || $.get("/api/notifications/history");
+        const notifications = await $.get("/api/notifications/history");
         List_Notifications.innerHTML = null;
-        for (const notification of notifications)
+        for (const notification of notifications.data)
             appendNotification(notification);
     }
 
@@ -314,28 +535,28 @@
 
     async function initializeProgramInfoCards() {
         // fetch data from /api/currentprogram
-        const program = DUMMY_CURRENTPROGRAM || await $.get("/api/currentprogram");
+        const program = await $.get("/api/currentprogram");
         
-        if (program.isJoined == false) {
+        if (program.data.isJoined == false) {
             Grid_ProgramNotJoined.classList.remove("hidden");
             Grid_ProgramCurrentlyJoined.remove();
         }
         else {
-            Text_ProgramCurrentlyJoined_Name.innerText = program.displayName;
-            Text_ProgramCurrentlyJoined_Status.innerText = "<$ home program_status_joined_description />".format(moment(program.activeUntil).format("ll"));
+            Text_ProgramCurrentlyJoined_Name.innerText = program.data.displayName;
+            Text_ProgramCurrentlyJoined_Status.innerText = "<$ home program_status_joined_description />".format(moment(program.data.activeUntil).format("ll"));
             Grid_ProgramCurrentlyJoined.classList.remove("hidden");
-            Image_ProgramCurrentlyJoined.src = "/avatar/" + program.funderId;
+            Image_ProgramCurrentlyJoined.src = "/avatar/" + program.data.funderId;
             Grid_ProgramNotJoined.remove();
         }
     }
 
     async function initializeWalletCards() {
         // fetch data from /api/wallet
-        const wallet = DUMMY_WALLET || await $.get("/api/wallet");
+        const wallet =  await $.get("/api/wallet");
 
-        Text_WalletBalance.innerText = formatCurrency(wallet.balance);
+        Text_WalletBalance.innerText = formatCurrency(wallet.data.balance);
 
-        for (const allocation of wallet.allocations) {
+        for (const allocation of wallet.data.allocations) {
             const name = document.createElement("span");
             name.classList.add("name");
             name.innerText = allocation.categoryName;

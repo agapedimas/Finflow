@@ -1,27 +1,5 @@
 <ad-title><$ signup title /></ad-title>
 
-<div class="panel" theme="light" accent="blue">
-    <img src="/assets/logo_text.png"/>
-    <div class="title">Aktivasi Mahasiswa</div>
-    <div class="subtitle">Lengkapi data penerima beasiswa</div>
-    <div class="inputs">
-        <input type="email" id="Input_Email" ad-text="Email Akun" name="email" readonly style="background-color: #f0f0f0; cursor: not-allowed;"/>
-
-        <input type="text" id="Input_DisplayName" ad-text="Nama Lengkap" name="displayname"/>
-        
-        <input type="text" id="Input_Bank" ad-text="Nama Bank (cth: Mandiri)" />
-        <input type="text" id="Input_Rek" ad-text="Nomor Rekening Pribadi" />
-        
-        <input type="password" id="Input_Password" ad-text="Buat PIN / Password Cadangan" />
-
-        <span class="error" id="Text_ErrorSignUp" style="display:none; color:red; font-size:0.9em; text-align:center;"></span>
-
-        <button class="accent" id="Button_SignUp">
-            <div class="progressring"></div>
-            <span>Aktifkan Akun</span>
-        </button>
-    </div>
-</div>
 
 <style>
     .root
@@ -116,32 +94,47 @@
                 justify-self: center;
             }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
-<script src="../sdk.js"></script>
 <script>
     $(".titlebar").remove();
     $("nav").remove();
     $(".loading").hide();
+</script>
 
-    // 1. Ambil Token dari URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const inviteToken = urlParams.get('token');
+<div class="panel" theme="light" accent="blue">
+    <img src="/assets/logo_text.png"/>
+    <div class="title"><$ signup title_student /></div>
+    <div class="subtitle"><$ signup complete_data_student /></div>
+    <div class="inputs">
+        <input type="email" id="Input_Email" ad-text="<$ generic email />" name="email" readonly style="background-color: #f0f0f0; cursor: not-allowed;"/>
 
+        <input type="text" id="Input_DisplayName" ad-text="<$ generic fullname />" name="displayname"/>
+        
+        <input type="text" id="Input_Bank" ad-text="<$ generic bankname />" />
+        <input type="text" id="Input_Rek" ad-text="<$ generic bankaccountnumber />" />
+        <input type="text" id="Input_NoHP" ad-text="<$ generic phonenumber />" />
+
+        <span class="error" id="Text_ErrorSignUp" style="display:none; color:red; font-size:0.9em; text-align:center;"></span>
+
+        <button class="accent" id="Button_SignUp">
+            <div class="progressring"></div>
+            <span><$ generic submit /></span>
+        </button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="/sdk.js"></script>
+
+<script>
     // 2. Pre-fill & Cek Login
     window.onload = async () => {
-        if (!inviteToken) {
-            alert("Link tidak valid (Token hilang). Mohon minta link baru.");
-            window.location.replace("/index.html"); // Kembali ke home
-            return;
-        }
-
         const user = await Finflow.init();
         if (!user) {
-            // Redirect balik ke login dengan membawa token agar tidak hilang
-            window.location.replace("/web3auth/index.html?type=student&token=" + inviteToken);
+            // Redirect balik ke login
+            window.location.replace("/web3auth/index.html?type=student");
         } else {
             const emailField = document.getElementById("Input_Email");
             if(emailField) {
@@ -162,11 +155,10 @@
 
         try {
             const dataInput = {
-                inviteToken: inviteToken, // Token wajib
                 fullName: document.getElementById("Input_DisplayName").value,
                 bankName: document.getElementById("Input_Bank").value,
                 bankAccount: document.getElementById("Input_Rek").value,
-                password: document.getElementById("Input_Password").value
+                phonenumber: document.getElementById("Input_NoHP").value
             };
 
             // Panggil SDK
@@ -176,7 +168,6 @@
             btn.disabled = false;
 
             if (result.success) {
-                alert("Akun Aktif! Selamat datang.");
                 window.location.replace("/client");
             } else {
                 $("#Text_ErrorSignUp").text(result.message).show();

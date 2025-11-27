@@ -5,12 +5,12 @@ const Accounts = require("./accounts");
 const Functions = require("./functions");
 const Language = require("./language");
 const FileIO = require("fs");
-const GeminiModule = require("./gemini");
+const Gemini = require("./gemini");
 const ApiFinflow = require("./src/controllers/api_finflow");
 
 const RAGService = require("./services/ragService"); // <<< BARIS BARU: Import file yang berisi implementasi get_budget_compliance dkk.
 
-const transactionController = require("./controllers/transactionController");
+
 
 /**
  * @param { import("express").Application } Server Express instance
@@ -288,18 +288,19 @@ function Route(Server) {
                     });
 
                     // Loop akan lanjut ke iterasi berikutnya (i++) untuk mendapatkan respons teks
+                    await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(response.history || history)]);
 
                 } else {
                     // 8. Jika tidak ada function call, keluar dari loop (Jawaban Teks Akhir Diterima)
                     finalResponse = response;
                     console.log(finalResponse);
+                    await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(response.history || history)]);
                     break; 
                 }
 
-                finalResponse = response;
-                console.log("final response: ", finalResponse)
-                
+                finalResponse = response;  
             } catch (error) {
+                console.log('error: ' + error.message);
                 
                 // --- PENANGANAN ERROR 429/FETCH FAILED DARI index.js ---
                 if (error.status == 429 || String(error).includes("fetch failed") || String(error).includes("429")) {
@@ -315,15 +316,25 @@ function Route(Server) {
                 }
             }
         }
+
+        if (finalResponse.finish.code == 0) {
+            res.send(finalResponse.text);
+            
+            // Simpan history yang sudah diperbarui.
+        }   
+        else {
+            console.error(response.finish.code);
+            res.status(500).send("Terjadi kesalahan pada proses asisten virtual.");
+        }
+
+
+        
   });
 
 
-  // API yang butuh login (Protected)
-  // API AUTH ROUTES
+
   Server.post("/api/auth/register/funder", ApiFinflow.registerFunder);
   Server.post("/api/auth/register/student", ApiFinflow.registerStudent);
-  Server.post("/api/auth/register/parent", ApiFinflow.registerParent);
-  Server.post("/api/auth/invite/create", ApiFinflow.requireAuth, ApiFinflow.createInvite);
   Server.post("/api/auth/login", ApiFinflow.login);
   
   // [UPDATE] Logout API
@@ -350,13 +361,23 @@ function Route(Server) {
 
   // API FUNDING AGREEMENT
   Server.post("/api/funding/init", ApiFinflow.requireAuth, ApiFinflow.initiateFunding);
-  Server.post("/api/funding/topup", ApiFinflow.requireAuth, ApiFinflow.parentTopup);
   Server.post("/api/funding/finalize", ApiFinflow.requireAuth, ApiFinflow.finalizeAgreement);
   Server.post("/api/funding/pay", ApiFinflow.requireAuth, ApiFinflow.confirmTransfer);
 
+  // Home
+  Server.get("/api/currentprogram", ApiFinflow.requireAuth, ApiFinflow.getCurrentProgram);
+  Server.get("/api/wallet", ApiFinflow.requireAuth, ApiFinflow.getWalletData);
 
+  // Budget Plan UI
+  Server.get("/api/budget/plan", ApiFinflow.requireAuth, ApiFinflow.getMonthlyBudgetPlan);
+    
+  // Action
+  Server.post("/api/budget/add", ApiFinflow.requireAuth, ApiFinflow.addBudgetItem);
+  Server.post("/api/budget/edit", ApiFinflow.requireAuth, ApiFinflow.editBudgetItem);
+  Server.post("/api/budget/activate", ApiFinflow.requireAuth, ApiFinflow.activateBudgetPlan);
+  
   // API EXECUTION & PENYALURAN DANA
-  Server.post("/api/exec/drip", ApiFinflow.requireAuth, ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
+  Server.post("/api/exec/drip", ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
   Server.post("/api/exec/urgent", ApiFinflow.requireAuth, ApiFinflow.requestUrgent);
   Server.post("/api/exec/edu/pre", ApiFinflow.requireAuth, ApiFinflow.requestEduPreApproval);
   Server.post("/api/exec/edu/post", ApiFinflow.requireAuth, ApiFinflow.requestEduReimburse);
@@ -368,7 +389,7 @@ function Route(Server) {
 
   // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
   Server.post("/api/cashflow/transactions", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
-  Server.get("/api/cashflow/transactions/years", ApiFinflow.requireAuth, ApiFinflow.getTransactionYears);
+  Server.get(["/api/cashflow/transactions/years", "/api/cashflow/:studentId/transactions/years"], ApiFinflow.requireAuth, ApiFinflow.getTransactionYears);
   Server.post("/api/cashflow/transactions/uploadbill", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
   
   // API MONEY MANAGEMENT DASHBOARD
@@ -386,15 +407,15 @@ function Route(Server) {
 
   // 1. Kartu Saldo (Wallet Card)
   // Frontend call: $.get("/api/wallet")
-  Server.get("/api/wallet", ApiFinflow.requireAuth, ApiFinflow.getWalletData);
+  Server.get(["/api/wallet", "/api/wallet/:studentId"], ApiFinflow.requireAuth, ApiFinflow.getWalletData);
 
   // 2. Grafik Batang (Expenses Chart)
   // Frontend call: $.get("/api/expenses")
-  Server.get("/api/expenses", ApiFinflow.requireAuth, ApiFinflow.getExpensesData);
+  Server.get(["/api/expenses", "/api/expenses/:studentId"], ApiFinflow.requireAuth, ApiFinflow.getExpensesData);
 
   // 3. AI Feedback (Feedback Card)
   // Frontend call: $.get("/api/cashflow/feedback")
-  Server.get("/api/cashflow/feedback", ApiFinflow.requireAuth, ApiFinflow.getFeedbackData);
+  Server.get(["/api/cashflow/feedback", "/api/cashflow/:studentId/feedback"], ApiFinflow.requireAuth, ApiFinflow.getFeedbackData);
 
   // 4. Dropdown Kategori
   // Frontend call: $.get("/api/categories")
@@ -403,7 +424,7 @@ function Route(Server) {
   // 5. List Transaksi Bulanan
   // Frontend call: $.get("/api/transactions?month=...&year=...")
   // Kita gunakan fungsi history yang sudah ada, tapi URL-nya disesuaikan
-  Server.get("/api/transactions", ApiFinflow.requireAuth, ApiFinflow.getTransactionHistory);
+  Server.get(["/api/transactions", "/api/transactions/:studentId"], ApiFinflow.requireAuth, ApiFinflow.getTransactionHistory);
   // Server.get("/api/transactions/history", ...); // (Opsional: Simpan yang lama jika ada halaman lain yg pakai)
 
   // 6. Fitur Tambah Transaksi (Scan & Manual)
@@ -411,6 +432,13 @@ function Route(Server) {
   // (Ini SEHARUSNYA sudah ada dari modul sebelumnya, pastikan tidak terhapus)
   Server.post("/api/scan/receipt", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
   Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
+
+
+  // API FUNDER
+  Server.post("/api/program/create", ApiFinflow.requireAuth, ApiFinflow.createProgram);
+  Server.post("/api/program/add-student", ApiFinflow.requireAuth, ApiFinflow.addStudentToProgram);
+  Server.get("/api/program/list", ApiFinflow.requireAuth, ApiFinflow.getMyPrograms);
+  Server.get("/api/program/:id/students/", ApiFinflow.requireAuth, ApiFinflow.getStudentsFromProgram);
   Map(Server);
 }
 

@@ -1,1072 +1,1148 @@
 <ad-title><$ cashflow title /></ad-title>
 
 <div class="header">
-    <div class="title"><$ cashflow title /></div>
+  <div class="title"><$ cashflow title /></div>
 </div>
 
 <style>
-    html:not([theme=dark]) .root .main {
-        background: var(--gray-6);
+  html:not([theme="dark"]) .root .main {
+    background: var(--gray-6);
+  }
+#Select_Students {
+    display: grid;
+    grid-template-areas:
+        "avatar name icon"
+        "avatar email icon";
+    grid-auto-columns: max-content auto max-content;
+    grid-auto-rows: max-content max-content;
+    width: max-content;
+    align-items: center;
+    gap: 0 10px;
+}
+#Select_Students:has(#Text_CurrentStudentName:empty) {
+    grid-auto-rows: max-content 0;
+}
+#Select_Students:hover {
+    opacity: 0.7;
+}
+#Select_Students:active {
+    opacity: 0.45;
+}
+    #Select_Students #Image_CurrentStudent {
+        grid-area: avatar;
+        width: 32px;
+        height: 32px;
+        border-radius: 100%;
     }
-    #Cards_Overview {
-        display: grid;
-        grid-template-areas:
-            "total wallet"
-            "total feedback";
-        grid-auto-columns: 425px auto;
-        grid-auto-rows: 155px max-content;
-        gap: 15px;
-        max-width: 900px;
+    #Select_Students:has(#Text_CurrentStudentName:empty) #Image_CurrentStudent {
+        display: none;
     }
-        #Cards_Overview .card {
-            background: var(--background-list);
-            border-radius: 15px;
-            padding: 15px;
-        }
-    #Card_ExpensesTotal {
-        grid-area: total;
-        display: grid;
-        grid-auto-rows: max-content auto;
-        gap: 1em;
+    #Select_Students #Text_CurrentStudentName {
+        grid-area: name;
+        font-weight: 500;
     }
-        #Card_ExpensesTotal .header {
-            display: grid;
-        }
-            #Card_ExpensesTotal .header .label {
-                color: var(--foreground-description);
-                font-weight: 600;
-                font-size: 0.85em;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-            #Card_ExpensesTotal .header #Text_ExpensesTotal {
-                font-weight: bold;
-                font-size: 2em;
-            }
-        #Card_ExpensesTotal .chart {
-            position: relative;
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: auto max-content;
-            gap: 20px;
-            padding-top: 20px;
-            overflow: hidden;    
-            z-index: 0;
-        }
-            #Card_ExpensesTotal .chart .ticks {
-                display: grid;
-                margin: calc(-1.5ch - 20px) 0 calc(1.5ch + 5px);
-                align-items: end;
-                z-index: -1;
-            }
-                #Card_ExpensesTotal .chart .ticks .tick {
-                    position: relative;
-                    color: var(--foreground-description);
-                    font-weight: 600;
-                    font-size: 0.7em;
-                    letter-spacing: 0.05em;
-                    transform: translateY(50%);
-                }
-                    #Card_ExpensesTotal .chart .ticks .tick::before {
-                        content: "";
-                        display: block;
-                        position: absolute;
-                        bottom: 50%;
-                        transform: translateY(50%);
-                        height: 2px;
-                        left: -100vw;
-                        right: calc(100% + 15px);
-                        background-color: var(--overlay-8);
-                    }
-            #Card_ExpensesTotal .chart .days {
-                display: grid;
-                grid-auto-flow: column;
-                grid-auto-columns: 1fr;
-            }
-                #Card_ExpensesTotal .chart .days .day {
-                    display: grid;
-                    position: relative;
-                    grid-auto-rows: auto max-content;
-                    justify-items: center;
-                    align-items: end;
-                }
-                    #Card_ExpensesTotal .chart .days .day .bar {
-                        --height: 0%;
-                        background: var(--accent);
-                        height: var(--height);
-                        width: 25px;
-                        border-radius: 3px 3px 0 0;
-                    }
-                    #Card_ExpensesTotal .chart .days .day span {
-                        color: var(--foreground-description);
-                        font-weight: 600;
-                        font-size: 0.8em;
-                        letter-spacing: 0.05em;
-                        margin-top: 5px;
-                    }
-    #Card_Wallet {
-        grid-area: wallet;
-        display: grid;
-        background: var(--overlay-7);
-        border-radius: 15px;
-        padding: 17px;
-        max-width: 600px;
-        overflow: hidden;
+    #Select_Students #Text_CurrentStudentName:empty::after{
+        content: "<$ cashflow select_student_none />";
+        font-weight: normal;
+        opacity: 0.6;
     }
-        #Card_Wallet > .label {
-            color: var(--foreground-description);
-            font-weight: 600;
-            font-size: 0.85em;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        #Card_Wallet > #Text_WalletBalance {
-            font-weight: bold;
-            font-size: 1.75em;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-            border-bottom: 1px solid var(--background-input);
-        }
-        #Card_Wallet > #Grid_WalletCategories {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: max-content;
-            gap: 1.5em 2em;
-            overflow: auto;
-            margin: 0 -20px;
-            padding: 0 20px;
-            scrollbar-width: none;
-        }
-            #Card_Wallet > #Grid_WalletCategories .category {
-                display: grid;
-            }
-                #Card_Wallet > #Grid_WalletCategories .category > .name {    
-                    color: var(--foreground-description);
-                    letter-spacing: 0.025em;
-                    font-weight: 500;
-                }
-    #Card_Feedback {
-        grid-area: feedback;
-        display: grid;
-        grid-auto-rows: max-content auto max-content;
+    #Select_Students #Text_CurrentStudentEmail {
+        grid-area: email;
+        color: var(--foreground-description);
     }
-        #Card_Feedback .label {
-            color: var(--foreground-description);
-            font-weight: 600;
-            font-size: 0.85em;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-        #Card_Feedback .description {
-            margin: 0.25em 0 0;
-            font-size: 1.2em;
-        }
-        #Card_Feedback.normal button {
-            display: none;
-        }
-        #Card_Feedback button {
-            position: relative;
-            border-radius: 30px;
-            text-transform: uppercase;
-            font-size: 0.85em;
-            letter-spacing: 0.015em;
-            font-weight: 500;
-            overflow: hidden;
-            margin-top: 1em;
-            justify-self: right;
-        }
-            #Card_Feedback button::before {
-                content: "";
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-color: var(--accent);
-                opacity: 0.1;
-            }
-        
+    #Select_Students::after {
+        grid-area: icon;
+        content: "\ef5b";
+        font-family: var(--font-icon);
+        opacity: 0.6;
+        box-sizing: border-box;
+        font-size: 10px;
+        font-weight: bold;
+        pointer-events: none;
+    }
+    #Select_Students:hover::after {
+        opacity: 0.8;
+    }
+    #Select_Students:active::after {
+        opacity: 1;
+    }
+  #Cards_Overview {
+    display: grid;
+    grid-template-areas:
+      "total wallet"
+      "total feedback";
+    grid-auto-columns: 425px auto;
+    grid-auto-rows: 190px max-content;
+    gap: 15px;
+    max-width: 900px;
+  }
+  #Cards_Overview .card {
+    background: var(--background-list);
+    border-radius: 15px;
+    padding: 15px;
+  }
+  #Card_ExpensesTotal {
+    grid-area: total;
+    display: grid;
+    grid-auto-rows: max-content auto;
+    gap: 1em;
+  }
+  #Card_ExpensesTotal .header {
+    display: grid;
+  }
+  #Card_ExpensesTotal .header .label {
+    color: var(--foreground-description);
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  #Card_ExpensesTotal .header #Text_ExpensesTotal {
+    font-weight: bold;
+    font-size: 2em;
+  }
+  #Card_ExpensesTotal .chart {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: auto max-content;
+    gap: 20px;
+    padding-top: 20px;
+    overflow: hidden;
+    z-index: 0;
+  }
+  #Card_ExpensesTotal .chart .ticks {
+    display: grid;
+    margin: calc(-1.5ch - 20px) 0 calc(1.5ch + 5px);
+    align-items: end;
+    z-index: -1;
+  }
+  #Card_ExpensesTotal .chart .ticks .tick {
+    position: relative;
+    color: var(--foreground-description);
+    font-weight: 600;
+    font-size: 0.7em;
+    letter-spacing: 0.05em;
+    transform: translateY(50%);
+  }
+  #Card_ExpensesTotal .chart .ticks .tick::before {
+    content: "";
+    display: block;
+    position: absolute;
+    bottom: 50%;
+    transform: translateY(50%);
+    height: 2px;
+    left: -100vw;
+    right: calc(100% + 15px);
+    background-color: var(--overlay-8);
+  }
+  #Card_ExpensesTotal .chart .days {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+  }
+  #Card_ExpensesTotal .chart .days .day {
+    display: grid;
+    position: relative;
+    grid-auto-rows: auto max-content;
+    justify-items: center;
+    align-items: end;
+  }
+  #Card_ExpensesTotal .chart .days .day .bar {
+    --height: 0%;
+    background: var(--accent);
+    height: var(--height);
+    width: 25px;
+    border-radius: 3px 3px 0 0;
+  }
+  #Card_ExpensesTotal .chart .days .day span {
+    color: var(--foreground-description);
+    font-weight: 600;
+    font-size: 0.8em;
+    letter-spacing: 0.05em;
+    margin-top: 5px;
+  }
+  #Card_Wallet {
+    grid-area: wallet;
+    display: grid;
+    background: var(--overlay-7);
+    border-radius: 15px;
+    padding: 17px;
+    max-width: 600px;
+    overflow: hidden;
+  }
+  #Card_Wallet > .label {
+    color: var(--foreground-description);
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  #Card_Wallet > #Text_WalletBalance {
+    font-weight: bold;
+    font-size: 1.75em;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--background-input);
+  }
+  #Card_Wallet > #Grid_WalletCategories {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: 1.5em 2em;
+    overflow: auto;
+    margin: 0 -20px;
+    padding: 0 20px;
+    scrollbar-width: none;
+  }
+  #Card_Wallet > #Grid_WalletCategories .category {
+    display: grid;
+  }
+  #Card_Wallet > #Grid_WalletCategories .category > .name {
+    color: var(--foreground-description);
+    letter-spacing: 0.025em;
+    font-weight: 500;
+  }
+  #Card_Wallet > #Grid_WalletActions {
+      display: grid;
+      grid-auto-flow: column;
+      justify-items: end;
+      margin-top: 1em;
+  }
+      #Card_Wallet > #Grid_WalletActions button {
+          position: relative;
+          border-radius: 30px;
+          text-transform: uppercase;
+          font-size: 0.85em;
+          letter-spacing: 0.015em;
+          font-weight: 500;
+          overflow: hidden;
+      }
+          #Card_Wallet > #Grid_WalletActions button::before {
+              content: "";
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: var(--accent);
+              opacity: 0.1;
+          }   
+  #Card_Feedback {
+    grid-area: feedback;
+    display: grid;
+    grid-auto-rows: max-content auto max-content;
+  }
+  #Card_Feedback .label {
+    color: var(--foreground-description);
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  #Card_Feedback .description {
+    margin: 0.25em 0 0;
+    font-size: 1.2em;
+  }
+  #Card_Feedback.normal button {
+    display: none;
+  }
+  #Card_Feedback button {
+    position: relative;
+    border-radius: 30px;
+    text-transform: uppercase;
+    font-size: 0.85em;
+    letter-spacing: 0.015em;
+    font-weight: 500;
+    overflow: hidden;
+    margin-top: 1em;
+    justify-self: right;
+  }
+  #Card_Feedback button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--accent);
+    opacity: 0.1;
+  }
 
-    @media screen and (max-width: 1175px) {
-        #Cards_Overview {
-            grid-auto-columns: 350px auto;
-            grid-auto-rows: 135px max-content;
-            font-size: 0.85em;
-        }
-        #Card_ExpensesTotal .chart .days .day .bar {
-            width: 17px;
-            border-radius: 3px 3px 0 0;
-        }
+  @media screen and (max-width: 1175px) {
+    #Cards_Overview {
+      grid-auto-columns: 350px auto;
+      grid-auto-rows: 170px max-content;
+      font-size: 0.85em;
     }
-    @media screen and (
-        ((max-width: 1050px) and (min-width: 950px))
+    #Card_ExpensesTotal .chart .days .day .bar {
+      width: 17px;
+      border-radius: 3px 3px 0 0;
+    }
+  }
+  @media screen and (((max-width: 1050px) and (min-width: 950px))
         or
-        ((max-width: 730px))
-    ) {
-        #Cards_Overview {
-            grid-template-areas: 
-                "total total"
-                "wallet feedback";
-            grid-auto-columns: 300px auto;
-            grid-auto-rows: 225px max-content;
-        }
-        #Card_ExpensesTotal .chart .days .day .bar {
-            width: 35px;
-            border-radius: 5px 5px 0 0;
-        }
+        ((max-width: 730px))) {
+    #Cards_Overview {
+      grid-template-areas:
+        "total total"
+        "wallet feedback";
+      grid-auto-columns: 300px auto;
+      grid-auto-rows: 225px max-content;
     }
-    @media screen and (
-        ((max-width: 950px) and (min-width: 800px)) 
+    #Card_ExpensesTotal .chart .days .day .bar {
+      width: 35px;
+      border-radius: 5px 5px 0 0;
+    }
+  }
+  @media screen and (((max-width: 950px) and (min-width: 800px)) 
         or 
         (max-width: 575px)) {
-        #Cards_Overview {
-            grid-template-areas: 
-                "total"
-                "wallet"
-                "feedback";
-            grid-auto-columns: auto;
-            grid-auto-rows: 225px 135px max-content;
-        }
-        #Card_ExpensesTotal .chart .days .day .bar {
-            width: 20px;
-            border-radius: 3px 3px 0 0;
-        }
+    #Cards_Overview {
+      grid-template-areas:
+        "total"
+        "wallet"
+        "feedback";
+      grid-auto-columns: auto;
+      grid-auto-rows: 225px max-content max-content;
     }
+    #Card_ExpensesTotal .chart .days .day .bar {
+      width: 20px;
+      border-radius: 3px 3px 0 0;
+    }
+  }
 
-    #Header_MonthlyReport {
-        display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: auto max-content;
-        align-items: center;
-        gap: 20px;
+  #Header_MonthlyReport {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: auto max-content;
+    align-items: center;
+    gap: 20px;
+  }
+  #Header_MonthlyReport #Tab_Months {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: max-content;
+    gap: 20px;
+    overflow-x: auto;
+    margin: 0 -20px 0 -30px;
+    padding: 0 20px 0 30px;
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+  }
+  #Header_MonthlyReport #Tab_Months span {
+    font-size: 1.1em;
+    font-weight: 600;
+    opacity: 0.5;
+    transition: 0.075s opacity;
+  }
+  #Header_MonthlyReport #Tab_Months span.active {
+    opacity: 1;
+  }
+  #Header_MonthlyReport #Tab_Months span:hover {
+    opacity: 0.75;
+  }
+  #Header_MonthlyReport #Tab_Months span:active {
+    opacity: 0.35;
+  }
+
+  #Header_MonthlyReport,
+  #List_MonthlyReport {
+    position: relative;
+    max-width: 900px;
+  }
+    #List_MonthlyReport .emptytitle {
+      font-family: var(--font-bold);
+      font-size: 1.5em;    
+      text-align: center;
+      margin: 2.5em 0 0;
     }
-        #Header_MonthlyReport #Tab_Months {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: max-content;
-            gap: 20px;
-            overflow-x: auto;
-            margin: 0 -20px 0 -30px;
-            padding: 0 20px 0 30px;
-            scrollbar-width: none;
-            scroll-behavior: smooth;
+    #List_MonthlyReport .emptymessage {
+      font-size: 1.12em;
+      color: var(--foreground-description);
+      text-align: center;
+      margin: 0.25em 0;
+    }
+    #List_MonthlyReport .progressring {
+      position: absolute;
+      left: 50%;
+      top: 40px;
+      width: 25px;
+    }
+  #List_MonthlyReport .stack .thumbnail {
+    width: 35px;
+    height: 35px;
+    border-radius: 100%;
+    background: var(--overlay-8);
+  }
+  #List_MonthlyReport .stack .description {
+    display: grid;
+    grid-auto-flow: row;
+    grid-auto-rows: max-content;
+  }
+  #List_MonthlyReport .stack .description .category {
+    color: var(--foreground-description);
+  }
+  #List_MonthlyReport .stack .navigate {
+    display: grid;
+    grid-auto-flow: column;
+    gap: 0.15em;
+  }
+  #List_MonthlyReport .stack .navigate .amount {
+    display: grid;
+    grid-auto-flow: column;
+    align-items: center;
+    gap: 0.75ch;
+  }
+  #List_MonthlyReport .stack .navigate .amount.income,
+  #List_MonthlyReport .stack .navigate .amount.dripIn {
+    color: #34c759;
+  }
+  [theme="dark"] #List_MonthlyReport .stack .navigate .amount.income,
+  #List_MonthlyReport .stack .navigate .amount.dripIn {
+    color: #30d158;
+  }
+  #List_MonthlyReport .stack .navigate .amount.expense {
+    color: #ff3b30;
+  }
+  [theme="dark"] #List_MonthlyReport .stack .navigate .amount.expense {
+    color: #ff453a;
+  }
+  #List_MonthlyReport .stack .navigate .amount.income::before,
+  #List_MonthlyReport .stack .navigate .amount.dripIn::before {
+    content: "\eae9";
+    font-family: var(--font-icon);
+    font-size: 0.85em;
+  }
+  #List_MonthlyReport .stack .navigate .amount.expense::before {
+    content: "\eba9";
+    font-family: var(--font-icon);
+    font-size: 0.85em;
+  }
+  #List_MonthlyReport .stack .navigate .icon {
+    color: var(--foreground-description);
+  }
+
+  #List_Track {
+    max-width: 900px;
+  }
+
+  #PopOver_InputManual {
+  }
+  #PopOver_InputManual .stack {
+    grid-auto-columns: 100px auto;
+  }
+  #PopOver_InputManual .stack > span {
+    font-weight: 600;
+  }
+  #PopOver_InputManual .stack > label:has(select) {
+    display: inline-grid;
+    grid-auto-flow: column;
+    justify-items: start;
+    text-align: left;
+    justify-content: space-between;
+    opacity: 1;
+  }
+  #PopOver_InputManual .stack :where(label:has(select:disabled), input:disabled) {
+    opacity: 0.6 !important;
+    pointer-events: none;
+  }
+  #PopOver_InputManual #Button_AddNewTransaction {
+    width: 100%;
+    padding: 10px;
+  }
+
+  #PopOver_InputCamera {
+    width: 325px;
+  }
+  #PopOver_InputCamera section:has(> .content > #Grid_InputCameraView) {
+    grid-auto-rows: max-content auto;
+  }
+  #PopOver_InputCamera section > .content:has(> #Grid_InputCameraView) {
+    display: grid;
+    padding: 0;
+  }
+  #PopOver_InputCamera #Grid_InputCameraView {
+    display: grid;
+    background: black;
+    align-content: center;
+    justify-items: center;
+  }
+  #PopOver_InputCamera #Grid_InputCameraView video {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+  }
+  #PopOver_InputCamera #Grid_InputCameraView .buttons {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 50px;
+    margin: 25px;
+  }
+  #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera {
+    width: 60px;
+    height: 60px;
+    border: 3px solid black;
+    outline: 3px solid white;
+    border-radius: 100px;
+    background: white;
+    transition: 0.15s opacity;
+  }
+  #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera:hover {
+    opacity: 0.8;
+  }
+  #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera:active {
+    opacity: 0.6;
+  }
+  #PopOver_InputCamera #Grid_InputCameraView .buttons button.icon {
+    color: white;
+    padding: 0;
+    font-size: 25px;
+  }
+  #PopOver_InputCamera canvas {
+    display: none;
+  }
+  #PopOver_InputCamera #Image_InputCameraPreview {
+    width: 100%;
+  }
+
+    :where(#PopOver_RequestDrip) {
+    }
+        :where(#PopOver_RequestDrip) .stack {
+            grid-auto-columns: 100px auto !important;
         }
-            #Header_MonthlyReport #Tab_Months span {
-                font-size: 1.1em;
+            :where(#PopOver_RequestDrip) .stack > span {
                 font-weight: 600;
-                opacity: 0.5;
-                transition: 0.075s opacity;
             }
-            #Header_MonthlyReport #Tab_Months span.active {
-                opacity: 1;
-            }
-            #Header_MonthlyReport #Tab_Months span:hover {
-                opacity: 0.75;
-            }
-            #Header_MonthlyReport #Tab_Months span:active {
-                opacity: 0.35;
-            }
-
-    #Header_MonthlyReport,
-    #List_MonthlyReport {
-        max-width: 800px;
-    }
-        #List_MonthlyReport .stack .thumbnail {
-            width: 35px;
-            height: 35px;
-            border-radius: 100%;
-            background: var(--overlay-8);
-        }
-        #List_MonthlyReport .stack .description {
-            display: grid;
-            grid-auto-flow: row;
-            grid-auto-rows: max-content;
-        }
-            #List_MonthlyReport .stack .description .category {
-                color: var(--foreground-description);
-            }
-        #List_MonthlyReport .stack .navigate {
-            display: grid;
-            grid-auto-flow: column;
-            gap: 0.15em;
-        }
-            #List_MonthlyReport .stack .navigate .amount {
-                display: grid;
-                grid-auto-flow: column;
-                align-items: center;
-                gap: 0.75ch;
-            }
-            #List_MonthlyReport .stack .navigate .amount.income,
-            #List_MonthlyReport .stack .navigate .amount.dripIn {
-                color: #34c759;
-            }
-            [theme=dark]
-            #List_MonthlyReport .stack .navigate .amount.income,
-            #List_MonthlyReport .stack .navigate .amount.dripIn {
-                color: #30d158;
-            }
-            #List_MonthlyReport .stack .navigate .amount.expense {
-                color: #ff3b30;
-            }
-            [theme=dark]
-            #List_MonthlyReport .stack .navigate .amount.expense {
-                color: #ff453a;
-            }
-                #List_MonthlyReport .stack .navigate .amount.income::before,
-                #List_MonthlyReport .stack .navigate .amount.dripIn::before {
-                    content: "\eae9";
-                    font-family: var(--font-icon);
-                    font-size: 0.85em;
-                }
-                #List_MonthlyReport .stack .navigate .amount.expense::before {
-                    content: "\eba9";
-                    font-family: var(--font-icon);
-                    font-size: 0.85em;
-                }
-            #List_MonthlyReport .stack .navigate .icon {
-                color: var(--foreground-description);
-            }
-
-    #PopOver_InputManual {
-    }
-        #PopOver_InputManual .stack {
-            grid-auto-columns: 100px auto;
-        }
-            #PopOver_InputManual .stack > span {
-                font-weight: 600;
-            }
-            #PopOver_InputManual .stack > label:has(select) {
+            :where(#PopOver_RequestDrip) .stack > label:has(select) {
                 display: inline-grid;
                 grid-auto-flow: column;
                 justify-items: start;
-                text-align: left;
+                text-align: left !important;
                 justify-content: space-between;
                 opacity: 1;
             }
-            #PopOver_InputManual .stack :where(label:has(select:disabled), input:disabled) {
+            :where(#PopOver_RequestDrip) .stack :where(label:has(select:disabled), input:disabled) {
                 opacity: 0.6 !important;
                 pointer-events: none;
             }
-        #PopOver_InputManual #Button_AddNewTransaction {
-            width: 100%;
-            padding: 10px;
-        }
-
-    #PopOver_InputCamera {
-        width: 325px;
-    }
-        #PopOver_InputCamera section:has(> .content > #Grid_InputCameraView) {
-            grid-auto-rows: max-content auto;
-        }
-            #PopOver_InputCamera section > .content:has(> #Grid_InputCameraView) {
-                display: grid;
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview[src=""] {
+                display: none;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview {
+                width: 50px;
+                height: 50px;
+                object-fit: cover;
+                border-radius: 7px;
+                transition: 0.075s filter;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:hover {
+                filter: brightness(0.8);
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:active {
+                filter: brightness(0.6);
+            }
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof {
                 padding: 0;
             }
-        #PopOver_InputCamera #Grid_InputCameraView {
-            display: grid;
-            background: black;
-            align-content: center;
-            justify-items: center;
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof:has(~ #Image_InputProofPreview:not([src=""])) {
+                display: none;
+            }
+
+    #Sheet_RequestDripProofPreview {
+        width: auto;
+    }
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large {
+            max-width: min(100%, 800px);
         }
-            #PopOver_InputCamera #Grid_InputCameraView video {
-                width: 100%;
-                aspect-ratio: 3 / 4;
-                object-fit: cover;
-            }
-            #PopOver_InputCamera #Grid_InputCameraView .buttons {
-                display: grid;
-                grid-auto-flow: column;
-                grid-auto-columns: 1fr;
-                gap: 50px;  
-                margin: 25px;
-            }
-                #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera {
-                    width: 60px;
-                    height: 60px;
-                    border: 3px solid black;
-                    outline: 3px solid white;
-                    border-radius: 100px;
-                    background: white;
-                    transition: 0.15s opacity;
-                }
-                #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera:hover {
-                    opacity: 0.8;
-                }
-                #PopOver_InputCamera #Grid_InputCameraView .buttons #Button_CaptureCamera:active {
-                    opacity: 0.6;
-                }
-                #PopOver_InputCamera #Grid_InputCameraView .buttons button.icon {
-                    color: white;
-                    padding: 0;
-                    font-size: 25px;
-                }
-        #PopOver_InputCamera canvas {
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large[src=""] {
             display: none;
         }
-        #PopOver_InputCamera #Image_InputCameraPreview {
-            width: 100%;
+
+    #PopOver_SelectStudent {
+        
+    }
+        #PopOver_SelectStudent #List_Students {
+            display: grid;
+            gap: 20px;
         }
+            #PopOver_SelectStudent #List_Students .student {
+                position: relative;
+                display: grid;
+                grid-template-areas:
+                    "avatar name"
+                    "avatar email";
+                grid-auto-columns: max-content auto;
+                grid-auto-rows: max-content;
+                gap: 0 12px;
+                padding: 10px 12px;
+                margin: -10px -12px;
+                border-radius: 10px;
+            }
+            #PopOver_SelectStudent #List_Students .student:hover {
+                background: var(--background-list-hover);
+            }
+            #PopOver_SelectStudent #List_Students .student:active {
+                background: var(--background-list-active);
+            }
+            #PopOver_SelectStudent #List_Students .student:not(:last-child)::after {
+                content: "";
+                display: block;
+                position: absolute;
+                height: 1px;
+                background: var(--border-context);
+                bottom: 0;
+                left: 58px;
+                right: 10px;
+            }
+                #PopOver_SelectStudent #List_Students .student .avatar {
+                    grid-area: avatar;
+                    width: 35px;
+                    height: 35px;
+                    border-radius: 100%;
+                }
+                #PopOver_SelectStudent #List_Students .student .name {
+                    grid-area: name;
+                }
+                #PopOver_SelectStudent #List_Students .student .email {
+                    grid-area: email;
+                    color: var(--foreground-description);
+                }
 </style>
 
 <div class="content">
-    <section ad-header="<$ cashflow overview_title />">
-        <div id="Cards_Overview" class="cards">
-            <div class="card" id="Card_ExpensesTotal">
-                <div class="header">
-                    <span class="label"><$ cashflow overview_expensesthisweek /></span>
-                    <span id="Text_ExpensesTotal">&nbsp;</span>
-                </div>
-                <div class="chart">
-                    <div class="days" id="Grid_ExpensesDays">
-                        <div class="day" data-day="mon">
-                            <div class="bar" ad-tooltip></div>
-                            <span><$ generic day_monday_short/></span>
-                        </div>
-                        <div class="day" data-day="tue">
-                            <div class="bar" ad-tooltip></div>
-                            <span><$ generic day_tuesday_short/></span>
-                        </div>
-                        <div class="day" data-day="wed">
-                            <div class="bar" ad-tooltip></div>
-                            <span><$ generic day_wednesday_short/></span>
-                        </div>
-                        <div class="day" data-day="thu">
-                            <div class="bar" ad-tooltip></div>
-                            <span><$ generic day_thursday_short/></span>
-                        </div>
-                        <div class="day" data-day="fri">
-                            <div class="bar" ad-tooltip></div>
-                            <span><$ generic day_friday_short/></span>
-                        </div>
-                        <div class="day" data-day="sat">
-                            <div class="bar" ad-tooltip></div>
-                            <span><$ generic day_saturday_short/></span>
-                        </div>
-                        <div class="day" data-day="sun">
-                            <div class="bar" ad-tooltip></div>
-                            <span><$ generic day_sunday_short/></span>
-                        </div>    
-                    </div>
-                    <div class="ticks" id="Grid_ExpensesTicks"></div>
-                </div>
+    <section ad-header="<$ cashflow track_title />">
+        <div class="list" id="List_Track">
+            <div class="stack">
+                <span><$ cashflow track_program /></span>
+                <select id="Select_Programs" class="plain"></select>
             </div>
-            
-            <div class="card" id="Card_Wallet">
-                <span class="label"><$ generic balance /></span>
-                <span id="Text_WalletBalance">&nbsp;</span>
-                <div id="Grid_WalletCategories"></div>
-            </div>
-            <div class="card" id="Card_Feedback">
-                <span class="label"><$ cashflow overview_feedback_title /></span>
-                <span class="description" id="Text_Feedback">&nbsp;</span>
-                <button class="plain"><$ cashflow overview_feedback_ask /></button>
+            <div class="stack">
+                <span><$ cashflow track_student /></span>
+                <div id="Select_Students">
+                    <img id="Image_CurrentStudent"/>
+                    <span id="Text_CurrentStudentName"></span>
+                    <span id="Text_CurrentStudentEmail"></span>
+                </div>
             </div>
         </div>
     </section>
-    <section ad-header="<$ cashflow monthlyreport_title />">
-        <div id="Header_MonthlyReport" class="header">
-            <div id="Tab_Months" class="tab">
-                <span data-month="jan"><$ generic month_january_short /></span>
-                <span data-month="feb"><$ generic month_february_short /></span>
-                <span data-month="mar"><$ generic month_march_short /></span>
-                <span data-month="apr"><$ generic month_april_short /></span>
-                <span data-month="may"><$ generic month_may_short /></span>
-                <span data-month="jun"><$ generic month_june_short /></span>
-                <span data-month="jul"><$ generic month_july_short /></span>
-                <span data-month="aug"><$ generic month_august_short /></span>
-                <span data-month="sep"><$ generic month_september_short /></span>
-                <span data-month="oct"><$ generic month_october_short /></span>
-                <span data-month="nov"><$ generic month_november_short /></span>
-                <span data-month="dec"><$ generic month_december_short /></span>
+  <section ad-header="<$ cashflow overview_title />">
+    <div id="Cards_Overview" class="cards">
+      <div class="card" id="Card_ExpensesTotal">
+        <div class="header">
+          <span class="label"><$ cashflow overview_expensesthisweek /></span>
+          <span id="Text_ExpensesTotal">&nbsp;</span>
+        </div>
+        <div class="chart">
+          <div class="days" id="Grid_ExpensesDays">
+            <div class="day" data-day="mon">
+              <div class="bar" ad-tooltip></div>
+              <span><$ generic day_monday_short/></span>
             </div>
-            <select id="Select_Years"></select>
+            <div class="day" data-day="tue">
+              <div class="bar" ad-tooltip></div>
+              <span><$ generic day_tuesday_short/></span>
+            </div>
+            <div class="day" data-day="wed">
+              <div class="bar" ad-tooltip></div>
+              <span><$ generic day_wednesday_short/></span>
+            </div>
+            <div class="day" data-day="thu">
+              <div class="bar" ad-tooltip></div>
+              <span><$ generic day_thursday_short/></span>
+            </div>
+            <div class="day" data-day="fri">
+              <div class="bar" ad-tooltip></div>
+              <span><$ generic day_friday_short/></span>
+            </div>
+            <div class="day" data-day="sat">
+              <div class="bar" ad-tooltip></div>
+              <span><$ generic day_saturday_short/></span>
+            </div>
+            <div class="day" data-day="sun">
+              <div class="bar" ad-tooltip></div>
+              <span><$ generic day_sunday_short/></span>
+            </div>
+          </div>
+          <div class="ticks" id="Grid_ExpensesTicks"></div>
         </div>
-        <div id="List_MonthlyReport" class="cards">
-        </div>
-    </section>
+      </div>
+
+      <div class="card" id="Card_Wallet">
+        <span class="label"><$ generic balance /></span>
+        <span id="Text_WalletBalance">&nbsp;</span>
+        <div id="Grid_WalletCategories"></div>
+      </div>
+      <div class="card" id="Card_Feedback">
+        <span class="label"><$ cashflow overview_feedback_title /></span>
+        <span class="description" id="Text_Feedback">&nbsp;</span>
+      </div>
+    </div>
+  </section>
+  <section ad-header="<$ cashflow monthlyreport_title />">
+    <div id="Header_MonthlyReport" class="header">
+      <div id="Tab_Months" class="tab">
+        <span data-month="jan"><$ generic month_january_short /></span>
+        <span data-month="feb"><$ generic month_february_short /></span>
+        <span data-month="mar"><$ generic month_march_short /></span>
+        <span data-month="apr"><$ generic month_april_short /></span>
+        <span data-month="may"><$ generic month_may_short /></span>
+        <span data-month="jun"><$ generic month_june_short /></span>
+        <span data-month="jul"><$ generic month_july_short /></span>
+        <span data-month="aug"><$ generic month_august_short /></span>
+        <span data-month="sep"><$ generic month_september_short /></span>
+        <span data-month="oct"><$ generic month_october_short /></span>
+        <span data-month="nov"><$ generic month_november_short /></span>
+        <span data-month="dec"><$ generic month_december_short /></span>
+      </div>
+      <select id="Select_Years"></select>
+    </div>
+    <div id="List_MonthlyReport" class="cards"></div>
+  </section>
 </div>
 
-<div class="popover" id="PopOver_InputManual" preventDefault="true">
+<div class="popover" id="PopOver_SelectStudent">
     <div class="activity">
         <div class="header cascaded">
-            <div class="buttons">
-                <button id="Button_CancelAddTransaction"><$ generic cancel /></button>
-                <button id="Button_SubmitAddTransaction">
-                    <span><$ generic create /></span>
-                    <div class="progressring"></div>
-                </button>
-            </div>
-            <div class="title"><$ cashflow transaction_add_title /></div>
+            <div class="title"><$ cashflow select_student_title /></div>
+            <input type="search"/>
         </div>
         <div class="content">
-            <template id="Template_TransactionForm">
-                <div class="list" ad-header="&nbsp;" ad-action="<$ generic remove />" onaction="removeCurrentTransaction(event)">
-                    <div class="stack name">
-                        <span><$ generic name /></span>
-                        <input type="text" class="plain" placeholder="<$ generic name />"/>
-                    </div>
-                    <div class="stack amount">
-                        <span><$ generic amount /></span>
-                        <input type="text" class="plain" value="Rp0" placeholder="<$ generic amount_placeholder />"/>
-                    </div>
-                    <div class="stack type">
-                        <span><$ generic type /></span>
-                        <select class="plain" value="true">
-                            <option value="true"><$ generic expense /></option>
-                            <option value="false"><$ generic income /></option>
-                        </select>
-                    </div>
-                    <div class="stack time">
-                        <span><$ generic time /></span>
-                        <input type="datetime-local" class="plain"/>
-                    </div>
-                    <div class="stack category">
-                        <span><$ generic category /></span>
-                        <select class="plain" id="Select_Category">
-                        </select>
-                    </div>
-                </div>
-            </template>
-            <div id="Grid_TransactionList">
-            </div>
-            <button id="Button_AddNewTransaction" class="accent plain"><$ generic add /></button>
-        </div>
-    </div>
-</div>
-
-<div class="popover" id="PopOver_InputCamera">
-    <div class="activity">
-        <section>
-            <div class="header cascaded">
-                <div class="buttons">
-                    <button id="Button_CancelScan"><$ generic cancel /></button>
-                </div>
-                <div class="title"><$ cashflow transaction_scan_title /></div>
-            </div>
-            <div class="content">
-                <div id="Grid_InputCameraView" theme="dark">
-                    <video id="Video_InputCamera"></video>
-                    <div class="buttons">
-                        <button id="Button_SwitchCamera" class="icon plain">&#xeb5f;</button>
-                        <button id="Button_CaptureCamera"></button>
-                        <button id="Button_AddFromGallery" ad-tooltip="<$ cashflow transaction_scan_uploadgallery />" class="icon plain">&#xf87f;</button>
-                    </div>
-                </div>
-            </div>
-        </section>
-        <section>
-            <div class="header cascaded">
-                <div class="buttons">
-                    <button id="Button_SubmitScan">
-                        <span><$ generic submit /></span>
-                        <div class="progressring"></div>
-                    </button>
-                </div>
-                <div class="title"><$ cashflow transaction_scanbill_preview /></div>
-            </div>
-            <div class="content">
-                <canvas id="Canvas_InputCamera"></canvas>
-                <img id="Image_InputCameraPreview"/>
-            </div>
-        </section>
-    </div>
-</div>
-
-<div class="popover" id="PopOver_EditTransaction" preventDefault="true">
-    <div class="activity">
-        <div class="header cascaded">
-            <div class="buttons">
-                <button id="Button_CancelEditTransaction"><$ generic cancel /></button>
-                <button id="Button_SubmitEditTransaction">
-                    <span><$ generic done /></span>
-                    <div class="progressring"></div>
-                </button>
-            </div>
-            <div class="title"><$ cashflow transaction_edit_title /></div>
-        </div>
-        <div class="content">
-            <div id="Grid_TransactionListEdit"></div>
+            <div class="lists" id="List_Students"></div>
         </div>
     </div>
 </div>
 
 <script>
-    let categories = [];
+  let categories = [
+    { id: 0, name: "Wants" },
+    { id: 1, name: "Needs" },
+    { id: 2, name: "Education" },
+  ];
 
-    initializeCategories();
-    initializeOverviewCards();
-    initializeReportList();
-    
-    Button_NewTransaction.onclick = function(event) {
-        Components.ContextMenu.Open("Transaction_New", Button_NewTransaction, event);
+    Select_Students.onclick = function() {
+        PopOver_SelectStudent.open(this);
+    }
+    Select_Programs.onchange = function() {
+      fetchStudentList();
     }
 
-    Components.ContextMenu.Add("Transaction_New", [
-        {
-            Title: "<$ cashflow transaction_scanbill />",
-            Icon: "fce6",
-            Action: o => {
-                PopOver_InputCamera.content.navigateTo(0);
-                PopOver_InputCamera.open(Button_NewTransaction);
-                initializeCamera(); 
+  initializePrograms();
+  //initializeCategories();
+
+  async function initializePrograms() {
+    try {
+        const response = await $.get("/api/program/list");
+
+        if (response.success && response.data) {
+            for (const program of response.data) {
+                const optionElement = document.createElement("option");
+                optionElement.value = program.programId;
+                optionElement.innerText = program.name;
+                Select_Programs.append(optionElement);
             }
-        },
-        {
-            Title: "<$ cashflow transaction_addmanual />",
-            Icon: "eef7",
-            Action: o => {
-                Grid_TransactionList.innerHTML = null;
-                Button_CancelAddTransaction.disabled = false;
-                Button_SubmitAddTransaction.disabled = false;
-                Button_AddNewTransaction.disabled = false;
-                Button_AddNewTransaction.click();
-                PopOver_InputManual.open(Button_NewTransaction);
-                PopOver_InputManual.isinputchanged = false;
-            }
+            fetchStudentList();
+        } else {
+            console.log("Belum ada program yang dibuat.");
         }
-    ]);
+    } catch (e) {
+        console.error("Gagal memuat program:", e);
+        // Jika error 401, redirect ke login
+        if(e.status === 401) window.location.href = "/signin.html";
+    }
+  }
 
-    Button_AddNewTransaction.onclick = function() {
-        const listTemplate = Template_TransactionForm.content.children[0].cloneNode(true);
-        const amountInput = listTemplate.querySelector(".amount > input");
-        amountInput.onfocus = function() {
-            this.value = this.value.replace(/[^0-9]/g, "");
+  function initializeOverviewCards() {
+    initalizeExpensesCard();
+    //initializeFeedbackCard(); dimatiin dulu biar ga boros token
+    initializeWalletCard();
+  }
+
+  /*
+  async function initializeCategories() {
+    categories = DUMMY_CATEGORIES || (await $.get("/api/categories"));
+  } */
+
+  async function initalizeExpensesCard() {
+    try {
+      // 1. Panggil API Backend
+      // Backend akan mengirim data total pengeluaran dan breakdown per hari (Senin-Minggu)
+      const res = await $.get("/api/expenses/" + Select_Students.value);
+
+      // Ambil data jika sukses, atau gunakan nilai default 0 jika gagal/kosong
+      const expenses = res.success ? res.data : { total: 0, summary: [0, 0, 0, 0, 0, 0, 0] };
+
+      // 2. Tampilkan Total Pengeluaran Minggu Ini
+      Text_ExpensesTotal.innerText = formatCurrency(expenses.total);
+
+      // 3. Logika Skala Grafik
+      // Mencari nilai tertinggi hari ini untuk dijadikan patokan 100% tinggi grafik
+      const maxVal = Math.max(...expenses.summary) || 1;
+
+      // Membuat angka 'Tick' (garis bantu sumbu Y) yang rapi (kelipatan 4 biar mudah dibagi)
+      // Contoh: Jika maxVal 45.000, kita bulatkan tick tertingginya jadi 50.000 atau angka cantik lainnya
+      const highestExpensesMultiple10 = Math.pow(10, parseInt(Math.log10(maxVal)));
+      const highestTick = Math.ceil(maxVal / highestExpensesMultiple10) * highestExpensesMultiple10;
+
+      // 4. Render Batang Grafik (Bars)
+      // Backend mengirim array [Senin, Selasa, ..., Minggu]
+      // Kita loop 7 kali untuk mengisi tinggi 7 batang di HTML
+      for (let i = 0; i < 7; i++) {
+        // Ambil elemen bar di HTML (index anak ke-i)
+        const barContainer = Grid_ExpensesDays.children[i];
+        if (barContainer) {
+          const bar = barContainer.querySelector(".bar");
+          const value = expenses.summary[i] || 0;
+
+          // Hitung persentase tinggi (Value / MaxTick * 100%)
+          const percent = highestTick > 0 ? (value / highestTick) * 100 : 0;
+
+          // Set CSS variable --height agar animasi batang bergerak
+          bar.style.setProperty("--height", percent + "%");
+
+          // Set Tooltip (muncul saat hover)
+          bar.setAttribute("ad-tooltip", formatCurrency(value));
         }
-        amountInput.oninput = function() {
-            PopOver_InputManual.isinputchanged = true;
-            this.value = this.value.replace(/[^0-9]/g, "");
-        }
-        amountInput.onblur = function() {
-            const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
-            this.value = value.substring(0, value.length - 3);
-        }
-        const categorySelect = listTemplate.querySelector(".category > select");
-        for (const category of categories) {
-            const optionElement = document.createElement("option");
-            optionElement.value = category.id;
-            optionElement.innerText = category.name;
-            categorySelect.append(optionElement);
-        }
+      }
 
-        for (const input of listTemplate.querySelectorAll("input"))
-            if (!input.oninput)
-                input.oninput = function() {
-                    PopOver_InputManual.isinputchanged = true;
-                }
-        for (const select of listTemplate.querySelectorAll("select"))
-            select.onchange = function() {
-                PopOver_InputManual.isinputchanged = true;
-            }
+      // 5. Render Angka Sumbu Y (Ticks)
+      Grid_ExpensesTicks.innerHTML = "";
+      const valuePerTick = highestTick / 4; // Kita bagi jadi 4 garis bantu
 
-        const timeInput = listTemplate.querySelector(".time input");
-        timeInput.value = getLocalISOString().slice(0,16);
+      for (let i = 4; i >= 0; i--) {
+        const tickVal = Math.ceil(valuePerTick * i);
+        const tick = document.createElement("div");
+        tick.classList.add("tick");
 
-        Grid_TransactionList.append(listTemplate);        
+        // Format angka (Hilangkan ,00 di belakang koma biar rapi)
+        tick.innerText = formatCurrency(tickVal).replace(",00", "");
+        Grid_ExpensesTicks.append(tick);
+      }
+    } catch (e) {
+      console.error("Gagal memuat grafik expenses:", e);
+      Text_ExpensesTotal.innerText = formatCurrency(0);
     }
-    Button_CancelAddTransaction.onclick = function() {
-        PopOver_InputManual.close();
+  }
+
+  /*
+  async function initializeWalletCard() {
+    // fetch data from /api/wallet
+    const wallet = DUMMY_WALLET || (await $.get("/api/wallet"));
+
+    Text_WalletBalance.innerText = formatCurrency(wallet.balance);
+
+    for (const allocation of wallet.allocations) {
+      const name = document.createElement("span");
+      name.classList.add("name");
+      name.innerText = allocation.categoryName;
+
+      const balance = document.createElement("span");
+      balance.classList.add("balance");
+      balance.innerText = formatCurrency(allocation.balance);
+
+      const container = document.createElement("div");
+      container.classList.add("category");
+      container.append(name);
+      container.append(balance);
+
+      Grid_WalletCategories.append(container);
     }
-    Button_SubmitAddTransaction.onclick = async function() {
-        PopOver_InputManual.isloading = true;
-        Button_CancelAddTransaction.disabled = true;
-        Button_SubmitAddTransaction.disabled = true;
-        Button_AddNewTransaction.disabled = true;
+  } */
 
-        const transactions = [...Grid_TransactionList.children].map(function(list) {
-            const nameInput = list.querySelector(".name input");
-            const amountInput = list.querySelector(".amount input");
-            const timeInput = list.querySelector(".time input");
-            const typeInput = list.querySelector(".type select");
-            const categoryInput = list.querySelector(".category select");
+  async function initializeWalletCard() {
+    try {
+      // 1. Panggil API Backend (Gunakan BACKEND_URL global)
+      const res = await $.get("/api/wallet/" + Select_Students.value);
 
-            return {
-                name: nameInput.value,
-                amount: parseInt(amountInput.value.replace(/[^0-9]/g, "")) || 0,
-                transactionDate: new Date(timeInput.value) * 1 || 0,
-                isExpenses: typeInput.value == "true",
-                categoryId: categoryInput.value 
-            }
-        });
+      // 2. Cek Success & Ambil Data
+      if (res.success) {
+        const wallet = res.data; // Data asli ada di dalam properti .data
 
-        const inputs = [...Grid_TransactionList.querySelectorAll("input, select, button")];
-        for (const input of inputs)
-            input.disabled = true; 
-
-        {
-            // DUMMY ACTION
-            await Delay(500);
-            for (const transaction of transactions) {
-                DUMMY_MONTHLY_REPORT.push(transaction);
-            }
-            const activeMonth = [...Tab_Months.children].find(o => o.classList.contains("active"))?.dataset?.month;
-            const activeYear = Select_Years.value;
-            fetchReportList(activeMonth, activeYear);
-        }
-        // Post to database
-        // await $.post("/api/cashflow/transactions/", { transactions: transactions });
-        PopOver_InputManual.isloading = false;
-        PopOver_InputManual.close(true);
-    }
-    PopOver_InputManual.onbeforeclose = function() {
-        if (PopOver_InputManual.isinputchanged == false)
-            return PopOver_InputManual.close(true);
-
-        Components.ActionSheet.Open({
-            Title: "<$ cashflow transaction_addmanual_discard_title />",
-            Description: "<$ cashflow transaction_addmanual_discard_description />",
-            Actions: [
-                {
-                    Type: "Option.Critical",
-                    Title: "<$ cashflow transaction_addmanual_discard_confirm />",
-                    Action: function() {
-                        PopOver_InputManual.close(true);
-                    }
-                },
-                {
-                    Type: "Footer",
-                    Title: "<$ cashflow transaction_addmanual_discard_cancel />"
-                }
-            ]
-        })
-    }
-    PopOver_InputCamera.onclosed = function() {
-        detachCamera();
-    }
-    Button_SubmitScan.onclick = async function() {
-        PopOver_InputCamera.iscloseable = false;
-        PopOver_InputCamera.isloading =
-        Button_SubmitScan.disabled = true;
-
-        const form = new FormData();
-        form.append("file", Image_InputCameraPreview.file);
-
-        try {
-            await $.ajax({
-                type: "post",
-                url: "/api/cashflow/transactions/uploadbill",
-                data: form,
-                contentType: false,
-                processData: false
-            });
-            PopOver_InputCamera.close();
-        }
-        catch (error) {
-            console.error(error);
-        }
-
-        PopOver_InputCamera.iscloseable = true;
-        PopOver_InputCamera.isloading =
-        Button_SubmitScan.disabled = false;
-    }
-    Button_CancelScan.onclick = function() {
-        PopOver_InputCamera.close();
-    }
-
-    let activeCamera;
-    let isFrontCamera = false;
-    Button_SwitchCamera.onclick = async function() {
-        await detachCamera();
-        isFrontCamera = !isFrontCamera;
-        await initializeCamera();
-    }
-    Button_AddFromGallery.onclick = async function() {
-        const result = await getPhotoFromGallery();
-        
-        if (result == true)
-            PopOver_InputCamera.content.navigateTo(1);
-    }
-    Button_CaptureCamera.onclick = async function() {
-        await takeShotCamera();
-        PopOver_InputCamera.content.navigateTo(1);
-    }
-
-    function removeCurrentTransaction(event) {
-        event.target.parentNode.remove();
-    }
-
-    async function initializeCamera() {
-        activeCamera = await navigator.mediaDevices.getUserMedia({ video: { facingMode: isFrontCamera ? "user" : "environment" } });
-        Video_InputCamera.srcObject = activeCamera;
-        Video_InputCamera.onloadedmetadata = function() {
-            this.play();
-        }
-    }
-
-    async function detachCamera() {
-        if (activeCamera == null)
-            return;
-
-        const tracks = activeCamera.getTracks();
-
-        for (const track of tracks)
-            track.stop();
-
-        Video_InputCamera.srcObject = null;
-    }
-
-    async function takeShotCamera() {
-        const cameraWidth = Video_InputCamera.videoWidth;
-        const cameraHeight = Video_InputCamera.videoHeight;
-
-        let photoWidth = cameraWidth;
-        let photoHeight = cameraHeight;
-        let photoLeft = 0;
-        let photoTop = 0;
-
-        if (cameraWidth > cameraHeight) {
-            photoWidth = cameraHeight / 4 * 3;
-            photoLeft = (cameraWidth / 2) - (photoWidth / 2);
-        }
-        else {
-            photoHeight = cameraWidth / 3 * 4;
-            photoTop = (cameraHeight / 2) - (photoHeight / 2);
-        }
-
-        const context = Canvas_InputCamera.getContext("2d");
-        Canvas_InputCamera.width = photoWidth;
-        Canvas_InputCamera.height = photoHeight;
-        context.drawImage(Video_InputCamera, -photoLeft, -photoTop, cameraWidth, cameraHeight);
-
-        const data = Canvas_InputCamera.toDataURL("image/png");
-        Image_InputCameraPreview.src = data;
-
-        const file = new File([new Blob([data])], "camera_" + Date.now());
-        Image_InputCameraPreview.file = file;
-    }
-
-    async function getPhotoFromGallery() {
-        return new Promise(function(resolve) {
-            const file = document.createElement("input");
-            file.type = "file";
-            file.accept = ".png, .jpg, .jpeg, .webp";
-            file.click();
-            
-            file.oninput = function()
-            {
-                file.oninput = null;
-                const files = Array.from(this.files);
-                this.value = null;
-
-                if (files.length == 0)
-                    return resolve(false);
-
-                if (files[0].size > 2000000) {
-                    Image_InputCameraPreview.file = null;
-                    Components.Notification.Send({ Id: "avatar_failed", Title: "<$ accounts avatar_upload_error_title />", Message: "<$ accounts avatar_upload_error_message />", Icon: "\ufe64", Buttons: [{Text: "<$ generic dismiss />"}] });
-                    return resolve(false);
-                }
-
-                Image_InputCameraPreview.file = files[0];
-                    
-                const reader = new FileReader();
-                reader.readAsDataURL(files[0]);
-                reader.onload = function() {
-                    Image_InputCameraPreview.src = reader.result;
-                    resolve(true);
-                }
-            }
-        });
-    }
-
-    function initializeOverviewCards() {
-        initalizeExpensesCard();
-        initializeFeedbackCard();
-        initializeWalletCard();
-    }
-
-    async function initializeCategories() {
-        categories = DUMMY_CATEGORIES || await $.get("/api/categories");
-    }
-    async function initalizeExpensesCard() {
-        // fetch data from /api/expenses
-        const expenses = DUMMY_EXPENSES || await $.get("/api/expenses");
-        
-        Text_ExpensesTotal.innerText = formatCurrency(expenses.total);
-        const highestExpenses = Math.max(...expenses.summary);
-        const highestExpensesMultiple10 = Math.pow(10, parseInt(Math.log10(highestExpenses)));
-        const highestExpensesTick = Math.ceil(highestExpenses / highestExpensesMultiple10) * highestExpensesMultiple10;
-        
-        // total expenses chart
-        for (let i = 0; i < 7; i++) {
-            const bar = Grid_ExpensesDays.children[i].children[0];
-            const value = expenses.summary[i];
-
-            bar.style.setProperty("--height", (value / highestExpensesTick * 100) + "%");
-            bar.setAttribute("ad-tooltip", formatCurrency(value));
-        }
-
-        // ticks for chart
-        const valuePerTick = highestExpensesTick / 4;
-        for (let i = 4; i >= 0; i--) {
-            const value = formatCurrency(parseInt(valuePerTick * i));
-            const tick = document.createElement("div");
-            tick.classList.add("tick");
-            tick.innerText = value.substring(0, value.length - 3);
-            Grid_ExpensesTicks.append(tick);
-        }
-    }
-
-    async function initializeWalletCard() {
-        // fetch data from /api/wallet
-        const wallet = DUMMY_WALLET || await $.get("/api/wallet");
-
+        // 3. Tampilkan Saldo Utama
         Text_WalletBalance.innerText = formatCurrency(wallet.balance);
 
+        // 4. Render Kategori Alokasi
+        Grid_WalletCategories.innerHTML = ""; // Bersihkan data lama/dummy
+
         for (const allocation of wallet.allocations) {
-            const name = document.createElement("span");
-            name.classList.add("name");
-            name.innerText = allocation.categoryName;
+          const name = document.createElement("span");
+          name.classList.add("name");
+          name.innerText = allocation.categoryName;
 
-            const balance = document.createElement("span");
-            balance.classList.add("balance");
-            balance.innerText = formatCurrency(allocation.balance);
+          const balance = document.createElement("span");
+          balance.classList.add("balance");
+          balance.innerText = formatCurrency(allocation.balance);
 
-            const container = document.createElement("div");
-            container.classList.add("category");
-            container.append(name);
-            container.append(balance);
+          const container = document.createElement("div");
+          container.classList.add("category");
+          container.append(name);
+          container.append(balance);
 
-            Grid_WalletCategories.append(container);
+          Grid_WalletCategories.append(container);
         }
+      } else {
+        console.warn("Gagal mengambil data wallet:", res.message);
+        Text_WalletBalance.innerText = "Rp 0";
+      }
+    } catch (error) {
+      console.error("Error koneksi wallet:", error);
+      // Fallback jika error (misal user belum login)
+      if (error.status === 401) window.location.href = "/signin.html";
     }
+  }
 
-    async function initializeFeedbackCard() {
-        // fetch data from /api/cashflow/feedback
-        const feedback = DUMMY_FEEDBACK || await $.get("/api/cashflow/feedback");
+  async function initializeFeedbackCard() {
+    try {
+      // 1. Panggil Backend (Gunakan URL Global)
+      //const res = DUMMY_FEEDBACK || (await $.get("/api/cashflow/feedback"));
+      const res = await $.get("/api/cashflow/" + Select_Students.value + "/feedback");
 
-        if (feedback.isAvailable == false) {
+      // 2. Cek Success & Ambil Data
+      if (res.success) {
+        const feedback = res.data; // Data asli ada di sini
+
+        if (feedback.isAvailable) {
+            // A. Tampilkan Pesan AI
+            Text_Feedback.innerText = feedback.content;
+            
+            // B. Reset Class Lama & Tambah Class Baru
+            // Hapus class warna lama dulu biar ga numpuk
+            Card_Feedback.classList.remove("red", "yellow", "green", "danger", "caution", "normal");
+            Card_Feedback.classList.add(feedback.severity); // Backend kirim: 'red', 'yellow', atau 'green'
+
+            // C. (Opsional) Styling Manual Border agar lebih Jelas
+            // Sesuai format warna backend kita:
+            if(feedback.severity === 'red') $(Card_Feedback).css("border-left", "5px solid #ff453a");
+            else if(feedback.severity === 'yellow') $(Card_Feedback).css("border-left", "5px solid #ffcc00");
+            else $(Card_Feedback).css("border-left", "5px solid #30d158"); // Green
+            
+        } else {
+            // Jika AI belum ready / data kosong
             Text_Feedback.innerText = "<$ cashflow overview_feedback_empty />";
         }
-        else {
-            Text_Feedback.innerText = feedback.content;
-            Card_Feedback.classList.add(feedback.severity);
-        }
+      } 
+    } catch (error) {
+        console.error("Gagal load feedback:", error);
+        Text_Feedback.innerText = "AI sedang tidak tersedia.";
+    }
+  }
+
+  async function initializeReportList() {
+    // 1. Setup Tab Bulan (Event Listener)
+    for (const tab of Tab_Months.children) {
+      tab.onclick = function () {
+        // Hapus kelas active dari semua tab, tambah ke yang diklik
+        [...Tab_Months.children].forEach((t) => t.classList.remove("active"));
+        this.classList.add("active");
+
+        // Ambil data baru
+        fetchReportList(this.dataset.month, Select_Years.value);
+      };
     }
 
-    function initializeReportList() {
-        for (const tab of Tab_Months.children) {
-            tab.onclick = function() {
-                fetchReportList(tab.dataset.month, Select_Years.value);
-            }
-        }
-        
-        const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-        const currentMonth = months[new Date().getMonth()];
-        const currentYear = new Date().getFullYear();
-        fetchReportList(currentMonth, currentYear);
-        
-        const years = DUMMY_YEARS || $.get("/api/cashflow/transactions/years");
-        for (const year of years) {
-            const optionElement = document.createElement("option");
-            optionElement.value = year;
-            optionElement.innerText = year;
-            if (currentYear == year)
-                optionElement.selected = true;
-            Select_Years.append(optionElement);
-        }
+    // 2. Tentukan Bulan & Tahun Saat Ini
+    const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    const now = new Date();
+    const currentMonth = months[now.getMonth()];
+
+    // Set Tab Aktif secara Visual
+    const activeTab = [...Tab_Months.children].find((t) => t.dataset.month === currentMonth);
+    if (activeTab) activeTab.classList.add("active");
+
+    // 3. Setup Dropdown Tahun (Ambil dari Backend)
+    Select_Years.innerHTML = ""; // Bersihkan dulu
+    try {
+      // Panggil API untuk tahu tahun berapa saja ada transaksi
+      const years = await $.get("/api/cashflow/" + Select_Students.value + "/transactions/years");
+
+      // Render Opsi Tahun
+      for (const year of years) {
+        const opt = document.createElement("option");
+        opt.value = year;
+        opt.innerText = year;
+        if (year === now.getFullYear()) opt.selected = true; // Pilih tahun ini
+        Select_Years.append(opt);
+      }
+    } catch (e) {
+      // Fallback jika API gagal: Tampilkan tahun ini & tahun lalu
+      const y = now.getFullYear();
+      Select_Years.innerHTML = `<option value="${y}" selected>${y}</option><option value="${y - 1}">${y - 1}</option>`;
     }
 
-    function fetchReportList(month, year) {
-        let activeTab;
+    // 4. Event Listener Ganti Tahun
+    Select_Years.onchange = function () {
+      // Cari tab bulan yang sedang aktif
+      const activeMonthTab = document.querySelector("#Tab_Months span.active");
+      const selectedMonth = activeMonthTab ? activeMonthTab.dataset.month : "jan";
+      fetchReportList(selectedMonth, this.value);
+    };
 
-        for (const tab of Tab_Months.children) {
-            if (tab.dataset.month == month) {
-                tab.classList.add("active");
-                activeTab = tab;
-            }
-            else {
-                tab.classList.remove("active");
-            }
-        }
-            
-        if (activeTab) {
-            const x = activeTab.getBoundingClientRect().x;
-            if (x < 20)
-                Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
-            else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50)
-                Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
-        }
+    // 5. Load Data Pertama Kali
+    fetchReportList(currentMonth, Select_Years.value);
+  }
 
-        const transactions = DUMMY_MONTHLY_REPORT || $("/api/transactions/?month=" + month + "&year=" + year);
-        
-        List_MonthlyReport.innerHTML = null;
+  async function fetchStudentList() {
+    const students = await $.get("/api/program/" + Select_Programs.value + "/students");
+    List_Students.innerHTML = null;
 
-        for (const transaction of transactions) {
-            appendReportList(transaction);
-        }
-    }
-
-    function appendReportList(transaction) {
-        const thumbnailElement = document.createElement("img");
-        thumbnailElement.classList.add("thumbnail");
-        thumbnailElement.src = "/api/categories/thumbnail/" + transaction.categoryId;
-        thumbnailElement.onerror = function() {
-            this.src = ".png";
-            this.onerror = null;
-        }
+    for (const student of students) {
+        const avatarElement = document.createElement("img");
+        avatarElement.classList.add("avatar");
+        avatarElement.src = "/avatar/" + student.id;
 
         const nameElement = document.createElement("span");
         nameElement.classList.add("name");
-        nameElement.innerText = transaction.rawDescription;
+        nameElement.innerText = student.name;
 
-        const category = categories.find(o => o.id == transaction.categoryId);
-
-        const categoryElement = document.createElement("span");
-        categoryElement.classList.add("category");
-        categoryElement.innerText = category?.name || "";
-
-        const descriptionGroupElement = document.createElement("div");
-        descriptionGroupElement.classList.add("description");
-        descriptionGroupElement.append(nameElement);
-        descriptionGroupElement.append(categoryElement);
-
-        const amountElement = document.createElement("span");
-        amountElement.classList.add("amount");
-        amountElement.classList.add(transaction.type);
-        amountElement.innerText = formatCurrency(transaction.amount);
-
-        const chevronElement = document.createElement("span");
-        chevronElement.classList.add("icon");
-        chevronElement.innerText = "\uef4a";
-
-        const navigateElement = document.createElement("div");
-        navigateElement.classList.add("navigate");
-        navigateElement.append(amountElement);
-        navigateElement.append(chevronElement);
+        const emailElement = document.createElement("span");
+        emailElement.classList.add("email");
+        emailElement.innerText = student.email;
 
         const containerElement = document.createElement("div");
-        containerElement.classList.add("stack");
-        containerElement.classList.add("iconed");
-        containerElement.classList.add("clickable");
-        containerElement.append(thumbnailElement);
-        containerElement.append(descriptionGroupElement);
-        containerElement.append(navigateElement);
-        containerElement.data = transaction;
+        containerElement.classList.add("student");
+        containerElement.append(avatarElement);
+        containerElement.append(nameElement);
+        containerElement.append(emailElement);
         containerElement.onclick = function() {
-            
-        }
-        
-        const dateGroupElements = [...List_MonthlyReport.children];
-        let dateGroupMatches = dateGroupElements.find(o => o.dataset.date == new Date(transaction.transactionDate).getDate());
+            Select_Students.value = student.id;
+            Image_CurrentStudent.src = "/avatar/" + student.id;
+            Text_CurrentStudentName.innerText = student.name;
+            Text_CurrentStudentEmail.innerText = student.email;
+            PopOver_SelectStudent.close();
+            initializeOverviewCards();
+            initializeReportList();
 
-        if (dateGroupMatches == null) {
-            dateGroupMatches = document.createElement("div");
-            dateGroupMatches.classList.add("list");
-            dateGroupMatches.dataset.date = new Date(transaction.transactionDate).getDate();
+        };
 
-            // today
-            const diffTimestamp = Date.now() - transaction.transactionDate; 
-            if (diffTimestamp < 1000 * 60 * 60 * 24)
-                dateGroupMatches.setAttribute("ad-header", "<$ generic today />");
-            // yesterday
-            else if (diffTimestamp < 1000 * 60 * 60 * 24 * 2)
-                dateGroupMatches.setAttribute("ad-header", "<$ generic yesterday />");
-            // a long time ago
-            else
-                dateGroupMatches.setAttribute("ad-header", moment(transaction.transactionDate).format("ll"));
-            List_MonthlyReport.append(dateGroupMatches);
-        }
-
-        dateGroupMatches.append(containerElement);
+        List_Students.append(containerElement);
     }
+  }
+
+  async function fetchReportList(month, year) {
+    let activeTab;
+
+    for (const tab of Tab_Months.children) {
+      if (tab.dataset.month == month) {
+        tab.classList.add("active");
+        activeTab = tab;
+      } else {
+        tab.classList.remove("active");
+      }
+    }
+
+    if (activeTab) {
+      const x = activeTab.getBoundingClientRect().x;
+      if (x < 20) Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
+      else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50) Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
+    }
+
+    const progressRingElement = document.createElement("div");
+    progressRingElement.classList.add("progressring");
+    List_MonthlyReport.innerHTML = null;
+    List_MonthlyReport.append(progressRingElement);
+
+    const emptyTitleElement = document.createElement("div");
+    emptyTitleElement.classList.add("emptytitle");
+    const emptyMessageElement = document.createElement("div");
+    emptyMessageElement.classList.add("emptymessage");
+
+    try {
+      let transactions = [];
+
+      const response = await $.get("/api/transactions/" + Select_Students.value + "?month=" + month + "&year=" + year);
+
+      transactions = response.data || [];
+
+      List_MonthlyReport.innerHTML = null;
+
+      // Render Data
+      if (transactions.length > 0) {
+        for (const transaction of transactions) {
+          appendReportList(transaction);
+        }
+      } else {
+        emptyTitleElement.innerText = "<$ cashflow no_transactions_title />";
+        emptyMessageElement.innerText = "<$ cashflow no_transactions_student_message />".format(Text_CurrentStudentName.innerText);
+        List_MonthlyReport.append(emptyTitleElement);
+        List_MonthlyReport.append(emptyMessageElement);
+      }
+    } catch (e) {
+      console.error("Gagal ambil transaksi:", e);
+        emptyTitleElement.innerText = "<$ cashflow server_error_title />";
+        emptyMessageElement.innerText = "<$ cashflow server_error_message />";
+        List_MonthlyReport.append(emptyTitleElement);
+        List_MonthlyReport.append(emptyMessageElement);
+    }
+  }
+
+  function appendReportList(transaction) {
+    const thumbnailElement = document.createElement("img");
+    thumbnailElement.classList.add("thumbnail");
+    thumbnailElement.src = "/api/categories/thumbnail/" + transaction.categoryId;
+    thumbnailElement.onerror = function () {
+      this.src = ".png";
+      this.onerror = null;
+    };
+
+    const nameElement = document.createElement("span");
+    nameElement.classList.add("name");
+    nameElement.innerText = transaction.rawDescription;
+
+    const category = categories.find((o) => o.id == transaction.categoryId);
+
+    const categoryElement = document.createElement("span");
+    categoryElement.classList.add("category");
+    categoryElement.innerText = category?.name || "";
+
+    const descriptionGroupElement = document.createElement("div");
+    descriptionGroupElement.classList.add("description");
+    descriptionGroupElement.append(nameElement);
+    descriptionGroupElement.append(categoryElement);
+
+    const amountElement = document.createElement("span");
+    amountElement.classList.add("amount");
+    amountElement.classList.add(transaction.type);
+    amountElement.innerText = formatCurrency(transaction.amount);
+
+    const chevronElement = document.createElement("span");
+    chevronElement.classList.add("icon");
+    chevronElement.innerText = "\uef4a";
+
+    const navigateElement = document.createElement("div");
+    navigateElement.classList.add("navigate");
+    navigateElement.append(amountElement);
+    navigateElement.append(chevronElement);
+
+    const containerElement = document.createElement("div");
+    containerElement.classList.add("stack");
+    containerElement.classList.add("iconed");
+    containerElement.classList.add("clickable");
+    containerElement.append(thumbnailElement);
+    containerElement.append(descriptionGroupElement);
+    containerElement.append(navigateElement);
+    containerElement.data = transaction;
+    containerElement.onclick = function () {};
+
+    const dateGroupElements = [...List_MonthlyReport.children];
+    let dateGroupMatches = dateGroupElements.find((o) => o.dataset.date == new Date(transaction.transactionDate).getDate());
+
+    if (dateGroupMatches == null) {
+      dateGroupMatches = document.createElement("div");
+      dateGroupMatches.classList.add("list");
+      dateGroupMatches.dataset.date = new Date(transaction.transactionDate).getDate();
+
+      // today
+      const diffTimestamp = Date.now() - transaction.transactionDate;
+      if (diffTimestamp < 1000 * 60 * 60 * 24) dateGroupMatches.setAttribute("ad-header", "<$ generic today />");
+      // yesterday
+      else if (diffTimestamp < 1000 * 60 * 60 * 24 * 2) dateGroupMatches.setAttribute("ad-header", "<$ generic yesterday />");
+      // a long time ago
+      else dateGroupMatches.setAttribute("ad-header", moment(transaction.transactionDate).format("ll"));
+      List_MonthlyReport.append(dateGroupMatches);
+    }
+
+    dateGroupMatches.append(containerElement);
+  }
 </script>

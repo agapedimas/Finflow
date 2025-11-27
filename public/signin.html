@@ -1,30 +1,4 @@
 <ad-title><$ signin title /></ad-title>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-
-<script src="/sdk.js"></script>
-
-<div class="panel" theme="light" accent="blue">
-    <img src="/assets/logo_text.png"/>
-    <div class="title"><$ signin title /></div>
-    <div class="subtitle"><$ signin description /></div>
-    <div class="inputs">
-        <span class="error" id="Text_Error" style="display:none;"></span>
-
-        <button class="accent" id="Button_SignIn">
-            <div class="progressring"></div>
-            <img class="icon" src="/assets/logo_google.webp" />
-            <span>Masuk dengan Google</span>
-        </button>
-        <div class="offersignup">
-            <span><$ signin offer_signup_title /></span>
-            <a class="link" id="Button_SignUp" goto="/signup">
-                <span><$ signin offer_signup_link /></span>
-            </a>
-        </div>
-    </div>
-</div>
 
 <style>
     .root
@@ -83,14 +57,14 @@
             }
             .panel .inputs button
             {
-                margin: 25px 0 0;
             }
                 .panel .inputs button .progressring
                 {
                     width: 1em;
                     height: 1em;
                 }
-                .panel:not(.loading) .inputs button .progressring
+                .panel:not(.loading) .inputs button .progressring,
+                .panel.loading .inputs button .icon
                 {
                     display: none;
                 }
@@ -99,18 +73,49 @@
                 margin-top: 1em;
                 justify-self: center;
             }
+    #w3a-parent-container {
+        display: none;
+    }
 </style>
 
 <script>
     $(".titlebar").remove();
     $("nav").remove();
     $(".loading").hide();
+</script>
 
+<div class="panel" theme="light" accent="blue">
+    <img src="/assets/logo_text.png"/>
+    <div class="title"><$ signin title /></div>
+    <div class="subtitle"><$ signin description /></div>
+    <div class="inputs">
+        <button id="Button_SignIn" disabled>
+            <div class="progressring"></div>
+            <img class="icon" src="/assets/logo_google.webp" />
+            <span><$ signin signin_with_google /></span>
+        </button>
+        <span class="error" id="Text_Error" style="display:none;"></span>
+        <div class="offersignup">
+            <span><$ signin offer_signup_title /></span>
+            <a class="link" id="Button_SignUp" goto="/signup">
+                <span><$ signin offer_signup_link /></span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/modal@9.4.0/dist/modal.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@web3auth/ethereum-provider@9.4.0/dist/ethereumProvider.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="/sdk.js"></script>
+
+<script>
     // 1. Cek Status Login Saat Load
     window.onload = async () => {
         try {
             // Init SDK
             const user = await Finflow.init();
+            Button_SignIn.disabled = false;
             
             if (user) {
                 console.log("User detected, verifying session...");
@@ -137,8 +142,11 @@
         try {
             // Panggil Login SDK (Popup Google)
             // Fungsi ini otomatis memanggil backend /auth/login juga
+            setTimeout(function() {
+                const googleButton = document.querySelector("#w3a-parent-container button:has(img[alt='login-google-active'])");
+                googleButton.click();
+            }, 500);
             const result = await Finflow.login();
-            
             handleLoginSuccess(result);
 
         } catch (error) {
@@ -170,17 +178,14 @@
             if (role === 'student') {
                 window.location.href = "/client";
             } else if (role === 'funder') {
-                window.location.href = "/scholarshipfunder";
-            } else if (role === 'parent') {
-                // Asumsi ada halaman parent, atau arahkan ke dashboard umum
-                window.location.href = "/client"; 
+                window.location.href = "/funder";
             } else {
                 // Fallback
                 window.location.href = "/client";
             }
         } else {
             // User login Google sukses, tapi belum daftar di Finflow
-            showError(result.message || "Akun tidak ditemukan. Silakan Daftar dulu.");
+            window.location.href = "/signup";
         }
     }
 
@@ -193,7 +198,7 @@
             errEl.innerText = msg;
             errEl.style.display = "block";
         } else {
-            alert(msg);
+            console.error(msg);
         }
     }
 </script>

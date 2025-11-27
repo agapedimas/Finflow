@@ -1,0 +1,20 @@
+{
+    "title": "Program",
+
+    "period": "Periode",
+    "amount_total": "Total Jumlah per Periode",
+    "amount_collected": "Jumlah Terkumpul",
+    "status": "Status",
+    "joined_students": "Siswa Bergabung",
+    "invite_student": "Undang Siswa",
+
+    "program_add_title": "Program Baru",
+    "input_name": "Nama",
+    "input_name_placeholder": "misal: Beasiswa Contoso",
+    "input_totalamount": "Total Jumlah per Periode",
+    "input_totalamount_placeholder": "misal: Rp1.000.000.000,00",
+    "input_startdate": "Tanggal Mulai Periode",
+    "input_enddate": "Tanggal Akhir Periode",
+
+    "payall_title": "Bayar Semua"
+}
