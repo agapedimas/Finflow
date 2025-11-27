@@ -169,6 +169,49 @@ const DUMMY_MONTHLY_REPORT = [
     }
 ]
 
+const DUMMY_ALLOCATIONS_FUNDER = {
+    "name": "Djarum Super",
+    "total": 3400000,
+    "allocations": [
+        {
+            "categoryId": "0",
+            "categoryName": "Education",
+            "total": 2500000 
+        },
+        {
+            "categoryId": "1",
+            "categoryName": "Wants",
+            "total": 500000 
+        },
+        {
+            "categoryId": "2",
+            "categoryName": "Needs",
+            "total": 400000 
+        }
+    ]
+}
+const DUMMY_ALLOCATIONS_PARENT = {
+    "name": "Agus Parent",
+    "total": 3410000,
+    "allocations": [
+        {
+            "categoryId": "0",
+            "categoryName": "Education",
+            "total": 2500000 
+        },
+        {
+            "categoryId": "1",
+            "categoryName": "Wants",
+            "total": 500000 
+        },
+        {
+            "categoryId": "2",
+            "categoryName": "Needs",
+            "total": 400000 
+        }
+    ]
+}
+
 const DUMMY_MONTHLY_PLAN = {
     "month": "November",      
     "year": 2025,             

@@ -50,7 +50,7 @@ function Route(Server) {
       res.redirect("/signin");
     });
 
-    Server.get("/client*", async function (req, res, next) {
+    Server.get(["/client*", "/funder*"], async function (req, res, next) {
       const path = req.url;
       const hasAccess = await Authentication.HasAccess(req.session.account);
 
@@ -63,7 +63,7 @@ function Route(Server) {
           return res.redirect("/signin");
         }
       } else if (hasAccess == true) {
-        if (path == "/client" || path == "/signin") {
+        if (path == "/funder" || path == "/client" || path == "/signin") {
           const redirect = req.session.redirect;
           req.session.redirect = null;
 
@@ -74,6 +74,14 @@ function Route(Server) {
         const id = await Authentication.GetAccountId(req.session.account);
         const account = await Accounts.Get({ id });
 
+        // redirect each role to its own page
+        if (path.startsWith("/client/") && (account[0].role == "Parent" || account[0].role == "ScholarshipFunder")) {
+          return res.redirect(path.replace("client", "funder"));
+        }
+        else if (path.startsWith("/funder/") && account[0].role == "Student") {
+          return res.redirect(path.replace("funder", "client"));
+        }
+
         Object.assign(req.variables, {
           activeuser: JSON.stringify(account[0]),
           "activeuser.id": account[0].id,
@@ -81,8 +89,8 @@ function Route(Server) {
           "activeuser.username": account[0].username,
           "activeuser.email": account[0].email,
           "activeuser.phonenumber": account[0].phonenumber,
-          "activeuser.url": account[0].url,
           "activeuser.avatarversion": account[0].avatarversion,
+          "activeuser.role": account[0].role
         });
       }
 
@@ -390,15 +398,16 @@ function Map(Server) {
     const isCSS = path.endsWith(".css") && FileIO.existsSync(rootPath + path);
     const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
     const isImage = /(\.png|\.webp|\.jpg|\.bmp|\.jpeg)$/g.test(path);
-    const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
+    const pageType = path.startsWith("funder") ? "funder" : (path.startsWith("client") || req.isclient == true ? "client" : "public");
 
     if (isHTML) {
       let data;
       if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
       else data = FileIO.readFileSync(rootPath + path + ".html");
 
+      const funderType = pageType == "funder" ? (req.variables["activeuser.role"] == "Parent" ? "parent" : "scholarshipfunder") : null;
       data = data.toString();
-      data = Functions.Page_Compile(pageType, data, req.session?.language, path, req.contentOnly == true);
+      data = Functions.Page_Compile(funderType || pageType, data, req.session?.language, path, req.contentOnly == true);
 
       if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
 
@@ -426,15 +435,17 @@ function Map(Server) {
     const rootPath = req.filepath ? "" : "./public/";
     const isHTML = FileIO.existsSync(rootPath + path + ".html") || FileIO.existsSync(rootPath + path + "/index.html");
     const isIndex = isHTML ? FileIO.existsSync(rootPath + path + ".html") == false : false;
-    const pageType = path.startsWith("client") || req.isclient == true ? "client" : "public";
+    const pageType = path.startsWith("funder") ? "funder" : (path.startsWith("client") || req.isclient == true ? "client" : "public");
 
     if (isHTML) {
       let data;
       if (isIndex) data = FileIO.readFileSync(rootPath + path + "/index.html");
       else data = FileIO.readFileSync(rootPath + path + ".html");
 
+      const funderType = pageType == "funder" ? (req.variables["activeuser.role"] == "Parent" ? "parent" : "scholarshipfunder") : null;
+
       data = data.toString();
-      data = Functions.Page_Compile(pageType, data, req.session?.language, path, true);
+      data = Functions.Page_Compile(funderType || pageType, data, req.session?.language, path, true);
 
       if (req.variables) for (const variable of Object.keys(req.variables)) data = data.replace(new RegExp("<#\\?(| )" + variable + "(| )\\?#>", "gi"), req.variables[variable] || "");
 
