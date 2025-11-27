@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS `funding_allocation` (
     `total_allocation` DECIMAL(15, 2) NOT NULL,
     `drip_frequency` ENUM('Monthly', 'Weekly', 'Locked') NOT NULL,
     `drip_amount` DECIMAL(10, 2) NULL, 
-     `remaining_drip_count` INT DEFAULT 0, -- Sisa berapa kali drip lagi?
+    `remaining_drip_count` INT DEFAULT 0, -- Sisa berapa kali drip lagi?
     `total_withdrawn` DECIMAL(15,2) DEFAULT 0, -- Total yang sudah diambil
     
     

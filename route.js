@@ -210,80 +210,112 @@ function Route(Server) {
     res.send(history);
   });
   Server.post("/client/assistant/send", async function (req, res) {
-      // 1. Ambil History dan Variabel Penting
-      const accountId = await Authentication.GetAccountId(req.session.account);
-      const historyData = await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId]);
-      let history = JSON.parse(historyData.data?.at(0)?.content || "[]");
-      
-      // Variabel ini akan kita set ke NULL setelah iterasi pertama
-      let userMessage = req.body.message; 
-      const studentId = accountId; 
-      console.log(studentId);
-      let response;
+        const MAX_FUNCTION_CALLS = 3; // Batas iterasi untuk menyelesaikan function call
+        
+        // 1. Ambil History dan Variabel Penting
+        const accountId = await Authentication.GetAccountId(req.session.account);
+        if (!accountId) return res.status(403).send("Akses ditolak: Sesi tidak valid.");
+        
+        const historyData = await SQL.Query("SELECT content FROM chat_history WHERE student_id=?", [accountId]);
+        let history = JSON.parse(historyData.data?.at(0)?.content || "[]");
+        
+        let userMessage = req.body.message; 
+        const studentId = accountId; // studentId diambil dari accountId (Sesi/Auth)
+        console.log(`Student ID: ${studentId}`);
+        
+        let finalResponse = null;
+        let errorOccurred = false;
 
-      // --- START: LOOP UNTUK FUNCTION CALL (RAG) ---
-      for (let i = 0; i < 3; i++) { 
-          
-          // 2. Panggil Gemini: Kirim userMessage di iterasi 0, lalu NULL di iterasi berikutnya
-          // Catatan: Asumsi gemini/index.js sudah memvalidasi dan mengabaikan message=null/""
-          response = await Gemini.Chat.Send(userMessage, 0, history);
-          
-          // 3. Cek apakah Gemini meminta pemanggilan fungsi
-          if (response.function_call && response.function_call.name) {
-              
-              const funcName = response.function_call.name;
-              const funcArgs = response.function_call.args;
-              let funcResult;
+        // 🤖 MODE NORMAL GEMINI ASLI - Looping Function Calling
+        for (let i = 0; i < MAX_FUNCTION_CALLS; i++) { 
+            console.log(i);
+            try {
+                // Panggil Gemini API. userMessage hanya dikirim di iterasi pertama.
+                // model_index 0 (default)
+                console.log("user_message", userMessage);
+                const response = await Gemini.Chat.Send(userMessage, 0, history);
+                console.log("await const response DONE");
+                // 3. Cek apakah Gemini meminta pemanggilan fungsi
+                if (response.function_call && response.function_call.name) {
+                    
+                    const funcName = response.function_call.name;
+                    const funcArgs = response.function_call.args;
+                    let funcResult;
 
-              // 4. HAPUS TURN USER JIKA FUNCTION CALL TERJADI DI ITERASI PERTAMA
-              if (i === 0) {
-                  // **Tindakan Kritis:** Hapus turn user yang baru saja ditambahkan oleh Gemini.Chat.Send
-                  history.pop(); 
-              }
+                    // 4. Di iterasi pertama, simpan pesan user dan set userMessage ke null
+                    if (i === 0) {
+                        // Tambahkan pesan user ke history
+                        history.push({ role: 'user', parts: [{ text: userMessage }] }); 
+                    }
+                    
+                    console.log(`[Function Call] Memanggil: ${funcName}`);
 
-              // 5. Simpan Function Call ke history (Role: 'model')
-              history.push({ role: 'model', parts: [{ functionCall: response.function_call }] });
+                    
 
-              // 6. Eksekusi fungsi nyata (Mapping Function)
-              if (funcName === 'get_budget_compliance') {
-                  funcResult = await RAGService.get_budget_compliance(studentId); 
-              } else if (funcName === 'get_top_spending_categories') {
-                  funcResult = await RAGService.get_top_spending_categories(studentId, funcArgs.time_frame); 
-              } else {
-                  funcResult = { success: false, message: "Fungsi RAG tidak ditemukan." };
-              }
+                    // 6. Eksekusi fungsi nyata (INJEKSI STUDENT ID DARI SESI)
+                    if (funcName === 'get_budget_compliance') {
+                        funcResult = await RAGService.get_budget_compliance(studentId); 
+                        
+                    } else if (funcName === 'get_top_spending_categories') {
+                        // funcArgs.time_frame HARUS ADA
+                        funcResult = await RAGService.get_top_spending_categories(studentId, funcArgs.time_frame); 
+                        
+                    } else if (funcName === 'compare_spending_vs_plan') {
+                        // funcArgs.month_year mungkin opsional, kita injeksi studentId
+                        funcResult = await RAGService.compare_spending_vs_plan(studentId, funcArgs.month_year);
+                        
+                    } else if (funcName === 'check_wallet_and_drip_status') {
+                        // Fungsi ini hanya butuh studentId
+                        funcResult = await RAGService.check_wallet_and_drip_status(studentId);
+                        
+                    } else {
+                        funcResult = { success: false, message: `Fungsi RAG '${funcName}' tidak ditemukan.` };
+                    }
 
-              // 7. Simpan Hasil Fungsi (functionResponse) ke history (Role: 'function')
-              history.push({ 
-                  role: 'function', 
-                  parts: [{ 
-                      functionResponse: { name: funcName, response: funcResult } 
-                  }] 
-              });
-              
-              // 8. Set userMessage ke NULL setelah iterasi pertama
-              // Ini adalah kunci untuk mencegah duplikasi di panggilan API berikutnya
-              userMessage = null; 
+                    console.log("funcResult initialized")
 
-          } else {
-              // 9. Jika tidak ada function call, keluar dari loop (Jawaban Teks Akhir Diterima)
-              break; 
-          }
-      }
+                    // 7. Simpan Hasil Fungsi (functionResponse) ke history (Role: 'tool')
+                    history.push({ 
+                        role: 'user', // Role di API baru adalah 'tool'
+                        parts: [{ 
+                            functionResponse: { 
+                                name: funcName, 
+                                response: { 
+                                    content: JSON.stringify(funcResult) 
+                                }
+                            } 
+                        }]
+                    });
 
-      // 10. Respons Akhir dan Penyimpanan History
-      if (response.finish.code == 0) {
-          res.send(response.text);
-          
-          // Simpan history yang sudah diperbarui.
-          await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(response.history || history)]);
-      }
-      else {
-          console.error(response.finish.code);
-          res.status(500).send("Terjadi kesalahan pada proses asisten virtual.");
-      }
+                    // Loop akan lanjut ke iterasi berikutnya (i++) untuk mendapatkan respons teks
+
+                } else {
+                    // 8. Jika tidak ada function call, keluar dari loop (Jawaban Teks Akhir Diterima)
+                    finalResponse = response;
+                    console.log(finalResponse);
+                    break; 
+                }
+
+                finalResponse = response;
+                console.log("final response: ", finalResponse)
+                
+            } catch (error) {
+                
+                // --- PENANGANAN ERROR 429/FETCH FAILED DARI index.js ---
+                if (error.status == 429 || String(error).includes("fetch failed") || String(error).includes("429")) {
+                    
+                    if (i < MAX_FUNCTION_CALLS - 1) { 
+                        const delayTime = 2500 * (i + 1); // Delay eksponensial
+                        console.warn(`[route.js] 429/Fetch Failed. Retrying in ${delayTime / 1000}s (Attempt ${i + 2})...`);
+                        await Delay(delayTime);
+                        continue; // Lanjutkan ke iterasi berikutnya
+                    } else {
+                        console.error("[route.js] Max retries reached for 429/Fetch Failed. Gagal mendapatkan respons.");
+                    }
+                }
+            }
+        }
   });
-
 
 
   // API yang butuh login (Protected)

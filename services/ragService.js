@@ -21,7 +21,7 @@ async function get_budget_compliance(studentId) {
             SELECT
                 ac.allocation_type,
                 COALESCE(SUM(t.amount), 0) AS total_spent, -- Gunakan COALESCE untuk 0 jika tidak ada transaksi
-                fa.monthly_budget AS allocated_budget
+                fa.total_allocation AS allocated_budget
             FROM funding_allocation fa
             JOIN funding f ON fa.funding_id = f.funding_id
             JOIN allocation_categories ac ON fa.category_id = ac.id
@@ -33,7 +33,7 @@ async function get_budget_compliance(studentId) {
             WHERE f.student_id = ? 
                 AND ac.allocation_type IN ('Needs', 'Wants', 'Education')
                 AND f.status = 'Active' -- Hanya ambil funding yang aktif
-            GROUP BY ac.allocation_type, fa.monthly_budget
+            GROUP BY ac.allocation_type, fa.total_allocation
             ORDER BY ac.allocation_type;
         `;
         // PERHATIAN: Perbaiki urutan parameter di sini. Query butuh (Bulan, Tahun, StudentId)
@@ -188,7 +188,7 @@ async function check_wallet_and_drip_status(studentId) {
                 -- Saldo
                 (SELECT balance FROM accounts_student WHERE id = ?) AS current_balance,
                 -- Detail Funding Aktif
-                F.total_monthly_fund,
+                F.total_period_fund,
                 F.status AS funding_status,
                 -- Detail Drip
                 SC.last_drip_date,

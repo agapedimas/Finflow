@@ -1,5 +1,3 @@
-
-
 -- 1. INSERT KATEGORI
 INSERT IGNORE INTO allocation_categories (id, category_name) VALUES 
 (0, 'Wants'), (1, 'Needs'), (2, 'Education');
@@ -33,7 +31,7 @@ INSERT INTO funding (funding_id, funder_id, student_id, total_period_fund, start
 ('fund_budi', 'funder_01', 'student_01', 6000000, '2025-01-01', 'Active');
 
 -- Rules Budi (Drip Mingguan)
-INSERT INTO funding_allocation (allocation_id, funding_id, category_id, monthly_budget, drip_frequency, drip_amount, remaining_drip_count) VALUES 
+INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, remaining_drip_count) VALUES 
 ('alloc_budi_1', 'fund_budi', 1, 2000000, 'Weekly', 500000, 20), -- Needs
 ('alloc_budi_2', 'fund_budi', 0, 1000000, 'Weekly', 250000, 20), -- Wants
 ('alloc_budi_3', 'fund_budi', 2, 3000000, 'Locked', 0, 0);       -- Edu (Vault)
@@ -43,7 +41,7 @@ INSERT INTO funding (funding_id, funder_id, student_id, total_period_fund, start
 ('fund_siti', 'funder_01', 'student_02', 4000000, '2025-01-01', 'Active');
 
 -- Rules Siti
-INSERT INTO funding_allocation (allocation_id, funding_id, category_id, monthly_budget, drip_frequency, drip_amount, remaining_drip_count) VALUES 
+INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, remaining_drip_count) VALUES 
 ('alloc_siti_1', 'fund_siti', 1, 2000000, 'Weekly', 500000, 18);
 
 
@@ -67,11 +65,11 @@ INSERT INTO transactions (transaction_id, student_id, amount, type, category_id,
 
 -- 5. INSERT BUDGET PLAN (AI Scenarios)
 -- Budi: Approved
-INSERT INTO budget_plan (id, planner_id, item_name, category_id, price, quantity, month, year, status, ai_feedback) VALUES 
+INSERT INTO budget_plan (id, planner_id, item_name, category_id, amount, quantity, month, year, status, ai_feedback) VALUES 
 ('plan_budi_1', 'student_01', 'Course Udemy', 2, 150000, 1, 11, 2025, 'approved', 'Sangat bagus untuk skill.');
 
 -- Siti: REJECTED (Edge Case)
-INSERT INTO budget_plan (id, planner_id, item_name, category_id, price, quantity, month, year, status, ai_feedback) VALUES 
+INSERT INTO budget_plan (id, planner_id, item_name, category_id, amount, quantity, month, year, status, ai_feedback) VALUES 
 ('plan_siti_1', 'student_02', 'Tas Branded', 0, 2000000, 1, 11, 2025, 'rejected', 'Ditolak. Harga melebihi 50% total budget bulanan kamu.');
 
 
@@ -82,7 +80,7 @@ INSERT INTO notifications (user_id, title, message, type) VALUES
 
 -- Notif Warning (Siti Boros)
 INSERT INTO notifications (user_id, title, message, type) VALUES 
-('student_02', '⚠️ Bahaya!', 'Kamu sudah menghabiskan 80% dana dalam 3 hari. Rem sedikit ya!', 'Warning');
+('student_02', '⚠ Bahaya!', 'Kamu sudah menghabiskan 80% dana dalam 3 hari. Rem sedikit ya!', 'Warning');
 
 
 -- 7. INSERT CHAT HISTORY
