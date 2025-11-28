@@ -5,7 +5,7 @@ const Accounts = require("./accounts");
 const Functions = require("./functions");
 const Language = require("./language");
 const FileIO = require("fs");
-const GeminiModule = require("./gemini");
+const Gemini = require("./gemini");
 const ApiFinflow = require("./src/controllers/api_finflow");
 
 const RAGService = require("./services/ragService"); // <<< BARIS BARU: Import file yang berisi implementasi get_budget_compliance dkk.
@@ -300,6 +300,7 @@ function Route(Server) {
                 console.log("final response: ", finalResponse)
                 
             } catch (error) {
+                console.log('error: ' + error.message);
                 
                 // --- PENANGANAN ERROR 429/FETCH FAILED DARI index.js ---
                 if (error.status == 429 || String(error).includes("fetch failed") || String(error).includes("429")) {
@@ -314,6 +315,17 @@ function Route(Server) {
                     }
                 }
             }
+        }
+
+        if (finalResponse.finish.code == 0) {
+            res.send(finalResponse.text);
+            
+            // Simpan history yang sudah diperbarui.
+            await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(finalResponse.history || history)]);
+        }
+        else {
+            console.error(finalResponse.finish.code);
+            res.status(500).send("Terjadi kesalahan pada proses asisten virtual.");
         }
   });
 
