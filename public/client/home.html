@@ -447,9 +447,9 @@
     async function initializeNotifications() {
         PopOver_Notifications.initialized = true;
 
-        const notifications = DUMMY_NOTIFICATIONS || $.get("/api/notifications/history");
+        const notifications = await $.get("/api/notifications/history");
         List_Notifications.innerHTML = null;
-        for (const notification of notifications)
+        for (const notification of notifications.data)
             appendNotification(notification);
     }
 
