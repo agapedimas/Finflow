@@ -38,11 +38,8 @@
                 font-weight: bold;
             }
 
-    html:not([theme=dark]) 
     #Sheet_Program {
-        background: var(--gray-6);
-    }
-    #Sheet_Program {
+        background: var(--background-popover-grid);
     }
         #Sheet_Program .details {
             display: grid;
@@ -55,11 +52,13 @@
             #Sheet_Program .joined .label {
                 color: var(--foreground-description);
                 font-size: 0.85em;
+                font-weight: 500;
                 text-transform: uppercase;
                 letter-spacing: 0.05em;
                 margin-top: 1.25em;
             }
             #Sheet_Program .details span:not(.label) {
+                font-weight: normal;
                 letter-spacing: 0.015em;
             }
         #Sheet_Program .joined {
@@ -83,15 +82,15 @@
                         text-align: center;
                     }
 
-    :where(#PopOver_AddStudent, #PopOver_EditPlan) {
+    :where(#PopOver_AddStudent, #PopOver_AddProgram) {
     }
-        :where(#PopOver_AddStudent, #PopOver_EditPlan) .stack {
+        :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack {
             grid-auto-columns: 100px auto !important;
         }
-            :where(#PopOver_AddStudent, #PopOver_EditPlan) .stack > span {
+            :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack > span {
                 font-weight: 600;
             }
-            :where(#PopOver_AddStudent, #PopOver_EditPlan) .stack > label:has(select) {
+            :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack > label:has(select) {
                 display: inline-grid;
                 grid-auto-flow: column;
                 justify-items: start;
@@ -99,7 +98,7 @@
                 justify-content: space-between;
                 opacity: 1;
             }
-            :where(#PopOver_AddStudent, #PopOver_EditPlan) .stack :where(label:has(select:disabled), input:disabled) {
+            :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack :where(label:has(select:disabled), input:disabled) {
                 opacity: 0.6 !important;
                 pointer-events: none;
             }
@@ -161,10 +160,90 @@
     </div>
 </div>
 
+<div class="popover" id="PopOver_AddProgram">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelAddProgram"><$ generic cancel /></button>
+                <button id="Button_SubmitAddProgram">
+                    <div class="progressring"></div>
+                    <span><$ generic create /></span>
+                </button>
+            </div>
+            <div class="title"><$ programs program_add_title /></div>
+        </div>
+        <div class="content">
+            <div class="list">
+                <div class="stack name">
+                    <span><$ programs input_name /></span>
+                    <input id="Input_ProgramName" type="text" class="plain" placeholder="<$ programs input_name_placeholder />"/>
+                </div>
+                <div class="stack amount">
+                    <span><$ programs input_totalamount /></span>
+                    <input id="Input_ProgramAmount" type="text" class="plain" placeholder="<$ programs input_totalamount_placeholder />"/>
+                </div>
+                <div class="stack startdate">
+                    <span><$ programs input_startdate /></span>
+                    <input id="Input_ProgramStartDate" type="date" class="plain"/>
+                </div>
+                <div class="stack enddate">
+                    <span><$ programs input_enddate /></span>
+                    <input id="Input_ProgramEndDate" type="date" class="plain"/>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+    registerCurrencyInput(Input_ProgramAmount);
+    Button_NewProgram.onclick = function() {
+        Input_ProgramName.value = null;
+        Input_ProgramAmount.value = "Rp0";
+        Input_ProgramStartDate.value = null;
+        Input_ProgramEndDate.value = null;
+        PopOver_AddProgram.open(this);
+        PopOver_AddProgram.onopened = function() {
+            Input_ProgramName.focus();
+        }
+    }
+    Button_CancelAddProgram.onclick = function() {
+        PopOver_AddProgram.close(true);
+    }
+    Button_SubmitAddProgram.onclick = async function() {
+        Input_ProgramName.disabled =
+        Input_ProgramAmount.disabled =
+        Input_ProgramStartDate.disabled =
+        Input_ProgramEndDate.disabled =
+        Button_CancelAddProgram.disabled = 
+        Button_SubmitAddProgram.disabled =
+        PopOver_AddProgram.isloading = true;
+        PopOver_AddProgram.iscloseable = false;
+
+        try {
+            await Delay(1000);
+            // await $.post("");
+            PopOver_AddProgram.close(true);
+        }
+        catch (error) {
+
+        }
+
+        Input_ProgramName.disabled =
+        Input_ProgramAmount.disabled =
+        Input_ProgramStartDate.disabled =
+        Input_ProgramEndDate.disabled =
+        Button_CancelAddProgram.disabled = 
+        Button_SubmitAddProgram.disabled =
+        PopOver_AddProgram.isloading = false;
+        PopOver_AddProgram.iscloseable = true;
+    }
     Button_AddStudent.onclick = function() {
         Input_StudentEmail.value = null;
         PopOver_AddStudent.open(this);
+        PopOver_AddStudent.onopened = function() {
+            Input_StudentEmail.focus();
+        }
     }
     Button_CancelAddStudent.onclick = function() {
         PopOver_AddStudent.close();

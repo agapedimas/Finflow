@@ -447,13 +447,10 @@
         PopOver_EditPlan.isinputchanged = true;
         checkInputs(PopOver_EditPlan);
     }
-    Input_StuffAmount.onfocus = 
-    Input_StuffAmountEdit.onfocus = function() {
-        this.value = this.value.replace(/[^0-9]/g, "");
-    }
+    registerCurrencyInput(Input_StuffAmount);
+    registerCurrencyInput(Input_StuffAmountEdit);
     Input_StuffAmount.oninput = 
     Input_StuffAmountEdit.oninput = function() {
-        this.value = this.value.replace(/[^0-9]/g, "");
         if (this != Input_StuffName)
             Input_StuffName.oninput();
         if (this != Input_StuffAmountEdit)
@@ -462,8 +459,6 @@
     Input_StuffAmount.onblur =
     Input_StuffAmountEdit.onblur = function() {
         checkInputs(PopOver_EditPlan);
-        const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
-        this.value = value.substring(0, value.length - 3);
     }
 
     function checkInputs(popOver = null) {

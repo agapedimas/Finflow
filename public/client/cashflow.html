@@ -628,17 +628,10 @@
   Button_AddNewTransaction.onclick = function () {
     const listTemplate = Template_TransactionForm.content.children[0].cloneNode(true);
     const amountInput = listTemplate.querySelector(".amount > input");
-    amountInput.onfocus = function () {
-      this.value = this.value.replace(/[^0-9]/g, "");
-    };
     amountInput.oninput = function () {
       PopOver_InputManual.isinputchanged = true;
-      this.value = this.value.replace(/[^0-9]/g, "");
     };
-    amountInput.onblur = function () {
-      const value = formatCurrency(parseInt(this.value.replace(/[^0-9]/g, "")) || 0);
-      this.value = value.substring(0, value.length - 3);
-    };
+    registerCurrencyInput(amountInput);
 
     /*
         const categorySelect = listTemplate.querySelector(".category > select");

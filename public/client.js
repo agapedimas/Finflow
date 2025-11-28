@@ -3,6 +3,21 @@ function formatCurrency(number) {
     result = result.replace(/IDR\s/, "Rp");
     return result;
 }
+
+function registerCurrencyInput(input) {
+    input.addEventListener("focus", function() {
+        this.value = this.value.replace(/[^0-9|.]/g, "");
+        this.value = parseInt(this.value || 0) + "";
+    });
+
+    input.addEventListener("input", function () {
+        this.value = this.value.replace(/[^0-9]/g, "");
+    });
+
+    input.addEventListener("blur", function() {
+        this.value = formatCurrency(parseInt(this.value.replace(/[^0-9|.]/g, "")) || 0);
+    });
+}
    
 function getLocalISOString() {
     const date = new Date();

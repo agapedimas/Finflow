@@ -6,5 +6,13 @@
     "amount_collected": "Collected Amount",
     "status": "Status",
     "joined_students": "Joined Students",
-    "invite_student": "Invite Student"
+    "invite_student": "Invite Student",
+
+    "program_add_title": "New Program",
+    "input_name": "Name",
+    "input_name_placeholder": "e.g.: Contoso Scholarship",
+    "input_totalamount": "Total Amount per Period",
+    "input_totalamount_placeholder": "e.g.: Rp1,000,000,000.00",
+    "input_startdate": "Start Period Date",
+    "input_enddate": "End Period Date"
 }
