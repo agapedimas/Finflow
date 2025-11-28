@@ -296,7 +296,160 @@ module.exports = {
     // MODULE 2: FUNDING AGREEMENT (Kesepakatan Awal)
     // ============================================================
 
-    // 1. Funder Memulai (Set Dana Pokok)
+    // Funder membuat program baru
+    createProgram: async (req, res) => {
+        try {
+            const { program_name, total_amount, start_date, end_date} = req.body;
+            const funder = req.currentUser;
+
+            if (!funder) return error(res, 'Unauthorized', 401);
+            if (!program_name || !total_amount) return error(res, "Nama Program & Nominal Wajib Diisi", 400);
+
+            const programId = generateId('prog');
+
+            const q = `
+                INSERT INTO scholarship_programs 
+                (id, funder_id, program_name, total_period_fund, start_date, end_date, status) 
+                VALUES (?, ?, ?, ?, ?, ?, 'Open')
+            `;
+
+            await SQL.Query(q, [programId, funder.id, program_name, total_amount, start_date, end_date]);
+
+            return success(res, {
+                program_id: programId,
+                program_name: program_name
+            }, "Program Beasiswa Berhasil Dibuat");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal membuat program");
+        }
+    },
+
+    // Add Student To Program
+    addStudentToProgram: async (req, res) => {
+        try {
+            const { program_id, student_email } = req.body;
+            const funder = req.currentUser;
+
+            // A. Validasi Program
+            // Pastikan program ini milik Funder yang sedang login
+            const progRes = await SQL.Query("SELECT * FROM scholarship_programs WHERE id = ? AND funder_id = ?", [program_id, funder.id]);
+            const program = progRes.data?.[0];
+
+            if (!program) return error(res, "Program tidak ditemukan atau Anda bukan pemiliknya", 404);
+
+            if (program.status !== 'Open') {
+                return error(res, "Program ini sudah ditutup atau selesai. Tidak bisa menambah mahasiswa baru.", 400);
+            }
+
+            // B. Cari Student
+            const sRes = await SQL.Query("SELECT id, displayname FROM accounts WHERE email=?", [student_email]);
+            const student = sRes.data?.[0];
+            
+            if (!student) return error(res, "Email mahasiswa belum terdaftar di Finflow.", 404);
+
+            // C. Cek Duplikasi (Apakah student ini sudah ada di program ini?)
+            const checkDup = await SQL.Query("SELECT funding_id FROM funding WHERE program_id = ? AND student_id = ?", [program_id, student.id]);
+            if (checkDup.data.length > 0) return error(res, "Mahasiswa ini sudah terdaftar di program ini.", 400);
+
+
+            // D. Insert ke Tabel Funding
+            // Kita copy 'total_period_fund' dari Program Master ke data Student
+            // Status langsung 'Ready_To_Fund' (Siap dibayar)
+            const fundingId = generateId('fund');
+            
+            const qFund = `
+                INSERT INTO funding 
+                (funding_id, program_id, student_id, status) 
+                VALUES (?, ?, ?, 'Ready_To_Fund')
+            `;
+            
+            
+            await SQL.Query(qFund, [fundingId, program_id, student.id]);
+
+            // E. Notifikasi ke Student
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Selamat! Anda Terpilih 🎓', ?, 'Success')",
+                [student.id, `Anda telah ditambahkan ke program ${program.program_name}. Menunggu aktivasi dana.`]
+            );
+
+            return success(res, { 
+                funding_id: fundingId, 
+                student_name: student.displayname 
+            }, "Mahasiswa berhasil ditambahkan.");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal menambahkan mahasiswa");
+        }
+    },
+
+    getMyPrograms: async (req, res) => {
+        try {
+            const funder = req.currentUser;
+
+            // 1. Ambil Semua Program milik Funder ini
+            const qProg = "SELECT * FROM scholarship_programs WHERE funder_id = ?";
+            const programs = await SQL.Query(qProg, [funder.id]);
+            
+            const resultList = [];
+
+            // 2. Loop setiap program untuk cari Student-nya
+            for (const prog of programs.data) {
+                
+                // Query Funding (Detail Student)
+                const qFund = `
+                    SELECT f.funding_id, f.status, f.student_id, a.displayname 
+                    FROM funding f
+                    JOIN accounts a ON f.student_id = a.id
+                    WHERE f.program_id = ?
+                `;
+                const funds = await SQL.Query(qFund, [prog.id]);
+                
+                // Mapping Student
+                const joinedStudents = funds.data.map(f => ({
+                    id: f.student_id,
+                    name: f.displayname
+                }));
+
+                // Tentukan Status Program
+                // (Karena status ada di level funding/student, kita ambil sampel dari student pertama)
+                // Jika belum ada student, status default 'Ready_To_Fund'
+                const programStatus = prog.status;
+                
+                // Tentukan Funding ID Utama
+                // (Untuk UI Funder yang berbasis Program, kita gunakan ID Program sebagai identifier utama,
+                //  tapi kita tetap sertakan sample funding_id jika diperlukan logika detail)
+                const mainFundingId = funds.data.length > 0 ? funds.data[0].funding_id : prog.id;
+
+                // Susun Objek sesuai Request
+                resultList.push({
+                    name: prog.program_name,
+                    
+                    // Kita gunakan ID Program sebagai ID unik di list ini agar tidak duplikat
+                    programId: prog.id, 
+                    // (Atau jika Anda ingin ID Funding spesifik student pertama: mainFundingId)
+                    
+                    funderId: prog.funder_id,
+                    totalPeriodFund: Number(prog.total_period_fund),
+                    
+                    startDate: new Date(prog.start_date).toISOString().split('T')[0],
+                    endDate: new Date(prog.end_date).toISOString().split('T')[0],
+                    
+                    status: programStatus,
+                    joinedStudents: joinedStudents
+                });
+            }
+
+            return success(res, resultList, "Data Program Berhasil Dimuat");
+
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal memuat daftar program"); 
+        }
+    },
+
     initiateFunding: async (req, res) => {
         try {
             const { student_email, total_amount, start_date, end_date, program_name } = req.body;
@@ -1684,31 +1837,57 @@ module.exports = {
     getCurrentProgram: async (req, res) => {
         try {
             const user = req.currentUser;
+            
             const q = `
-                SELECT f.funder_id, f.program_name, f.end_date, a.organization_name, a.displayname
+                SELECT 
+                    f.funding_id, f.status,
+                    p.id as program_id, p.program_name, p.funder_id, p.total_period_fund, p.start_date, p.end_date
                 FROM funding f
-                JOIN accounts a ON f.funder_id = a.id
-                WHERE f.student_id = ? AND f.status IN ('Active', 'Ready_To_Fund', 'Partially_Funded')
+                JOIN scholarship_programs p ON f.program_id = p.id
+                WHERE f.student_id = ? 
+                AND f.status IN ('Waiting_Allocation', 'Ready_To_Fund', 'Active')
+                ORDER BY f.funding_id DESC 
                 LIMIT 1
             `;
+            
             const result = await SQL.Query(q, [user.id]);
-            const program = result.data?.[0];
+            const myFunding = result.data?.[0];
 
-            if (!program) {
-                // Return null atau default object sesuai kebutuhan frontend handling
-                return success(res, { isJoined: false });
-            }
+            if (!myFunding) return success(res, null, "Belum terdaftar");
 
-            const finalName = program.program_name || `Beasiswa ${program.organization_name || program.displayname}`;
+            // 2. Cari Teman Seangkatan (Joined Students)
+            // Mengambil semua student yang ada di program_id yang sama
+            const qPeers = `
+                SELECT a.id, a.displayname as name
+                FROM funding f
+                JOIN accounts a ON f.student_id = a.id
+                WHERE f.program_id = ?
+            `;
+            const peersRes = await SQL.Query(qPeers, [myFunding.program_id]);
+            
+            const joinedStudents = peersRes.data.map(p => ({
+                id: p.id,
+                name: p.name
+            }));
 
-            return success(res, {
-                isJoined: true,
-                funderId: program.funder_id,
-                displayName: finalName,
-                activeUntil: new Date(program.end_date).getTime() // UNIX Timestamp
-            });
+            // 3. Format Output Sesuai Request Anda
+            const responseData = {
+                name: myFunding.program_name,
+                fundingId: myFunding.funding_id,
+                funderId: myFunding.funder_id,
+                totalPeriodFund: Number(myFunding.total_period_fund),
+                startDate: new Date(myFunding.start_date).toISOString().split('T')[0], // YYYY-MM-DD
+                endDate: new Date(myFunding.end_date).toISOString().split('T')[0],     // YYYY-MM-DD
+                status: myFunding.status,
+                joinedStudents: joinedStudents
+            };
 
-        } catch (e) { return error(res, "Gagal info program"); }
+            return success(res, responseData, "Data Program Ditemukan");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal mengambil info program");
+        }
     },
 
 }

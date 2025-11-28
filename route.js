@@ -425,6 +425,12 @@ function Route(Server) {
   // (Ini SEHARUSNYA sudah ada dari modul sebelumnya, pastikan tidak terhapus)
   Server.post("/api/scan/receipt", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
   Server.post("/api/transaction/add", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
+
+
+  // API FUNDER
+  Server.post("/api/program/create", ApiFinflow.requireAuth, ApiFinflow.createProgram);
+  Server.post("/api/program/add-student", ApiFinflow.requireAuth, ApiFinflow.addStudentToProgram);
+  Server.get("/api/program/list", ApiFinflow.requireAuth, ApiFinflow.getMyPrograms);
   Map(Server);
 }
 
