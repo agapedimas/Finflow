@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS `accounts_student`
 ) 
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-CREATE TABLE `accounts_funder` (
+CREATE TABLE IF NOT EXISTS `accounts_funder` (
     `id` varchar(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL, 
     PRIMARY KEY (`id`), 
     CONSTRAINT `fk_accounts_funder` FOREIGN KEY (`id`) REFERENCES `accounts`(`id`) ON DELETE CASCADE

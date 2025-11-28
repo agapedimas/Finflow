@@ -2,7 +2,7 @@
 
 <div class="panel" theme="light" accent="blue">
     <img src="/assets/logo_text.png"/>
-    <div class="title">Aktivasi Mahasiswa</div>
+    <div class="title">Registrasi Mahasiswa</div>
     <div class="subtitle">Lengkapi data penerima beasiswa</div>
     <div class="inputs">
         <input type="email" id="Input_Email" ad-text="Email Akun" name="email" readonly style="background-color: #f0f0f0; cursor: not-allowed;"/>
@@ -11,14 +11,13 @@
         
         <input type="text" id="Input_Bank" ad-text="Nama Bank (cth: Mandiri)" />
         <input type="text" id="Input_Rek" ad-text="Nomor Rekening Pribadi" />
-        
-        <input type="password" id="Input_Password" ad-text="Buat PIN / Password Cadangan" />
+        <input type="text" id="Input_NoHP" ad-text="Nomor Handphone" />
 
         <span class="error" id="Text_ErrorSignUp" style="display:none; color:red; font-size:0.9em; text-align:center;"></span>
 
         <button class="accent" id="Button_SignUp">
             <div class="progressring"></div>
-            <span>Aktifkan Akun</span>
+            <span>Selesaikan Pendaftaran</span>
         </button>
     </div>
 </div>
@@ -126,22 +125,13 @@
     $("nav").remove();
     $(".loading").hide();
 
-    // 1. Ambil Token dari URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const inviteToken = urlParams.get('token');
 
     // 2. Pre-fill & Cek Login
     window.onload = async () => {
-        if (!inviteToken) {
-            alert("Link tidak valid (Token hilang). Mohon minta link baru.");
-            window.location.replace("/index.html"); // Kembali ke home
-            return;
-        }
-
         const user = await Finflow.init();
         if (!user) {
-            // Redirect balik ke login dengan membawa token agar tidak hilang
-            window.location.replace("/web3auth/index.html?type=student&token=" + inviteToken);
+            // Redirect balik ke login
+            window.location.replace("/web3auth/index.html?type=student");
         } else {
             const emailField = document.getElementById("Input_Email");
             if(emailField) {
@@ -162,11 +152,10 @@
 
         try {
             const dataInput = {
-                inviteToken: inviteToken, // Token wajib
                 fullName: document.getElementById("Input_DisplayName").value,
                 bankName: document.getElementById("Input_Bank").value,
                 bankAccount: document.getElementById("Input_Rek").value,
-                password: document.getElementById("Input_Password").value
+                phonenumber: document.getElementById("Input_NoHP").value
             };
 
             // Panggil SDK

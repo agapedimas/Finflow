@@ -1,4 +1,4 @@
-CREATE TABLE `scholarship_programs` (
+CREATE TABLE IF NOT EXISTS `scholarship_programs` (
     `id` VARCHAR(128) PRIMARY KEY NOT NULL,
     `funder_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     

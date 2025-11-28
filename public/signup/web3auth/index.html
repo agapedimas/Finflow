@@ -100,9 +100,7 @@
 
   // 2. Update Judul Sesuai Peran
   if (funderType == "student") {
-    document.getElementById("Text_SignUpTitle").innerText = "Aktivasi Mahasiswa";
-  } else if (funderType == "parent") {
-    document.getElementById("Text_SignUpTitle").innerText = "Aktivasi Orang Tua";
+    document.getElementById("Text_SignUpTitle").innerText = "Registrasi Mahasiswa";
   } else if (funderType == "scholarshipfunder") {
     document.getElementById("Text_SignUpTitle").innerText = "Daftar Funder";
   } else {
@@ -140,9 +138,9 @@
   function handleRedirect(user) {
     // Arahkan ke form pendaftaran yang sesuai
     if (funderType === "student") {
-      window.location.href = "/signup/student?token=" + inviteToken;
+      window.location.href = "/signup/student" ;
     } else if (funderType === "parent") {
-      window.location.href = "/signup/parent?token=" + inviteToken;
+      window.location.href = "/signup/parent";
     } else if (funderType === "scholarshipfunder") {
       window.location.href = "/signup/funder";
     } else {
