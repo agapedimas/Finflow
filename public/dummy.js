@@ -215,7 +215,24 @@ const DUMMY_ALLOCATIONS_PARENT = {
 const DUMMY_MONTHLY_PLAN = {
     "month": "November",      
     "year": 2025,             
-    "allocated": 2000000,  
+    "allocated": 2000000,
+    "categories": [
+        {
+            "categoryId": "0",
+            "categoryName": "Education",
+            "total": 2500000 
+        },
+        {
+            "categoryId": "1",
+            "categoryName": "Wants",
+            "total": 500000 
+        },
+        {
+            "categoryId": "2",
+            "categoryName": "Needs",
+            "total": 400000 
+        }
+    ],
     "stuffs": [
         {
             "id": "ggasfakjfha",

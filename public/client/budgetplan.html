@@ -141,6 +141,35 @@
             color: var(--foreground-description);
             text-align: right;
         }
+
+    #Cards_AllocationTotal {
+        display: grid;
+        overflow: auto;
+        grid-auto-flow: column;
+        grid-auto-columns: max-content;
+        margin: 15px -30px 30px;
+        padding: 0 30px;
+        scrollbar-width: none;
+        gap: 15px;
+        font-size: 0.85em;
+    }
+        #Cards_AllocationTotal .card {
+            display: grid;
+            background: var(--background-list);
+            border-radius: 15px;
+            padding: 15px;  
+        }
+            #Cards_AllocationTotal .card .label {
+                color: var(--foreground-description);
+                font-weight: 600;
+                font-size: 0.85em;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            #Cards_AllocationTotal .card .amount {
+                font-weight: bold;
+                font-size: 1.75em;
+            }
 </style>
 
 <section>
@@ -169,6 +198,8 @@
                 <span data-month="dec"><$ generic month_december_short /></span>
             </div>
             <select id="Select_Years"></select>
+        </div>
+        <div id="Cards_AllocationTotal" class="cards">
         </div>
         <div id="List_MonthlyPlan" class="cards">
         </div>
@@ -544,11 +575,17 @@
                 Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
         }
 
-        const plans = DUMMY_MONTHLY_PLAN.stuffs || $("/client/budgetplan/data/?month=" + month + "&year=" + year);
+        const plans = DUMMY_MONTHLY_PLAN || $("/client/budgetplan/data/?month=" + month + "&year=" + year);
         
+        Cards_AllocationTotal.innerHTML = null;
+        
+        for (const category of plans.categories) {
+            appendPlanCategories(category);
+        }
+
         List_MonthlyPlan.innerHTML = null;
 
-        for (const plan of plans) {
+        for (const plan of plans.stuffs) {
             appendPlanList(plan);
         }
     }
@@ -641,5 +678,22 @@
         }
 
         categoryGroupMatches.append(containerElement);
+    }
+
+    function appendPlanCategories(category) {
+        const nameElement = document.createElement("span");
+        nameElement.classList.add("label");
+        nameElement.innerText = category.categoryName;
+
+        const amountElement = document.createElement("span");
+        amountElement.classList.add("amount");
+        amountElement.innerText = formatCurrency(category.total);
+
+        const containerElement = document.createElement("div");
+        containerElement.classList.add("card");
+        containerElement.append(nameElement);
+        containerElement.append(amountElement);
+
+        Cards_AllocationTotal.append(containerElement);
     }
 </script>
