@@ -246,3 +246,22 @@ const DUMMY_MONTHLY_PLAN = {
         },
     ]
 };
+
+const DUMMY_PROGRAMS = [
+    {
+        "name": "Program Beasiswa Semester Ganjil 25-26",
+        "fundingId": "fund_budi",
+        "funderId": "funder_01",
+        "totalPeriodFund": 6000000.00,
+        "startDate": "2025-01-01",
+        "endDate": "2026-01-02",
+        "status": "Active",
+        "collectedAmount": 0,
+        "joinedStudents": [
+            {
+                "id": "student-12345",
+                "name": "Budi Santoso"
+            }
+        ]
+    }
+]
