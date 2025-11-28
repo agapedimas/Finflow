@@ -9,78 +9,101 @@
 </div>
 
 <style>
-  #Lists_Programs {
-    display: grid;
-  }
-  #Lists_Programs .program {
-    display: grid;
-    background-image: linear-gradient(0, var(--overlay-7) 100%);
-    border-radius: 15px;
-    padding: 17px;
-    max-width: 600px;
-    transition: 0.05s background-color;
-  }
-  #Lists_Programs .program:hover {
-    background-color: var(--background-list-hover);
-  }
-  #Lists_Programs .program:active {
-    background-color: var(--background-list-active);
-  }
-  #Lists_Programs .program .date {
-    color: var(--foreground-description);
-    font-weight: 600;
-    font-size: 0.85em;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  #Lists_Programs .program .name {
-    font-size: 1.35em;
-    font-weight: bold;
-  }
+    #Lists_Programs {
+        display: grid;
+    }
+        #Lists_Programs .program {
+            display: grid;
+            grid-template-areas:
+                "date date"
+                "name name"
+                "x x"
+                "total status";
+            grid-auto-rows: max-content max-content 1em max-content;
+            grid-auto-columns: auto;
+            background-image: linear-gradient(0, var(--overlay-7) 100%);
+            border-radius: 15px;
+            padding: 17px;
+            max-width: 600px;
+            transition: 0.05s background-color;
+        }
+        #Lists_Programs .program:hover {
+            background-color: var(--background-list-hover);
+        }
+        #Lists_Programs .program:active {
+            background-color: var(--background-list-active);
+        }
+            #Lists_Programs .program .date {
+                grid-area: date;
+                font-weight: 500;
+                font-size: 0.85em;
+                letter-spacing: 0.05em;
+            }
+            #Lists_Programs .program .name {
+                grid-area: name;
+                font-size: 1.35em;
+                font-weight: bold;
+            }
+            #Lists_Programs .program .total {
+                grid-area: total;
+                letter-spacing: 0.05em;
+            }
+            #Lists_Programs .program .status {
+                grid-area: status;
+                justify-self: self-end;
+                letter-spacing: 0.05em;
+                text-transform: uppercase;
+                color: var(--foreground-description);
+            }
 
-  #Sheet_Program {
-    background: var(--background-popover-grid);
-  }
-  #Sheet_Program .details {
-    display: grid;
-  }
-  #Sheet_Program .details #Text_ProgramName {
-    font-size: 1.45em;
-    font-weight: bold;
-  }
-  #Sheet_Program .details .label,
-  #Sheet_Program .joined .label {
-    color: var(--foreground-description);
-    font-size: 0.85em;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 1.25em;
-  }
-  #Sheet_Program .details span:not(.label) {
-    font-weight: normal;
-    letter-spacing: 0.015em;
-  }
-  #Sheet_Program .joined {
-    display: grid;
-  }
-  #Sheet_Program .joined .avatar {
-    width: 100%;
-    border-radius: 100%;
-    aspect-ratio: 1;
-  }
-  #Sheet_Program .joined #Button_AddStudent {
-    color: var(--accent);
-  }
-  #Sheet_Program .joined #Button_AddStudent > div {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 22px auto;
-    gap: 18px;
-  }
-  #Sheet_Program .joined #Button_AddStudent > div .icon {
-    text-align: center;
-  }
+    #Sheet_Program {
+        background: var(--background-popover-grid);
+    }
+        #Sheet_Program .details {
+            display: grid;
+        }
+            #Sheet_Program .details #Text_ProgramName {
+                font-size: 1.45em;
+                font-weight: bold;
+            }
+            #Sheet_Program .details .label,
+            #Sheet_Program .joined .label {
+                color: var(--foreground-description);
+                font-size: 0.85em;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                margin-top: 1.25em;
+            }
+            #Sheet_Program .details span:not(.label) {
+                font-weight: normal;
+                letter-spacing: 0.015em;
+            }
+        #Sheet_Program .joined {
+            display: grid;
+        }
+            #Sheet_Program .joined .avatar {
+                width: 100%;
+                border-radius: 100%;
+                aspect-ratio: 1;
+            }
+            #Sheet_Program .joined #Button_AddStudent {
+                color: var(--accent);
+            }
+                #Sheet_Program .joined #Button_AddStudent > div {
+                    display: grid;
+                    grid-auto-flow: column;
+                    grid-auto-columns: 22px auto;
+                    gap: 18px;
+                }
+                    #Sheet_Program .joined #Button_AddStudent > div .icon {
+                        text-align: center;
+                    }
+    @media screen and not (max-width: 425px) {
+        #Sheet_Program .details #Text_ProgramName {
+            margin-right: calc(var(--padding) * 2);
+        }
+    }
 
   :where(#PopOver_AddStudent, #PopOver_AddProgram) {
   }
