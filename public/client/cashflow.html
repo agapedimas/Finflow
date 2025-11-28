@@ -149,6 +149,31 @@
     letter-spacing: 0.025em;
     font-weight: 500;
   }
+  #Card_Wallet > #Grid_WalletActions {
+      display: grid;
+      grid-auto-flow: column;
+      justify-items: end;
+      margin-top: 1em;
+  }
+      #Card_Wallet > #Grid_WalletActions button {
+          position: relative;
+          border-radius: 30px;
+          text-transform: uppercase;
+          font-size: 0.85em;
+          letter-spacing: 0.015em;
+          font-weight: 500;
+          overflow: hidden;
+      }
+          #Card_Wallet > #Grid_WalletActions button::before {
+              content: "";
+              position: absolute;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: var(--accent);
+              opacity: 0.1;
+          }   
   #Card_Feedback {
     grid-area: feedback;
     display: grid;
@@ -404,6 +429,59 @@
   #PopOver_InputCamera #Image_InputCameraPreview {
     width: 100%;
   }
+
+    :where(#PopOver_RequestDrip) {
+    }
+        :where(#PopOver_RequestDrip) .stack {
+            grid-auto-columns: 100px auto !important;
+        }
+            :where(#PopOver_RequestDrip) .stack > span {
+                font-weight: 600;
+            }
+            :where(#PopOver_RequestDrip) .stack > label:has(select) {
+                display: inline-grid;
+                grid-auto-flow: column;
+                justify-items: start;
+                text-align: left !important;
+                justify-content: space-between;
+                opacity: 1;
+            }
+            :where(#PopOver_RequestDrip) .stack :where(label:has(select:disabled), input:disabled) {
+                opacity: 0.6 !important;
+                pointer-events: none;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview[src=""] {
+                display: none;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview {
+                width: 50px;
+                height: 50px;
+                object-fit: cover;
+                border-radius: 7px;
+                transition: 0.075s filter;
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:hover {
+                filter: brightness(0.8);
+            }
+            :where(#PopOver_RequestDrip) .stack #Image_InputProofPreview:active {
+                filter: brightness(0.6);
+            }
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof {
+                padding: 0;
+            }
+            :where(#PopOver_RequestDrip) .stack #Button_AddImageProof:has(~ #Image_InputProofPreview:not([src=""])) {
+                display: none;
+            }
+
+    #Sheet_RequestDripProofPreview {
+        width: auto;
+    }
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large {
+            max-width: min(100%, 800px);
+        }
+        #Sheet_RequestDripProofPreview #Image_InputProofPreview_Large[src=""] {
+            display: none;
+        }
 </style>
 
 <div class="content">
@@ -453,11 +531,14 @@
         <span class="label"><$ generic balance /></span>
         <span id="Text_WalletBalance">&nbsp;</span>
         <div id="Grid_WalletCategories"></div>
+        <div id="Grid_WalletActions">
+            <button id="Button_RequestDrip" class="plain"><$ cashflow request_drip_title /></button>
+        </div>
       </div>
       <div class="card" id="Card_Feedback">
         <span class="label"><$ cashflow overview_feedback_title /></span>
         <span class="description" id="Text_Feedback">&nbsp;</span>
-        <button class="plain"><$ cashflow overview_feedback_ask /></button>
+        <button class="plain" id="Button_AskFeedback"><$ cashflow overview_feedback_ask /></button>
       </div>
     </div>
   </section>
@@ -585,6 +666,47 @@
   </div>
 </div>
 
+<div class="popover" id="PopOver_RequestDrip">
+    <div class="activity">
+        <div class="header cascaded">
+            <div class="buttons">
+                <button id="Button_CancelRequestDrip"><$ generic cancel /></button>
+                <button id="Button_SubmitRequestDrip">
+                    <span><$ generic submit /></span>
+                    <div class="progressring"></div>
+                </button>
+            </div>
+            <div class="title"><$ cashflow request_drip_title /></div>
+        </div>
+        <div class="content">
+            <div class="list">
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_purpose /></span>
+                    <input id="Input_RequestDripPurpose" type="text" class="plain" placeholder="<$ cashflow request_drip_input_purpose_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_amount /></span>
+                    <input id="Input_RequestDripAmount" type="text" class="plain" placeholder="<$ cashflow request_drip_input_amount_placeholder />"/>
+                </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_input_proof /></span>
+                    <div>
+                        <button id="Button_AddImageProof" class="plain">
+                            <span class="icon">&#xf8dd;</span>
+                            <span><$ generic add /></span>
+                        </button>
+                        <img id="Image_InputProofPreview"/>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sheet" id="Sheet_RequestDripProofPreview">
+    <img id="Image_InputProofPreview_Large"/>
+</div>
+
 <script>
   let categories = [
     { id: 0, name: "Wants" },
@@ -675,6 +797,7 @@
     PopOver_InputManual.close();
   };
   Button_SubmitAddTransaction.onclick = async function () {
+    PopOver_InputManual.iscloseable = false;
     PopOver_InputManual.isloading = true;
     Button_CancelAddTransaction.disabled = true;
     Button_SubmitAddTransaction.disabled = true;
@@ -688,12 +811,12 @@
     // LOOPING & PENGIRIMAN DATA
     for (const row of transactionRows) {
       const nameInput = row.querySelector(".name input").value;
-      const amountStr = row.querySelector(".amount input").value.replace(/[^0-9]/g, "");
+      const amountInput = row.querySelector(".amount input").valueInt;
       const catId = row.querySelector(".category select").value;
       const timeVal = row.querySelector(".time input").value;
 
       // Validasi: Jangan kirim kalau nama/harga kosong
-      if (!nameInput || !amountStr) continue;
+      if (!nameInput || !amountInput) continue;
 
       try {
         // 3. PANGGIL API BACKEND
@@ -701,7 +824,7 @@
         // Kita kirim satu per satu sesuai baris yang diisi user
         await $.post("/api/transaction/add", {
           description: nameInput, // Mapping: name -> description
-          amount: parseInt(amountStr), // Pastikan jadi angka integer
+          amount: amountInput, // Pastikan jadi angka integer
           category_id: catId,
           // Ubah format tanggal input HTML ke format ISO yang dimengerti Database
           transaction_date: new Date(timeVal).toISOString(),
@@ -715,6 +838,7 @@
 
     // Matikan loading & Tutup Popup
     PopOver_InputManual.isloading = false;
+    PopOver_InputManual.iscloseable = false;
     PopOver_InputManual.close(true);
 
     // Buka kunci tombol (opsional, karena popup sudah tutup)
@@ -874,6 +998,9 @@
     await takeShotCamera();
     PopOver_InputCamera.content.navigateTo(1);
   };
+  Button_AskFeedback.onclick = function() {
+    window.location.href = "/client/assistant";
+  }
 
   function removeCurrentTransaction(event) {
     event.target.parentNode.remove();
@@ -957,6 +1084,78 @@
       };
     });
   }
+
+    Button_RequestDrip.onclick = function() {
+        Input_RequestDripPurpose.value = null;
+        Input_RequestDripAmount.value = formatCurrency(0);
+        Image_InputProofPreview.src = "";
+        Image_InputProofPreview.file = null;
+
+        PopOver_RequestDrip.open(this);
+        PopOver_RequestDrip.onopened = function() {
+            Input_RequestDripPurpose.focus();
+        }
+    }
+    registerCurrencyInput(Input_RequestDripAmount);
+    Button_CancelRequestDrip.onclick = function() {
+        PopOver_RequestDrip.close(true);
+    }
+    Button_SubmitRequestDrip.onclick = async function() {
+        Button_CancelRequestDrip.disabled = 
+        Button_SubmitRequestDrip.disabled =
+        Input_RequestDripPurpose.disabled =
+        Input_RequestDripAmount.disabled =
+        Button_AddImageProof.disabled =
+        PopOver_RequestDrip.isloading = true;
+        PopOver_RequestDrip.iscloseable = false;
+
+        try {
+            await Delay(1000);
+            //await $.post("");
+            PopOver_RequestDrip.close(true);
+        }
+        catch (error) {
+        }
+
+        Button_CancelRequestDrip.disabled = 
+        Button_SubmitRequestDrip.disabled =
+        Input_RequestDripPurpose.disabled =
+        Input_RequestDripAmount.disabled =
+        Button_AddImageProof.disabled =
+        PopOver_RequestDrip.isloading = false;
+        PopOver_RequestDrip.iscloseable = true;
+    }
+    Button_AddImageProof.onclick = function() {
+        const inputElement = document.createElement("input");
+        inputElement.type = "file";
+        inputElement.accept = "image/png, image/jpeg, image/jpg";
+        inputElement.click();
+
+        inputElement.oninput = function() {
+            const file = inputElement.files[0];
+            Image_InputProofPreview.file = file;
+
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function () {
+                    Image_InputProofPreview.src = reader.result;
+                };
+            }
+            else {
+                Image_InputProofPreview.src = "";
+            }
+        }
+    }
+    Image_InputProofPreview.onclick = function() {
+        Image_InputProofPreview_Large.src = "";
+        const reader = new FileReader();
+        reader.readAsDataURL(Image_InputProofPreview.file);
+        reader.onload = function () {
+            Image_InputProofPreview_Large.src = reader.result;
+        };
+        Sheet_RequestDripProofPreview.open();
+    }
 
   function initializeOverviewCards() {
     initalizeExpensesCard();

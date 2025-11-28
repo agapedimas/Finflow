@@ -23,5 +23,12 @@
     "transaction_addmanual_discard_confirm": "Discard",
     "transaction_addmanual_discard_cancel": "Keep Inputing",
     "transaction_add_title": "New Transaction",
-    "transaction_scan_title": "Scan Bill"
+    "transaction_scan_title": "Scan Bill",
+
+    "request_drip_title": "Request Drip",
+    "request_drip_input_purpose": "Purpose",
+    "request_drip_input_purpose_placeholder": "e.g.: Buy coding book",
+    "request_drip_input_amount": "Amount",
+    "request_drip_input_amount_placeholder": "e.g.: Rp85,000.00",
+    "request_drip_input_proof": "Proof"
 }

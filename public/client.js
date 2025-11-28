@@ -7,11 +7,13 @@ function formatCurrency(number) {
 function registerCurrencyInput(input) {
     input.addEventListener("focus", function() {
         this.value = this.value.replace(/[^0-9|.]/g, "");
-        this.value = parseInt(this.value || 0) + "";
+        this.valueInt = parseInt(this.value || 0);
+        this.value = this.valueInt + "";
     });
 
     input.addEventListener("input", function () {
         this.value = this.value.replace(/[^0-9]/g, "");
+        this.valueInt = parseInt(this.value);
     });
 
     input.addEventListener("blur", function() {

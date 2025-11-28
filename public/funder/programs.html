@@ -193,28 +193,34 @@
 </div>
 
 <script>
-  registerCurrencyInput(Input_ProgramAmount);
-  Button_NewProgram.onclick = function () {
-    Input_ProgramName.value = null;
-    Input_ProgramAmount.value = "Rp0";
-    Input_ProgramStartDate.value = null;
-    Input_ProgramEndDate.value = null;
-    PopOver_AddProgram.open(this);
-    PopOver_AddProgram.onopened = function () {
-      Input_ProgramName.focus();
-    };
-  };
-  Button_CancelAddProgram.onclick = function () {
-    PopOver_AddProgram.close(true);
-  };
-  Button_SubmitAddProgram.onclick = async function () {
-    Input_ProgramName.disabled = Input_ProgramAmount.disabled = Input_ProgramStartDate.disabled = Input_ProgramEndDate.disabled = Button_CancelAddProgram.disabled = Button_SubmitAddProgram.disabled = PopOver_AddProgram.isloading = true;
-    PopOver_AddProgram.iscloseable = false;
+    registerCurrencyInput(Input_ProgramAmount);
+    Button_NewProgram.onclick = function() {
+        Input_ProgramName.value = null;
+        Input_ProgramAmount.value = formatCurrency(0);
+        Input_ProgramStartDate.value = null;
+        Input_ProgramEndDate.value = null;
+        PopOver_AddProgram.open(this);
+        PopOver_AddProgram.onopened = function() {
+            Input_ProgramName.focus();
+        }
+    }
+    Button_CancelAddProgram.onclick = function() {
+        PopOver_AddProgram.close(true);
+    }
+    Button_SubmitAddProgram.onclick = async function() {
+        Input_ProgramName.disabled =
+        Input_ProgramAmount.disabled =
+        Input_ProgramStartDate.disabled =
+        Input_ProgramEndDate.disabled =
+        Button_CancelAddProgram.disabled = 
+        Button_SubmitAddProgram.disabled =
+        PopOver_AddProgram.isloading = true;
+        PopOver_AddProgram.iscloseable = false;
 
     try {
       const payload = {
         program_name: Input_ProgramName.value,
-        total_amount: parseInt(Input_ProgramAmount.value.replace(/[^0-9]/g, "")) || 0,
+        total_amount: Input_ProgramAmount.valueInt,
         start_date: Input_ProgramStartDate.value,
         end_date: Input_ProgramEndDate.value,
       };
