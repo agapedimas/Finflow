@@ -199,7 +199,7 @@
     registerCurrencyInput(Input_ProgramAmount);
     Button_NewProgram.onclick = function() {
         Input_ProgramName.value = null;
-        Input_ProgramAmount.value = "Rp0";
+        Input_ProgramAmount.value = formatCurrency(0);
         Input_ProgramStartDate.value = null;
         Input_ProgramEndDate.value = null;
         PopOver_AddProgram.open(this);
@@ -221,6 +221,12 @@
         PopOver_AddProgram.iscloseable = false;
 
         try {
+            const program = {
+                name: Input_ProgramName.value,
+                totalAmount: Input_ProgramAmount.valueInt,
+                startDate: Input_ProgramStartDate.value,
+                endDate: Input_ProgramEndDate.value
+            }
             await Delay(1000);
             // await $.post("");
             PopOver_AddProgram.close(true);
@@ -256,9 +262,13 @@
         PopOver_AddStudent.iscloseable = false;
 
         try {
+            const student = {
+                email: Input_StudentEmail.value
+            }
             await Delay(1000);
-            // await $.post("");
+            // await $.post("", {student});
             PopOver_AddStudent.close(true);
+            console.log(student);
         }
         catch (error) {
 

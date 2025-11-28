@@ -349,7 +349,7 @@
 
         const plan = {
             name: Input_StuffName.value,
-            amount: parseInt(Input_StuffAmount.value.replace(/[^0-9]/g, "")) || 0,
+            amount: Input_StuffAmount.valueInt,
             quantity: parseInt(Input_StuffQuantity.value) || 0,
             categoryId: Select_StuffCategory.value
         }
@@ -397,7 +397,7 @@
 
         const plan = {
             name: Input_StuffNameEdit.value,
-            amount: parseInt(Input_StuffAmountEdit.value.replace(/[^0-9]/g, "")) || 0,
+            amount: Input_StuffAmountEdit.valueInt,
             quantity: parseInt(Input_StuffQuantityEdit.value) || 0,
             categoryId: Select_StuffCategoryEdit.value,
             status: "pending",
