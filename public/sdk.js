@@ -71,9 +71,23 @@ const Finflow = {
   logout: async () => {
         console.log("Logging out...");
 
-        // 1. Logout dari Web3Auth (Membersihkan sesi Google di Browser)
-        if (web3auth) {
-            await web3auth.logout();
+        try {
+            // [PERBAIKAN PENTING]
+            // 1. Cek apakah instance Web3Auth hilang (karena refresh)?
+            if (!web3auth) {
+                console.log("Web3Auth instance null, re-initializing for logout...");
+                // Paksa init ulang agar kita bisa memanggil fungsi logout-nya
+                await Finflow.init();
+            }
+
+            // 2. Logout dari Web3Auth (Pembersihan Sesi Google)
+            // Sekarang web3auth pasti sudah ada
+            if (web3auth && web3auth.connected) {
+                await web3auth.logout();
+                console.log("✅ Web3Auth Session Cleared");
+            }
+        } catch (e) {
+            console.warn("Web3Auth logout warning (ignore if already logged out):", e);
         }
 
         // 2. Panggil Backend untuk Hapus Session Database
@@ -88,6 +102,7 @@ const Finflow = {
 
         // 3. Bersihkan LocalStorage (Jejak-jejak Frontend)
         provider = null;
+        web3auth = null;
         localStorage.clear();
         sessionStorage.clear();
 
