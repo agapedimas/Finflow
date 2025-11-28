@@ -298,6 +298,10 @@ function Route(Server) {
 
                 finalResponse = response;
                 console.log("final response: ", finalResponse)
+
+                await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(response.history || history)]);
+                
+
                 
             } catch (error) {
                 console.log('error: ' + error.message);
@@ -321,12 +325,14 @@ function Route(Server) {
             res.send(finalResponse.text);
             
             // Simpan history yang sudah diperbarui.
-            await SQL.Query("INSERT INTO chat_history (student_id, content) VALUES (?, ?) ON DUPLICATE KEY UPDATE content = VALUES(content)", [studentId, JSON.stringify(finalResponse.history || history)]);
-        }
+        }   
         else {
-            console.error(finalResponse.finish.code);
+            console.error(response.finish.code);
             res.status(500).send("Terjadi kesalahan pada proses asisten virtual.");
         }
+
+
+        
   });
 
 
