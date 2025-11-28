@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS `scholarship_programs` (
     `start_date` DATE NOT NULL,
     `end_date` DATE NOT NULL,
     `total_period_fund` DECIMAL(15, 2) NOT NULL,
-
+    `status` ENUM('Open', 'Closed', 'Completed', 'Canceled') NOT NULL DEFAULT 'Open',
     
     FOREIGN KEY (`funder_id`) REFERENCES `accounts_funder`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS `funding` (
     `program_id` VARCHAR(128) NOT NULL, 
     `student_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     `status` ENUM('Ready_To_Fund', 'Waiting_Allocation', 'Active', 'Completed', 'Canceled') NOT NULL DEFAULT 'Ready_To_Fund',
-    `collected_amount` DECIMAL(15, 2) DEFAULT 0,
 
     FOREIGN KEY (`program_id`) REFERENCES `scholarship_programs`(`id`) ON DELETE CASCADE,
     FOREIGN KEY (`student_id`) REFERENCES `accounts_student`(`id`) ON DELETE CASCADE

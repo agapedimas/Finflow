@@ -1,356 +1,386 @@
 <ad-title><$ programs title /></ad-title>
 
 <div class="header">
-    <div class="buttons">
-        <div></div>
-        <button id="Button_NewProgram" class="icon">&#xf8dd;</button>
-    </div>
-    <div class="title"><$ programs title /></div>
+  <div class="buttons">
+    <div></div>
+    <button id="Button_NewProgram" class="icon">&#xf8dd;</button>
+  </div>
+  <div class="title"><$ programs title /></div>
 </div>
 
 <style>
-    #Lists_Programs {
-        display: grid;
-    }
-        #Lists_Programs .program {
-            display: grid;
-            background-image: linear-gradient(0, var(--overlay-7) 100%);
-            border-radius: 15px;
-            padding: 17px;
-            max-width: 600px;
-            transition: 0.05s background-color;
-        }
-        #Lists_Programs .program:hover {
-            background-color: var(--background-list-hover);
-        }
-        #Lists_Programs .program:active {
-            background-color: var(--background-list-active);
-        }
-            #Lists_Programs .program .date {
-                color: var(--foreground-description);
-                font-weight: 600;
-                font-size: 0.85em;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
-            #Lists_Programs .program .name {
-                font-size: 1.35em;
-                font-weight: bold;
-            }
+  #Lists_Programs {
+    display: grid;
+  }
+  #Lists_Programs .program {
+    display: grid;
+    background-image: linear-gradient(0, var(--overlay-7) 100%);
+    border-radius: 15px;
+    padding: 17px;
+    max-width: 600px;
+    transition: 0.05s background-color;
+  }
+  #Lists_Programs .program:hover {
+    background-color: var(--background-list-hover);
+  }
+  #Lists_Programs .program:active {
+    background-color: var(--background-list-active);
+  }
+  #Lists_Programs .program .date {
+    color: var(--foreground-description);
+    font-weight: 600;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  #Lists_Programs .program .name {
+    font-size: 1.35em;
+    font-weight: bold;
+  }
 
-    #Sheet_Program {
-        background: var(--background-popover-grid);
-    }
-        #Sheet_Program .details {
-            display: grid;
-        }
-            #Sheet_Program .details #Text_ProgramName {
-                font-size: 1.45em;
-                font-weight: bold;
-            }
-            #Sheet_Program .details .label,
-            #Sheet_Program .joined .label {
-                color: var(--foreground-description);
-                font-size: 0.85em;
-                font-weight: 500;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                margin-top: 1.25em;
-            }
-            #Sheet_Program .details span:not(.label) {
-                font-weight: normal;
-                letter-spacing: 0.015em;
-            }
-        #Sheet_Program .joined {
-            display: grid;
-        }
-            #Sheet_Program .joined .avatar {
-                width: 100%;
-                border-radius: 100%;
-                aspect-ratio: 1;
-            }
-            #Sheet_Program .joined #Button_AddStudent {
-                color: var(--accent);
-            }
-                #Sheet_Program .joined #Button_AddStudent > div {
-                    display: grid;
-                    grid-auto-flow: column;
-                    grid-auto-columns: 22px auto;
-                    gap: 18px;
-                }
-                    #Sheet_Program .joined #Button_AddStudent > div .icon {
-                        text-align: center;
-                    }
+  #Sheet_Program {
+    background: var(--background-popover-grid);
+  }
+  #Sheet_Program .details {
+    display: grid;
+  }
+  #Sheet_Program .details #Text_ProgramName {
+    font-size: 1.45em;
+    font-weight: bold;
+  }
+  #Sheet_Program .details .label,
+  #Sheet_Program .joined .label {
+    color: var(--foreground-description);
+    font-size: 0.85em;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1.25em;
+  }
+  #Sheet_Program .details span:not(.label) {
+    font-weight: normal;
+    letter-spacing: 0.015em;
+  }
+  #Sheet_Program .joined {
+    display: grid;
+  }
+  #Sheet_Program .joined .avatar {
+    width: 100%;
+    border-radius: 100%;
+    aspect-ratio: 1;
+  }
+  #Sheet_Program .joined #Button_AddStudent {
+    color: var(--accent);
+  }
+  #Sheet_Program .joined #Button_AddStudent > div {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 22px auto;
+    gap: 18px;
+  }
+  #Sheet_Program .joined #Button_AddStudent > div .icon {
+    text-align: center;
+  }
 
-    :where(#PopOver_AddStudent, #PopOver_AddProgram) {
-    }
-        :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack {
-            grid-auto-columns: 100px auto !important;
-        }
-            :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack > span {
-                font-weight: 600;
-            }
-            :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack > label:has(select) {
-                display: inline-grid;
-                grid-auto-flow: column;
-                justify-items: start;
-                text-align: left !important;
-                justify-content: space-between;
-                opacity: 1;
-            }
-            :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack :where(label:has(select:disabled), input:disabled) {
-                opacity: 0.6 !important;
-                pointer-events: none;
-            }
+  :where(#PopOver_AddStudent, #PopOver_AddProgram) {
+  }
+  :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack {
+    grid-auto-columns: 100px auto !important;
+  }
+  :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack > span {
+    font-weight: 600;
+  }
+  :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack > label:has(select) {
+    display: inline-grid;
+    grid-auto-flow: column;
+    justify-items: start;
+    text-align: left !important;
+    justify-content: space-between;
+    opacity: 1;
+  }
+  :where(#PopOver_AddStudent, #PopOver_AddProgram) .stack :where(label:has(select:disabled), input:disabled) {
+    opacity: 0.6 !important;
+    pointer-events: none;
+  }
 </style>
 
 <div class="content">
-    <div class="cards" id="Lists_Programs"></div>
+  <div class="cards" id="Lists_Programs"></div>
 </div>
 
 <div class="sheet" id="Sheet_Program">
-    <div class="details">
-        <span id="Text_ProgramName"></span>
+  <div class="details">
+    <span id="Text_ProgramName"></span>
 
-        <span class="label"><$ programs period /></span>
-        <span id="Text_ProgramDate"></span>
+    <span class="label"><$ programs period /></span>
+    <span id="Text_ProgramDate"></span>
 
-        <span class="label"><$ programs amount_total /></span>
-        <span id="Text_ProgramAmountTotal"></span>
+    <span class="label"><$ programs amount_total /></span>
+    <span id="Text_ProgramAmountTotal"></span>
 
-        <span class="label"><$ programs amount_collected /></span>
-        <span id="Text_ProgramAmountCollected"></span>
-
-        <span class="label"><$ programs status /></span>
-        <span id="Text_ProgramStatus"></span>
-    </div>
-    <div class="joined">
-        <span class="label"><$ programs joined_students /></span>
-        <div class="list" id="List_JoinedStudents">
-            <div class="stack clickable" id="Button_AddStudent">
-                <div>
-                    <span class="icon">&#xf8dd;</span>
-                    <span><$ programs invite_student /></span>
-                </div>
-            </div>
+    <span class="label"><$ programs status /></span>
+    <span id="Text_ProgramStatus"></span>
+  </div>
+  <div class="joined">
+    <span class="label"><$ programs joined_students /></span>
+    <div class="list" id="List_JoinedStudents">
+      <div class="stack clickable" id="Button_AddStudent">
+        <div>
+          <span class="icon">&#xf8dd;</span>
+          <span><$ programs invite_student /></span>
         </div>
+      </div>
     </div>
+  </div>
 </div>
 
 <div class="popover" id="PopOver_AddStudent">
-    <div class="activity">
-        <div class="header cascaded">
-            <div class="buttons">
-                <button id="Button_CancelAddStudent"><$ generic cancel /></button>
-                <button id="Button_SubmitAddStudent">
-                    <div class="progressring"></div>
-                    <span><$ generic add /></span>
-                </button>
-            </div>
-            <div class="title"><$ programs invite_student /></div>
-        </div>
-        <div class="content">
-            <div class="list">
-                <div class="stack email">
-                    <span><$ generic email /></span>
-                    <input id="Input_StudentEmail" type="email" class="plain" placeholder="<$ generic email_placeholder />"/>
-                </div>
-            </div>
-        </div>
+  <div class="activity">
+    <div class="header cascaded">
+      <div class="buttons">
+        <button id="Button_CancelAddStudent"><$ generic cancel /></button>
+        <button id="Button_SubmitAddStudent">
+          <div class="progressring"></div>
+          <span><$ generic add /></span>
+        </button>
+      </div>
+      <div class="title"><$ programs invite_student /></div>
     </div>
+    <div class="content">
+      <div class="list">
+        <div class="stack email">
+          <span><$ generic email /></span>
+          <input id="Input_StudentEmail" type="email" class="plain" placeholder="<$ generic email_placeholder />" />
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="popover" id="PopOver_AddProgram">
-    <div class="activity">
-        <div class="header cascaded">
-            <div class="buttons">
-                <button id="Button_CancelAddProgram"><$ generic cancel /></button>
-                <button id="Button_SubmitAddProgram">
-                    <div class="progressring"></div>
-                    <span><$ generic create /></span>
-                </button>
-            </div>
-            <div class="title"><$ programs program_add_title /></div>
-        </div>
-        <div class="content">
-            <div class="list">
-                <div class="stack name">
-                    <span><$ programs input_name /></span>
-                    <input id="Input_ProgramName" type="text" class="plain" placeholder="<$ programs input_name_placeholder />"/>
-                </div>
-                <div class="stack amount">
-                    <span><$ programs input_totalamount /></span>
-                    <input id="Input_ProgramAmount" type="text" class="plain" placeholder="<$ programs input_totalamount_placeholder />"/>
-                </div>
-                <div class="stack startdate">
-                    <span><$ programs input_startdate /></span>
-                    <input id="Input_ProgramStartDate" type="date" class="plain"/>
-                </div>
-                <div class="stack enddate">
-                    <span><$ programs input_enddate /></span>
-                    <input id="Input_ProgramEndDate" type="date" class="plain"/>
-                </div>
-            </div>
-        </div>
+  <div class="activity">
+    <div class="header cascaded">
+      <div class="buttons">
+        <button id="Button_CancelAddProgram"><$ generic cancel /></button>
+        <button id="Button_SubmitAddProgram">
+          <div class="progressring"></div>
+          <span><$ generic create /></span>
+        </button>
+      </div>
+      <div class="title"><$ programs program_add_title /></div>
     </div>
+    <div class="content">
+      <div class="list">
+        <div class="stack name">
+          <span><$ programs input_name /></span>
+          <input id="Input_ProgramName" type="text" class="plain" placeholder="<$ programs input_name_placeholder />" />
+        </div>
+        <div class="stack amount">
+          <span><$ programs input_totalamount /></span>
+          <input id="Input_ProgramAmount" type="text" class="plain" placeholder="<$ programs input_totalamount_placeholder />" />
+        </div>
+        <div class="stack startdate">
+          <span><$ programs input_startdate /></span>
+          <input id="Input_ProgramStartDate" type="date" class="plain" />
+        </div>
+        <div class="stack enddate">
+          <span><$ programs input_enddate /></span>
+          <input id="Input_ProgramEndDate" type="date" class="plain" />
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
-    registerCurrencyInput(Input_ProgramAmount);
-    Button_NewProgram.onclick = function() {
-        Input_ProgramName.value = null;
-        Input_ProgramAmount.value = formatCurrency(0);
-        Input_ProgramStartDate.value = null;
-        Input_ProgramEndDate.value = null;
-        PopOver_AddProgram.open(this);
-        PopOver_AddProgram.onopened = function() {
-            Input_ProgramName.focus();
-        }
-    }
-    Button_CancelAddProgram.onclick = function() {
+  registerCurrencyInput(Input_ProgramAmount);
+  Button_NewProgram.onclick = function () {
+    Input_ProgramName.value = null;
+    Input_ProgramAmount.value = "Rp0";
+    Input_ProgramStartDate.value = null;
+    Input_ProgramEndDate.value = null;
+    PopOver_AddProgram.open(this);
+    PopOver_AddProgram.onopened = function () {
+      Input_ProgramName.focus();
+    };
+  };
+  Button_CancelAddProgram.onclick = function () {
+    PopOver_AddProgram.close(true);
+  };
+  Button_SubmitAddProgram.onclick = async function () {
+    Input_ProgramName.disabled = Input_ProgramAmount.disabled = Input_ProgramStartDate.disabled = Input_ProgramEndDate.disabled = Button_CancelAddProgram.disabled = Button_SubmitAddProgram.disabled = PopOver_AddProgram.isloading = true;
+    PopOver_AddProgram.iscloseable = false;
+
+    try {
+      const payload = {
+        program_name: Input_ProgramName.value,
+        total_amount: Input_ProgramAmount.valueInt,
+        start_date: Input_ProgramStartDate.value,
+        end_date: Input_ProgramEndDate.value,
+      };
+
+      if (!payload.program_name || !payload.total_amount || !payload.start_date || !payload.end_date) {
+        throw new Error("Mohon lengkapi semua data program.");
+      }
+
+      const res = await $.post("/api/program/create", payload);
+
+      if (res.success) {
+        alert("Program Berhasil Dibuat!");
         PopOver_AddProgram.close(true);
-    }
-    Button_SubmitAddProgram.onclick = async function() {
-        Input_ProgramName.disabled =
-        Input_ProgramAmount.disabled =
-        Input_ProgramStartDate.disabled =
-        Input_ProgramEndDate.disabled =
-        Button_CancelAddProgram.disabled = 
-        Button_SubmitAddProgram.disabled =
-        PopOver_AddProgram.isloading = true;
-        PopOver_AddProgram.iscloseable = false;
+        // [OPSIONAL] Refresh daftar program di halaman jika ada fungsi loadnya
+        // initializeProgramList();
+      } else {
+        alert("Gagal: " + res.message);
+      }
 
-        try {
-            const program = {
-                name: Input_ProgramName.value,
-                totalAmount: Input_ProgramAmount.valueInt,
-                startDate: Input_ProgramStartDate.value,
-                endDate: Input_ProgramEndDate.value
+      PopOver_AddProgram.close(true);
+    } catch (error) {
+      console.error(error);
+      const msg = error.responseJSON ? error.responseJSON.message : error.message;
+      alert("Terjadi kesalahan: " + msg);
+    }
+
+    Input_ProgramName.disabled = Input_ProgramAmount.disabled = Input_ProgramStartDate.disabled = Input_ProgramEndDate.disabled = Button_CancelAddProgram.disabled = Button_SubmitAddProgram.disabled = PopOver_AddProgram.isloading = false;
+    PopOver_AddProgram.iscloseable = true;
+  };
+  Button_AddStudent.onclick = function () {
+    Input_StudentEmail.value = null;
+    PopOver_AddStudent.open(this);
+    PopOver_AddStudent.onopened = function () {
+      Input_StudentEmail.focus();
+    };
+  };
+  Button_CancelAddStudent.onclick = function () {
+    PopOver_AddStudent.close();
+  };
+  Button_SubmitAddStudent.onclick = async function () {
+    Input_StudentEmail.disabled = Button_CancelAddStudent.disabled = Button_SubmitAddStudent.disabled = PopOver_AddStudent.isloading = true;
+    PopOver_AddStudent.iscloseable = false;
+
+    try {
+      const email = Input_StudentEmail.value;
+      const progId = PopOver_AddStudent.programId;
+
+      if(!email) throw new Error("Email wajib diisi");
+      if (!progId) throw new Error("ID Program hilang. Silahkan refresh.");
+
+      const res = await $.post("/api/program/add-student", {
+        program_id: progId,
+        student_email: email
+      });
+
+      if (res.success) {
+        alert(`Berhasil! ${res.data.student_name} telah ditambahkan.`);
+            
+        await loadPrograms(); 
+                
+        // Opsional: Jika Anda ingin sheet detailnya tetap terbuka dan terupdate,
+        // Anda perlu logika tambahan untuk mencari program yang tadi diedit 
+        // dan membukanya kembali. Tapi reload list saja sudah cukup agar data sinkron.
+                
+        // Menutup sheet agar user bisa klik ulang untuk melihat data terbaru
+        if(typeof Sheet_Program !== 'undefined') Sheet_Program.close();
+      } else {
+        alert("Gagal: " + res.message);
+      }
+    } catch (error) {
+        console.error(error);
+        const msg = error.responseJSON ? error.responseJSON.message : error.message;
+        alert("Terjadi kesalahan: " + msg);
+    }
+
+    Input_StudentEmail.disabled = Button_CancelAddStudent.disabled = Button_SubmitAddStudent.disabled = PopOver_AddStudent.isloading = false;
+    PopOver_AddStudent.iscloseable = true;
+  };
+
+  initializePrograms();
+
+  async function initializePrograms() {
+    try {
+        const response = await $.get("/api/program/list");
+
+        if (response.success && response.data) {
+            for (const program of response.data) {
+                appendProgram(program);
             }
-            await Delay(1000);
-            // await $.post("");
-            PopOver_AddProgram.close(true);
+        } else {
+            console.log("Belum ada program yang dibuat.");
         }
-        catch (error) {
-
-        }
-
-        Input_ProgramName.disabled =
-        Input_ProgramAmount.disabled =
-        Input_ProgramStartDate.disabled =
-        Input_ProgramEndDate.disabled =
-        Button_CancelAddProgram.disabled = 
-        Button_SubmitAddProgram.disabled =
-        PopOver_AddProgram.isloading = false;
-        PopOver_AddProgram.iscloseable = true;
+    } catch (e) {
+        console.error("Gagal memuat program:", e);
+        // Jika error 401, redirect ke login
+        if(e.status === 401) window.location.href = "/signin.html";
     }
-    Button_AddStudent.onclick = function() {
-        Input_StudentEmail.value = null;
-        PopOver_AddStudent.open(this);
-        PopOver_AddStudent.onopened = function() {
-            Input_StudentEmail.focus();
-        }
-    }
-    Button_CancelAddStudent.onclick = function() {
-        PopOver_AddStudent.close();
-    }
-    Button_SubmitAddStudent.onclick = async function() {
-        Input_StudentEmail.disabled =
-        Button_CancelAddStudent.disabled = 
-        Button_SubmitAddStudent.disabled =
-        PopOver_AddStudent.isloading = true;
-        PopOver_AddStudent.iscloseable = false;
+  
+    //const programs = DUMMY_PROGRAMS || $.get("/api/" + funderId + "/programs");
 
-        try {
-            const student = {
-                email: Input_StudentEmail.value
-            }
-            await Delay(1000);
-            // await $.post("", {student});
-            PopOver_AddStudent.close(true);
-            console.log(student);
-        }
-        catch (error) {
+  }
 
-        }
+  function appendProgram(program) {
+    const nameElement = document.createElement("span");
+    nameElement.classList.add("name");
+    nameElement.innerText = program.name;
 
-        Input_StudentEmail.disabled =
-        Button_CancelAddStudent.disabled = 
-        Button_SubmitAddStudent.disabled =
-        PopOver_AddStudent.isloading = false;
-        PopOver_AddStudent.iscloseable = true;
-    }
+    const totalAmountElement = document.createElement("span");
+    totalAmountElement.classList.add("total");
+    totalAmountElement.innerText = formatCurrency(program.totalPeriodFund);
 
-    initializePrograms();
+    const dateElement = document.createElement("span");
+    dateElement.classList.add("date");
+    dateElement.innerText = moment(program.startDate).format("ll") + " - " + moment(program.endDate).format("ll");
 
-    async function initializePrograms() {
-        // automatically replaced to actual id of funder
-        const funderId = "<#? activeuser.id ?#>";
-        const programs = DUMMY_PROGRAMS || $.get("/api/" + funderId + "/programs");
+    const statusElement = document.createElement("span");
+    statusElement.classList.add("status");
+    statusElement.innerText = program.status;
 
-        for (const program of programs)
-            appendProgram(program);
-    }
+    const programElement = document.createElement("div");
+    programElement.classList.add("program");
+    programElement.append(dateElement);
+    programElement.append(nameElement);
+    programElement.append(totalAmountElement);
+    programElement.append(statusElement);
+    programElement.onclick = function (event) {
+      Text_ProgramName.innerText = nameElement.innerHTML;
+      Text_ProgramDate.innerText = dateElement.innerHTML;
+      Text_ProgramAmountTotal.innerText = totalAmountElement.innerHTML;
+      Text_ProgramStatus.innerText = statusElement.innerHTML;
 
-    function appendProgram(program) {
-        const nameElement = document.createElement("span");
-        nameElement.classList.add("name");
-        nameElement.innerText = program.name;
+      for (const oldStudent of List_JoinedStudents.children) {
+            if (oldStudent.tagName == "DIV" && oldStudent.classList.contains("iconed"))
+                oldStudent.remove();
+      }
+      
+      for (const student of program.joinedStudents) appendStudents(student);
 
-        const totalAmountElement = document.createElement("span");
-        totalAmountElement.classList.add("total");
-        totalAmountElement.innerText = formatCurrency(program.totalPeriodFund);
+      if (typeof PopOver_AddStudent !== 'undefined') {
+          PopOver_AddStudent.programId = program.programId; 
+          console.log("Program Active:", program.programId); // Debug
+      }
 
-        const dateElement = document.createElement("span");
-        dateElement.classList.add("date");
-        dateElement.innerText = moment(program.startDate).format("ll") + " - " +  moment(program.endDate).format("ll");
+      Sheet_Program.data = program;
+      Sheet_Program.open();
 
-        const statusElement = document.createElement("span");
-        statusElement.classList.add("status");
-        statusElement.innerText = program.status;
+    };
 
-        const programElement = document.createElement("div");
-        programElement.classList.add("program");
-        programElement.append(dateElement);
-        programElement.append(nameElement);
-        programElement.append(totalAmountElement);
-        programElement.append(statusElement);
-        programElement.onclick = function(event) {
-            Text_ProgramName.innerText = nameElement.innerHTML;
-            Text_ProgramDate.innerText = dateElement.innerHTML;
-            Text_ProgramAmountTotal.innerText = totalAmountElement.innerHTML;
-            Text_ProgramAmountCollected.innerText = formatCurrency(program.collectedAmount);
-            Text_ProgramStatus.innerText = statusElement.innerHTML;
+    Lists_Programs.append(programElement);
+  }
 
-            for (const oldStudent of List_JoinedStudents.children) {
-                if (oldStudent.tagName == "DIV" && oldStudent.classList.contains("iconed"))
-                    oldStudent.remove();
-            }
-            for (const student of program.joinedStudents)
-                appendStudents(student);
+  function appendStudents(student) {
+    const avatarElement = document.createElement("img");
+    avatarElement.classList.add("avatar");
+    avatarElement.src = "/avatar/" + student.id;
 
-            Sheet_Program.data = program;
-            Sheet_Program.open();
-        }
+    const nameElement = document.createElement("span");
+    nameElement.classList.add("name");
+    nameElement.innerText = student.name;
 
-        Lists_Programs.append(programElement);
-    }
+    const stackElement = document.createElement("div");
+    stackElement.classList.add("stack");
+    stackElement.classList.add("iconed");
+    stackElement.append(avatarElement);
+    stackElement.append(nameElement);
 
-    function appendStudents(student) {
-        const avatarElement = document.createElement("img");
-        avatarElement.classList.add("avatar");
-        avatarElement.src = "/avatar/" + student.id;
-
-        const nameElement = document.createElement("span");
-        nameElement.classList.add("name");
-        nameElement.innerText = student.name;
-
-        const stackElement = document.createElement("div");
-        stackElement.classList.add("stack");
-        stackElement.classList.add("iconed");
-        stackElement.append(avatarElement);
-        stackElement.append(nameElement);
-
-        List_JoinedStudents.append(stackElement);
-    }
+    List_JoinedStudents.append(stackElement);
+  }
 </script>
