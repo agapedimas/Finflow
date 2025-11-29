@@ -1129,48 +1129,110 @@
         PopOver_RequestDrip.close(true);
     }
     Button_SubmitRequestDrip.onclick = async function() {
+        // 1. Kunci UI (Loading State)
         Button_CancelRequestDrip.disabled = 
         Button_SubmitRequestDrip.disabled =
         Input_RequestDripPurpose.disabled =
         Input_RequestDripAmount.disabled =
-        Button_AddImageProof.disabled =
+        Button_AddImageProof.disabled = true;
+        
         PopOver_RequestDrip.isloading = true;
         PopOver_RequestDrip.iscloseable = false;
 
         try {
-            const data = {
-              purpose: Input_RequestDripPurpose.value,
-              amount: Input_RequestDripAmount.valueInt,
-              urgency: Select_RequestDripUrgency.value
-            };
-            // const result = await $.post("", data);
-            PopOver_RequestDrip.close(true);
-            
-            Components.ActionSheet.Open(
-            {
-                Title: "Title Here",
-                Description: "Message Here",
-                Actions: [
-                    { 
-                        Title: "<$ generic done />", Type: "Options.Accent", 
-                        Action: async function()
-                        {
-                          // Actions when user click Done button
-                        }
-                    }
-                ]
-            });  
-        }
-        catch (error) {
-        }
+            // 2. Ambil Data Input
+            const purpose = Input_RequestDripPurpose.value;
+            const amount = Input_RequestDripAmount.valueInt; // Mengambil integer dari input currency
+            const urgencyType = Select_RequestDripUrgency.value; // 'urgent' atau 'request_education'
+            const file = Image_InputProofPreview.file;
 
-        Button_CancelRequestDrip.disabled = 
-        Button_SubmitRequestDrip.disabled =
-        Input_RequestDripPurpose.disabled =
-        Input_RequestDripAmount.disabled =
-        Button_AddImageProof.disabled =
-        PopOver_RequestDrip.isloading = false;
-        PopOver_RequestDrip.iscloseable = true;
+            // Validasi Sederhana
+            if (!purpose || !amount || amount <= 0) {
+                throw new Error("Mohon lengkapi tujuan dan nominal yang valid.");
+            }
+
+            // 3. Konversi Gambar ke Base64 (Agar bisa dikirim via JSON)
+            // Backend mengharapkan 'proof_image_url'
+            let base64Image = null;
+            if (file) {
+                base64Image = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                // Opsional: Throw error jika gambar wajib
+                // throw new Error("Bukti pendukung (foto) wajib diunggah.");
+            }
+
+            // 4. Tentukan Endpoint & Payload Berdasarkan Tipe Request
+            let endpoint = "";
+            let payload = {};
+
+            if (urgencyType === 'urgent') {
+                // --- FLOW DANA DARURAT ---
+                endpoint = "/api/exec/urgent";
+                payload = {
+                    amount: amount,
+                    reason: purpose,
+                    proof_image_url: base64Image // Base64 string
+                };
+            } else {
+                // --- FLOW DANA PENDIDIKAN (REIMBURSE) ---
+                endpoint = "/api/exec/edu/post";
+                payload = {
+                    amount: amount,
+                    description: purpose,
+                    proof_image_url: base64Image
+                };
+            }
+
+            // 5. Kirim Request ke Backend
+            const res = await $.post(endpoint, payload);
+
+            if (res.success) {
+                PopOver_RequestDrip.close(true);
+                
+                // Pesan Sukses Berbeda Tergantung Tipe
+                let msg = "";
+                if (urgencyType === 'urgent') {
+                    // Data dari backend: received, deduction_per_week
+                    const d = res.data;
+                    msg = `✅ DANA DARURAT CAIR!\n\n` +
+                          `Diterima: Rp ${formatCurrency(d.received)}\n` +
+                          `⚠️ Konsekuensi: Drip mingguan Anda berikutnya dipotong Rp ${formatCurrency(d.deduction_per_week)}.`;
+                } else {
+                    // Data dari backend: tx_hash
+                    msg = `📚 REIMBURSE PENDIDIKAN SUKSES!\n\n` +
+                          `Dana telah dikirim dari Smart Contract.\n` +
+                          `Hash: ${res.data.tx_hash ? res.data.tx_hash.substring(0, 15) + "..." : "-"}`;
+                }
+
+                alert(msg);
+                
+                // Refresh halaman untuk update saldo & history
+                window.location.reload(); 
+
+            } else {
+                throw new Error(res.message);
+            }
+
+        } catch (error) {
+            console.error(error);
+            const errMsg = error.responseJSON ? error.responseJSON.message : error.message;
+            alert("Gagal: " + errMsg);
+        } finally {
+            // 6. Buka Kunci UI
+            Button_CancelRequestDrip.disabled = 
+            Button_SubmitRequestDrip.disabled =
+            Input_RequestDripPurpose.disabled =
+            Input_RequestDripAmount.disabled =
+            Button_AddImageProof.disabled = false;
+            
+            PopOver_RequestDrip.isloading = false;
+            PopOver_RequestDrip.iscloseable = true;
+        }
     }
     Button_AddImageProof.onclick = function() {
         const inputElement = document.createElement("input");

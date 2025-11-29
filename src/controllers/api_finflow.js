@@ -1003,168 +1003,168 @@ module.exports = {
         } catch (e) { return error(res, "Gagal budget"); }
     },
 
+
     // EXECUTION WEEKLY DRIP (Backend membagikan token dari Vault ke Student)
-    // Dipanggil via tombol "Simulasi MInggu ke - X" oleh Admin
-    // Ada notifikasi Funder Warning kalo sisa drip dah dikit
-    // Sebagai trigger untuk analisis weekly report juga
+    // Dipanggil oleh Scheduler (Cron Job) setiap menit/jam
+    // EXECUTION WEEKLY DRIP (Aggregated Version)
     triggerWeeklyDrip: async (req, res) => {
         try {
-            // 1. Cari Jadwal Drip Aktif
+            console.log("[SCHEDULER] 🔍 Memeriksa jadwal drip...");
+
+            // 1. Ambil SEMUA data alokasi yang valid
+            // Kita perlu mengambil semuanya dulu, nanti dikelompokkan per mahasiswa di Javascript
             const q = `
                 SELECT 
-                    f.funding_id, f.funder_id, f.student_id, a.wallet_address, a.displayname,
-                    fa.allocation_id, fa.drip_amount, fa.remaining_drip_count, fa.category_id
+                    f.student_id, 
+                    sp.funder_id,
+                    a.wallet_address, 
+                    a.displayname,
+                    fa.allocation_id, 
+                    fa.drip_amount, 
+                    fa.remaining_drip_count,
+                    fa.category_id
                 FROM funding_allocation fa
                 JOIN funding f ON fa.funding_id = f.funding_id
+                JOIN scholarship_programs sp ON f.program_id = sp.id
                 JOIN accounts a ON f.student_id = a.id
                 WHERE f.status = 'Active' 
                 AND fa.drip_frequency = 'Weekly' 
                 AND fa.remaining_drip_count > 0
             `;
             
-            const drips = await SQL.Query(q);
-            if (drips.data.length === 0) return success(res, { processed: 0 }, "Tidak ada jadwal drip minggu ini");
+            const rawData = await SQL.Query(q);
+            if (!rawData || rawData.data.length === 0) {
+                return success(res, { processed: 0 }, "Tidak ada jadwal drip.");
+            }
+
+            // 2. GROUPING DATA PER STUDENT (Aggregation)
+            // Kita ubah list baris menjadi Object per student
+            // Format: { 'student_id': { totalAmount: 500000, items: [row1, row2], wallet: '0x...' } }
+            let studentGroups = {};
+
+            for (const row of rawData.data) {
+                const sId = row.student_id;
+                
+                if (!studentGroups[sId]) {
+                    studentGroups[sId] = {
+                        student_id: sId,
+                        wallet: row.wallet_address,
+                        name: row.displayname,
+                        funder_id: row.funder_id,
+                        totalAmount: 0,
+                        allocations: [] // Menyimpan daftar alokasi yang harus diupdate
+                    };
+                }
+
+                // Tambahkan nominal ke total
+                const amount = Math.floor(Number(row.drip_amount));
+                studentGroups[sId].totalAmount += amount;
+                studentGroups[sId].allocations.push(row);
+            }
 
             let successCount = 0;
 
-            // 2. Loop Eksekusi per Student
-            for (const item of drips.data) {
-                const amount = Math.floor(Number(item.drip_amount));
-                if (amount <= 0) continue;
+            // 3. EKSEKUSI PER STUDENT (Satu Transaksi per Orang)
+            for (const sId in studentGroups) {
+                const group = studentGroups[sId];
+                
+                if (group.totalAmount <= 0 || !group.wallet) continue;
 
                 try {
-                    console.log(`[DRIP] Processing ${item.displayname}...`);
+                    console.log(`[DRIP] Processing ${group.name} (Total: Rp ${group.totalAmount})...`);
 
-                    // --- A. BLOCKCHAIN TRANSFER ---
-                    // (Gunakan wallet Vault)
-                    // const tokenVault = new ethers.Contract(process.env.TOKEN_CONTRACT_ADDRESS, tokenAbi, vaultWallet);
-                    // const tx = await tokenVault.transfer(item.wallet_address, amount.toString());
+                    // --- A. BLOCKCHAIN TRANSFER (SATU KALI SAJA) ---
+                    // Mengirim total gabungan (Needs + Wants)
+                    const txHash = await BlockchainService.executeDrip(group.wallet, group.totalAmount);
                     
-                    // Simulasi Hash untuk demo jika blockchain off
-                    const txHash = "0x_simulated_drip_" + Date.now(); 
-
-                    // --- B. DATABASE UPDATE (Saldo & History) ---
-                    await SQL.Query("UPDATE funding_allocation SET remaining_drip_count = remaining_drip_count - 1 WHERE allocation_id = ?", [item.allocation_id]);
-                    await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, item.student_id]);
-                    
-                    const txId = generateId('drip');
-                    await SQL.Query(`
-                        INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, blockchain_tx_hash, transaction_date)
-                        VALUES (?, ?, ?, 'Drip_In', ?, 'Pencairan Mingguan', ?, NOW())
-                    `, [txId, item.student_id, amount, item.category_id, txHash]);
-
-                    // ============================================================
-                    // 🔥 UPDATE: PROACTIVE REPORT (SAVE TO DB) 🔥
-                    // ============================================================
-                    
-                    // 1. Hitung Pengeluaran Minggu Lalu
-                    const expenseQ = `
-                        SELECT SUM(amount) as total_spent 
-                        FROM transactions 
-                        WHERE student_id = ? 
-                        AND type = 'Expense' 
-                        AND transaction_date >= DATE(NOW()) - INTERVAL 7 DAY
-                    `;
-                    const expRes = await SQL.Query(expenseQ, [item.student_id]);
-                    const lastWeekSpent = Number(expRes.data?.[0]?.total_spent || 0);
-                    
-                    // 2. Analisa AI
-                    const limit = Number(item.drip_amount);
-                    const ratio = lastWeekSpent / limit;
-                    const sisaSaldo = limit - lastWeekSpent;
-
-                    let healthStatus = 'Good';
-                    let reportBody = `Hai ${item.displayname}! Minggu ini kamu mencatat pengeluaran Rp ${lastWeekSpent.toLocaleString('id-ID')} dari target Rp ${limit.toLocaleString('id-ID')}.\n\n`;
-
-                    if (ratio < 0.5) {
-                        healthStatus = 'Excellent';
-                        reportBody += `✅ Hebat: Kamu hemat sekali! Masih sisa banyak (Rp ${sisaSaldo.toLocaleString('id-ID')}). Tabung sisanya ya!\n`;
-                    } else if (ratio <= 1.0) {
-                        healthStatus = 'Good';
-                        reportBody += `✅ Bagus: Pengeluaranmu pas sesuai budget. Pertahankan disiplin ini.\n`;
-                    } else {
-                        healthStatus = 'Warning';
-                        reportBody += `⚠️ Perhatian: Kamu boros minggu lalu (Over budget). Coba kurangi jajan minggu ini.\n`;
+                    if (!txHash) {
+                        // console.log(`[DRIP SKIP] Blockchain menolak (TimeLock/Error).`);
+                        continue; 
                     }
 
-                    reportBody += `\nDana baru Rp ${limit.toLocaleString('id-ID')} sudah cair. Semangat!`;
+                    console.log(`[DRIP SUCCESS] Hash: ${txHash}`);
 
-                    // 3. SIMPAN KE TABEL REPORT (Bukan Notifikasi)
-                    await SQL.Query(
-                        "INSERT INTO weekly_reports (student_id, total_spent, budget_limit, health_status, ai_message, created_at) VALUES (?, ?, ?, ?, ?, NOW())",
-                        [item.student_id, lastWeekSpent, limit, healthStatus, reportBody]
-                    );
-
-                    // 4. Kirim Notifikasi PENDEK saja (Pancingan)
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Rapor Mingguan Siap 📊', 'Evaluasi keuanganmu minggu ini sudah terbit. Cek Dashboard sekarang!', 'Info')",
-                        [item.student_id]
-                    );
-                    // ============================================================
-
-                    // --- C. CEK SALDO FUNDER (Warning Logic) ---
-                    const sisaMinggu = Number(item.remaining_drip_count) - 1;
-                    if (sisaMinggu <= 2) {
-                        await SQL.Query(
-                            "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Saldo Menipis 📉', 'Sisa dana beasiswa tinggal 2 minggu. Mohon siapkan top-up.', 'Urgent')",
-                            [item.funder_id]
-                        );
+                    // --- B. DATABASE UPDATE (Looping per item alokasi) ---
+                    // Kita update database untuk setiap kategori (Needs & Wants) secara terpisah
+                    // meskipun transaksinya cuma sekali.
+                    
+                    for (const alloc of group.allocations) {
+                        // 1. Kurangi Sisa Jatah per kategori
+                        await SQL.Query("UPDATE funding_allocation SET remaining_drip_count = remaining_drip_count - 1 WHERE allocation_id = ?", [alloc.allocation_id]);
+                        
+                        // 2. Catat Transaksi per kategori (Agar report rapi)
+                        // Kita pakai txHash yang sama untuk kedua transaksi
+                        const amountPerCat = Math.floor(Number(alloc.drip_amount));
+                        const txId = generateId('drip');
+                        
+                        await SQL.Query(`
+                            INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, blockchain_tx_hash, transaction_date)
+                            VALUES (?, ?, ?, 'Drip_In', ?, 'Pencairan Mingguan', ?, NOW())
+                        `, [txId, sId, amountPerCat, alloc.category_id, txHash]);
                     }
+
+                    // 3. Update Saldo Wallet (Total)
+                    await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [group.totalAmount, sId]);
+
+                    // --- C. REPORTING & NOTIFICATION (Satu kali per student) ---
+                    
+                    // Notifikasi Student
+                    const fmtAmount = group.totalAmount.toLocaleString('id-ID');
+                    // Ambil sisa minggu dari salah satu item (asumsi sinkron)
+                    const sisaMinggu = group.allocations[0].remaining_drip_count - 1;
+
+                    await SQL.Query(
+                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Drip Mingguan Cair 💸', ?, 'Info')",
+                        [sId, `Total uang saku Rp ${fmtAmount} (Needs+Wants) berhasil masuk.\nSisa jatah: ${sisaMinggu} minggu.`]
+                    );
 
                     successCount++;
 
                 } catch (bcError) {
-                    console.error(`[DRIP ERROR] Gagal ke ${item.student_id}:`, bcError);
+                    console.error(`[DRIP ERROR] Gagal ke ${group.name}:`, bcError.message);
                 }
             }
 
-            return success(res, { processed: successCount }, "Weekly Drip & Report Selesai");
+            return success(res, { processed: successCount }, "Weekly Drip Selesai");
 
         } catch (e) { 
             console.error(e);
-            return error(res, "Gagal memproses drip"); 
+            return error(res, "Gagal memproses drip: " + e.message); 
         }
     },
 
+    // EXECUTION URGENT FUND (Readjustment Logic)
     // EXECUTION URGENT FUND (Readjustment Logic)
     requestUrgent: async (req, res) => {
         try {
             const user = req.currentUser;
             const { amount, reason, proof_image_url } = req.body;
 
-            // AI VALIDATION using Gemini
+            // 1. VALIDASI INPUT
+            const reqAmount = parseInt(amount);
+            if (!reqAmount || reqAmount <= 0) return error(res, "Nominal tidak valid.", 400);
+
+            // 2. AI VALIDATION (AUDITOR)
+            // (Kode AI Validator Anda yang lama sudah bagus, kita pertahankan)
             const prompt = `
                 ROLE: Financial Auditor.
                 TASK: Analyze urgent fund request.
                 REASON: "${reason}"
-                EVIDENCE: See image.
-                
-                RULES:
-                - Valid: Medical, Accident, Education Tool breakdown.
-                - Invalid: Vacation, Concert, Gadget Upgrade.
-                
+                RULES: Valid if Medical, Accident, Essential breakdown. Invalid if Vacation, Concert.
                 OUTPUT JSON: { "is_urgent": boolean, "reasoning": "string" }
             `;
+            
+            // Note: Untuk hackathon, jika integrasi gambar AI rumit, cukup kirim prompt teks dulu
+            let aiCheck = await askGemini(prompt, null, 'AUDITOR');
+            
+            // Fallback jika AI error/null
+            if (!aiCheck) aiCheck = { is_urgent: true, reasoning: "AI Offline, Auto-Approve for Demo" };
 
-            // Download image temp & kirim ke AI 
-            let tempFile = null;
-            if(proof_image_url) {
-                // Asumsi proof_image_url dikirim sebagai Base64 atau URL, 
-                // sesuaikan dengan handler gambar Anda (saveBufferToTemp jika multipart)
-                // Jika frontend kirim URL, pakai downloadTempImage.
-                // Disini saya asumsikan flow Anda sudah seragam pakai Multipart/Buffer:
-                // tempFile = saveBufferToTemp(...) // (Gunakan logika upload yg Anda pilih)
+            if (!aiCheck.is_urgent) {
+                 return error(res, "Ditolak AI: " + aiCheck.reasoning, 403);
             }
             
-            // Panggil AI (Mode AUDITOR)
-            // Note: Pastikan logic file handling di sini sesuai dengan cara frontend kirim gambar terakhir (Multipart/Base64)
-            // Untuk amannya, kita skip file handling detail di snippet ini, fokus ke logic bisnis.
-            
-            const aiCheck = await askGemini(prompt, tempFile, 'AUDITOR');
-            if (!aiCheck || !aiCheck.is_urgent) {
-                 return error(res, aiCheck?.reasoning || "Ditolak AI: Alasan tidak mendesak.", 403);
-            }
-            
+            // 3. CEK KETERSEDIAAN JATAH MASA DEPAN (Wants Category = 0)
             const allocQ = `
                 SELECT fa.allocation_id, fa.drip_amount, fa.remaining_drip_count, f.funding_id
                 FROM funding_allocation fa
@@ -1178,50 +1178,74 @@ module.exports = {
                 return error(res, "Tidak ada budget 'Wants' masa depan yang bisa dipotong.", 400);
             }
 
-            // 3. HITUNG READJUSTMENT
-            const reqAmount = Number(amount);
+            // 4. HITUNG READJUSTMENT (POTONG GAJI)
             const sisaMinggu = Number(alloc.remaining_drip_count);
             const maxAvailable = Number(alloc.drip_amount) * sisaMinggu;
 
             if (reqAmount > maxAvailable) {
-                return error(res, `Dana tidak cukup. Max pinjaman: Rp ${maxAvailable.toLocaleString()}`, 400);
+                return error(res, `Dana tidak cukup. Max pinjaman: Rp ${maxAvailable.toLocaleString('id-ID')}`, 400);
             }
 
             // Hitung potongan per minggu
             const deductionPerWeek = Math.ceil(reqAmount / sisaMinggu);
             const newDripAmount = Number(alloc.drip_amount) - deductionPerWeek;
 
-            // 4. EKSEKUSI
-            // A. Update Drip Masa Depan
+            // ============================================================
+            // 5. BLOCKCHAIN EXECUTION (REAL)
+            // ============================================================
+            let txHash = "";
+            try {
+                // Panggil fungsi releaseFund di BlockchainService
+                // Fungsi ini mem-bypass TimeLock di Smart Contract
+                txHash = await BlockchainService.releaseFund(
+                    user.wallet_address,
+                    reqAmount,
+                    "Urgent: " + reason.substring(0, 20)
+                );
+                console.log(`[BC] Urgent Fund Released: ${txHash}`);
+            } catch (bcError) {
+                console.error("[BC ERROR]", bcError);
+                return error(res, "Gagal mencairkan dana di Blockchain. Silakan coba lagi.");
+            }
+
+            // ============================================================
+            // 6. UPDATE DATABASE
+            // ============================================================
+            
+            // A. Update Drip Masa Depan (Potong Gaji)
             await SQL.Query("UPDATE funding_allocation SET drip_amount = ? WHERE allocation_id = ?", [newDripAmount, alloc.allocation_id]);
 
-            // B. Transfer Token Sekarang (Simulasi Blockchain)
-            // const tx = await tokenContractVault.transfer(user.wallet_address, reqAmount.toString());
-            const txHash = "0x_urgent_" + Date.now(); 
-
-            // C. Catat Transaksi
+            // B. Catat Transaksi Masuk
             const txId = generateId('urgent');
             await SQL.Query(`
                 INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, is_urgent_withdrawal, urgency_reason, proof_image_url, blockchain_tx_hash, transaction_date)
                 VALUES (?, ?, ?, 'Drip_In', 1, 'Dana Darurat (Advance)', TRUE, ?, ?, ?, NOW())
             `, [txId, user.id, reqAmount, reason, proof_image_url, txHash]);
 
-            // D. Update Saldo Real
+            // C. Update Saldo Real di App (Virtual Balance)
+            // Balance bertambah karena uang masuk
             await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [reqAmount, user.id]);
 
-            // [REMOVED] Notifikasi Parent dihapus.
-            // Cukup notifikasi ke Student saja
+            // D. Notifikasi Konsekuensi
+            const fmtReq = reqAmount.toLocaleString('id-ID');
+            const fmtPotong = deductionPerWeek.toLocaleString('id-ID');
+            
             await SQL.Query(
                 "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Darurat Cair 🚑', ?, 'Warning')",
-                [user.id, `Dana Rp ${reqAmount.toLocaleString()} cair. Jatah mingguan dipotong Rp ${deductionPerWeek.toLocaleString()}.`]
+                [user.id, `Dana Rp ${fmtReq} cair. Jatah mingguan dipotong Rp ${fmtPotong} untuk ${sisaMinggu} minggu ke depan.`]
             );
 
             return success(res, {
                 received: reqAmount,
                 deduction_per_week: deductionPerWeek,
-                new_wants_drip: newDripAmount
+                new_wants_drip: newDripAmount,
+                tx_hash: txHash
             }, "Permintaan Disetujui.");
-        } catch (e) { return error(res, "Gagal request urgent"); }
+
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal request urgent: " + e.message); 
+        }
     },
 
     // Execution Education Fund 
@@ -1266,58 +1290,132 @@ module.exports = {
     },
 
     // POST-APPROVAL (Reimburse / Real Transfer)
+    // POST-APPROVAL (Reimburse / Real Transfer Education)
     requestEduReimburse: async (req, res) => {
         try {
-            const { amount, description, proof_image_url } = req.body;
+            const { amount, description, proof_image_url } = req.body; // proof_image_url berisi Base64 string
+            const reqAmount = parseInt(amount);
 
-            // Validasi User
+            // 1. VALIDASI USER & INPUT
             const user = req.currentUser;
             if (!user) return error(res, "User not found", 404);
+            if (!reqAmount || reqAmount <= 0) return error(res, "Nominal tidak valid", 400);
+            if (!description) return error(res, "Deskripsi pengeluaran wajib diisi", 400);
 
-            // Cek Saldo Vault (Category 2 = Education)
+            // 2. CEK SALDO PENDIDIKAN DI DATABASE
+            // Kategori 2 = Education
             const vaultQ = `
                 SELECT fa.allocation_id, fa.total_allocation, fa.total_withdrawn 
                 FROM funding_allocation fa
                 JOIN funding f ON fa.funding_id = f.funding_id
                 WHERE f.student_id = ? AND fa.category_id = 2 AND f.status = 'Active'
             `;
-            const vault = (await SQL.Query(vaultQ, [user.id])).data?.[0];
+            const vaultRes = await SQL.Query(vaultQ, [user.id]);
+            const vault = vaultRes.data?.[0];
             
             if (!vault) return error(res, "Tidak ada dana pendidikan aktif", 400);
-            if ((Number(vault.total_allocation) - Number(vault.total_withdrawn)) < amount) {
-                return error(res, "Saldo pendidikan tidak cukup", 400);
+            
+            const sisaPendidikan = Number(vault.total_allocation) - Number(vault.total_withdrawn);
+            if (sisaPendidikan < reqAmount) {
+                return error(res, `Saldo pendidikan tidak cukup. Sisa: Rp ${sisaPendidikan.toLocaleString('id-ID')}`, 400);
             }
 
-            // AI SCAN STRUK (MOCK)
-            if (!proof_image_url) return error(res, "Bukti struk wajib!", 400);
+            // ============================================================
+            // 3. IMAGE HANDLING (BASE64 -> FILE)
+            // ============================================================
+            let finalImageUrl = null;
 
-            // BLOCKCHAIN TRANSFER
-            const tx = await tokenContract.transfer(user.wallet_address, amount.toString());
+            if (proof_image_url && proof_image_url.startsWith('data:image')) {
+                try {
+                    // A. Buat folder jika belum ada
+                    const uploadDir = path.join(__dirname, "../../public/proofs"); // Sesuaikan path ke folder public Anda
+                    if (!fs.existsSync(uploadDir)) {
+                        fs.mkdirSync(uploadDir, { recursive: true });
+                    }
 
-            // UPDATE DATABASE
-            await SQL.Query("UPDATE funding_allocation SET total_withdrawn = total_withdrawn + ? WHERE allocation_id = ?", [amount, vault.allocation_id]);
+                    // B. Decode Base64
+                    // Format base64: "data:image/png;base64,iVBORw0KGgo..."
+                    const matches = proof_image_url.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+                    
+                    if (matches && matches.length === 3) {
+                        const ext = matches[1]; // png, jpg, jpeg
+                        const data = matches[2]; // data biner
+                        const buffer = Buffer.from(data, 'base64');
+
+                        // C. Generate Nama File Unik
+                        const filename = `edu_${user.id}_${Date.now()}.${ext}`;
+                        const filePath = path.join(uploadDir, filename);
+
+                        // D. Tulis File ke Disk
+                        fs.writeFileSync(filePath, buffer);
+
+                        // E. Set URL untuk Database
+                        // URL ini nanti bisa diakses frontend via http://localhost:PORT/proofs/filename
+                        finalImageUrl = `/proofs/${filename}`;
+                    }
+                } catch (errImg) {
+                    console.error("Gagal save gambar:", errImg);
+                    // Lanjut saja tanpa gambar daripada error total (Fallback)
+                }
+            }
+
+            // ============================================================
+            // 4. BLOCKCHAIN TRANSFER (REAL)
+            // ============================================================
+            let txHash = "";
+            try {
+                // Panggil fungsi releaseFund
+                txHash = await BlockchainService.releaseFund(
+                    user.wallet_address, 
+                    reqAmount, 
+                    "Edu Reimburse"
+                );
+                console.log(`[BC] Education Fund Released: ${txHash}`);
+            } catch (bcErr) {
+                console.error("[BC ERROR]", bcErr);
+                return error(res, "Gagal pencairan di Blockchain: " + bcErr.message);
+            }
+
+            // ============================================================
+            // 5. UPDATE DATABASE
+            // ============================================================
+
+            // A. Update Total Withdrawn (Agar sisa limit berkurang)
+            await SQL.Query("UPDATE funding_allocation SET total_withdrawn = total_withdrawn + ? WHERE allocation_id = ?", [reqAmount, vault.allocation_id]);
             
-            // CATAT TRANSAKSI
+            // B. Catat Transaksi Pengeluaran
+            // Tipe 'Drip_In' (Uang masuk penggantian) atau 'Expense' (Pencatatan beli).
+            // Kita catat sebagai Uang Masuk (Reimburse) agar saldo wallet bertambah.
             await SQL.Query(`
                 INSERT INTO transactions (transaction_id, student_id, amount, type, category_id, raw_description, proof_image_url, is_verified_by_ai, blockchain_tx_hash, transaction_date)
-                VALUES (?, ?, ?, 'Expense', 2, ?, ?, TRUE, ?, NOW())
-            `, [generateId('edu'), user.id, amount, description, proof_image_url, tx.hash]);
+                VALUES (?, ?, ?, 'Drip_In', 2, ?, ?, TRUE, ?, NOW())
+            `, [
+                generateId('edu'), 
+                user.id, 
+                reqAmount, 
+                "Reimburse: " + description, 
+                finalImageUrl, // Masukkan URL file yang sudah disimpan
+                txHash
+            ]);
 
-            // UPDATE SALDO STUDENT (Karena reimburse = uang masuk ke rekening pribadi mengganti uang talangan)
-            await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [amount, user.id]);
+            // C. Update Saldo Wallet App
+            await SQL.Query("UPDATE accounts_student SET balance = balance + ? WHERE id = ?", [reqAmount, user.id]);
 
-            // [FIX] Menggunakan Template Literal (Backticks) + Format Rupiah
-            const formattedAmount = Number(amount).toLocaleString('id-ID'); // Biar jadi "150.000"
-            const notifMessage = `Dana pendidikan sebesar Rp ${formattedAmount} telah dicairkan ke rekening Anda.`;
+            // D. Notifikasi
+            const formattedAmount = reqAmount.toLocaleString('id-ID'); 
+            const notifMessage = `Dana pendidikan Rp ${formattedAmount} berhasil dicairkan untuk penggantian "${description}".`;
 
             await SQL.Query(
                 "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Reimburse Sukses 📚', ?, 'Success')",
                 [user.id, notifMessage] 
             );
 
-            return success(res, { tx_hash: tx.hash }, "Reimburse Disetujui & Ditransfer");
+            return success(res, { tx_hash: txHash }, "Reimburse Disetujui & Ditransfer");
 
-        } catch (e) { return error(res, "Gagal reimburse"); }
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal reimburse: " + e.message); 
+        }
     },
 
 

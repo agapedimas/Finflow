@@ -381,7 +381,7 @@ function Route(Server) {
   Server.post("/api/budget/activate", ApiFinflow.requireAuth, ApiFinflow.activateBudgetPlan);
   
   // API EXECUTION & PENYALURAN DANA
-  Server.post("/api/exec/drip", ApiFinflow.requireAuth, ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
+  Server.post("/api/exec/drip", ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev
   Server.post("/api/exec/urgent", ApiFinflow.requireAuth, ApiFinflow.requestUrgent);
   Server.post("/api/exec/edu/pre", ApiFinflow.requireAuth, ApiFinflow.requestEduPreApproval);
   Server.post("/api/exec/edu/post", ApiFinflow.requireAuth, ApiFinflow.requestEduReimburse);
