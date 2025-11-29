@@ -7,7 +7,7 @@ const CONFIG = {
   WEB3AUTH_CLIENT_ID: "BGQqw1_xgioq69pdr-MA7fO099Eg0cfi-Ko4xucSzRwfqIqLnz1Gv0r3D6QVndbWZNHfg2QAKRVuWJRUB40pRFA",
 
   // URL BACKEND
-  BACKEND_URL: "http://localhost:1111/api",
+  BACKEND_URL: window.location.origin + "/api",
 
   CHAIN_CONFIG: {
     chainNamespace: "eip155",
