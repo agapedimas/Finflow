@@ -99,6 +99,11 @@
                     #Sheet_Program .joined #Button_AddStudent > div .icon {
                         text-align: center;
                     }
+        #Sheet_Program #Button_PayAll {
+          border-radius: 10px;
+          width: 100%;
+          padding: 12px;
+        }
     @media screen and not (max-width: 425px) {
         #Sheet_Program .details #Text_ProgramName {
             margin-right: calc(var(--padding) * 2);
@@ -155,6 +160,12 @@
       </div>
     </div>
   </div>
+  <button id="Button_PayAll" class="plain accent">
+    <span class="icon">&#xf7a3;</span>
+    <span>
+      <$ programs payall_title />
+    </span>
+  </button>
 </div>
 
 <div class="popover" id="PopOver_AddStudent">
@@ -216,6 +227,10 @@
 </div>
 
 <script>
+    Button_PayAll.onclick = function() {
+
+    }
+
     registerCurrencyInput(Input_ProgramAmount);
     Button_NewProgram.onclick = function() {
         Input_ProgramName.value = null;
@@ -373,9 +388,9 @@
       Text_ProgramAmountTotal.innerText = totalAmountElement.innerHTML;
       Text_ProgramStatus.innerText = statusElement.innerHTML;
 
-      for (const oldStudent of List_JoinedStudents.children) {
-            if (oldStudent.tagName == "DIV" && oldStudent.classList.contains("iconed"))
-                oldStudent.remove();
+      for (const oldStudent of [...List_JoinedStudents.children]) {
+        if (oldStudent.tagName == "DIV" && oldStudent.classList.contains("iconed"))
+            oldStudent.remove();
       }
       
       for (const student of program.joinedStudents) appendStudents(student);
