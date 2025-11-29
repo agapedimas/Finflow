@@ -385,6 +385,26 @@ module.exports = {
         }
     },
 
+    getStudentsFromProgram: async (req, res) => {
+        const programId = req.params.id;
+
+        const students = await SQL.Query(
+            "SELECT a.id AS student_id, a.displayname AS student_name, a.email FROM funding f JOIN accounts a ON f.student_id = a.id WHERE f.program_id = ?", 
+            [programId]);
+
+        for (const student of students.data || []) {
+            student.id = student.student_id;
+            student.name = student.student_name;
+            delete student.student_id;
+            delete student.student_name;
+        }
+
+        if (students.success)
+            res.send(students.data);
+        else
+            res.status(500).send();
+    },
+
     getMyPrograms: async (req, res) => {
         try {
             const funder = req.currentUser;
@@ -1455,7 +1475,7 @@ module.exports = {
     // ============================================================
     getTransactionYears: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
 
             // Query untuk mengambil tahun-tahun unik dari history transaksi
             const q = `
@@ -1490,7 +1510,7 @@ module.exports = {
             if (!req.currentUser.wallet_address) return error(res, "Wallet address required", 400);
 
             // Validasi User: Memastikan wallet terdaftar
-            const user = req.currentUser;
+            const user = req.query.userId || req.currentUser;
             if (!user) return error(res, "User not found", 404);
 
             // Ambil data Statistik secara Paralel
@@ -1554,7 +1574,7 @@ module.exports = {
 
     getTransactionHistory: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             const { month, year } = req.query;
 
             let q = `
@@ -1605,7 +1625,7 @@ module.exports = {
 
     getWalletData: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             
             // 1. Ambil Saldo Total (Uang Fisik di Akun)
             const bRes = await SQL.Query("SELECT balance FROM accounts_student WHERE id=?", [user.id]);
@@ -1676,7 +1696,7 @@ module.exports = {
 
     getExpensesData: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             
             // [FIX] Gunakan YEARWEEK(date, 1) agar Senin dianggap awal minggu
             const q = `
@@ -1711,7 +1731,7 @@ module.exports = {
 
     getFeedbackData: async (req, res) => {
         try {
-            const user = req.currentUser;
+            const user = req.params.studentId || req.currentUser;
             
             // 1. Ambil Data Konteks (Saldo, Waktu, dan Breakdown Pengeluaran)
             // Kita butuh data ini agar AI tidak halusinasi

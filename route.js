@@ -382,7 +382,7 @@ function Route(Server) {
 
   // 2. Simpan Transaksi + Kurangi Saldo Otomatis (Save hasil scan / manual)
   Server.post("/api/cashflow/transactions", ApiFinflow.requireAuth, ApiFinflow.addTransaction);
-  Server.get("/api/cashflow/transactions/years", ApiFinflow.requireAuth, ApiFinflow.getTransactionYears);
+  Server.get(["/api/cashflow/transactions/years", "/api/cashflow/:studentId/transactions/years"], ApiFinflow.requireAuth, ApiFinflow.getTransactionYears);
   Server.post("/api/cashflow/transactions/uploadbill", ApiFinflow.requireAuth, ApiFinflow.scanReceipt);
   
   // API MONEY MANAGEMENT DASHBOARD
@@ -400,15 +400,15 @@ function Route(Server) {
 
   // 1. Kartu Saldo (Wallet Card)
   // Frontend call: $.get("/api/wallet")
-  Server.get("/api/wallet", ApiFinflow.requireAuth, ApiFinflow.getWalletData);
+  Server.get("/api/wallet/:studentId", ApiFinflow.requireAuth, ApiFinflow.getWalletData);
 
   // 2. Grafik Batang (Expenses Chart)
   // Frontend call: $.get("/api/expenses")
-  Server.get("/api/expenses", ApiFinflow.requireAuth, ApiFinflow.getExpensesData);
+  Server.get("/api/expenses/:studentId", ApiFinflow.requireAuth, ApiFinflow.getExpensesData);
 
   // 3. AI Feedback (Feedback Card)
   // Frontend call: $.get("/api/cashflow/feedback")
-  Server.get("/api/cashflow/feedback", ApiFinflow.requireAuth, ApiFinflow.getFeedbackData);
+  Server.get(["/api/cashflow/feedback", "/api/cashflow/:studentId/feedback"], ApiFinflow.requireAuth, ApiFinflow.getFeedbackData);
 
   // 4. Dropdown Kategori
   // Frontend call: $.get("/api/categories")
@@ -417,7 +417,7 @@ function Route(Server) {
   // 5. List Transaksi Bulanan
   // Frontend call: $.get("/api/transactions?month=...&year=...")
   // Kita gunakan fungsi history yang sudah ada, tapi URL-nya disesuaikan
-  Server.get("/api/transactions", ApiFinflow.requireAuth, ApiFinflow.getTransactionHistory);
+  Server.get("/api/transactions/:studentId", ApiFinflow.requireAuth, ApiFinflow.getTransactionHistory);
   // Server.get("/api/transactions/history", ...); // (Opsional: Simpan yang lama jika ada halaman lain yg pakai)
 
   // 6. Fitur Tambah Transaksi (Scan & Manual)
@@ -431,6 +431,7 @@ function Route(Server) {
   Server.post("/api/program/create", ApiFinflow.requireAuth, ApiFinflow.createProgram);
   Server.post("/api/program/add-student", ApiFinflow.requireAuth, ApiFinflow.addStudentToProgram);
   Server.get("/api/program/list", ApiFinflow.requireAuth, ApiFinflow.getMyPrograms);
+  Server.get("/api/program/:id/students/", ApiFinflow.requireAuth, ApiFinflow.getStudentsFromProgram);
   Map(Server);
 }
 

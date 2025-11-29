@@ -30,5 +30,12 @@
     "request_drip_input_purpose_placeholder": "e.g.: Buy coding book",
     "request_drip_input_amount": "Amount",
     "request_drip_input_amount_placeholder": "e.g.: Rp85,000.00",
-    "request_drip_input_proof": "Proof"
+    "request_drip_input_proof": "Proof",
+
+    "track_title": "Track",
+    "track_program": "Program",
+    "track_student": "Student",
+
+    "select_student_none": "No Student Selected",
+    "select_student_title": "Select Student"
 }
