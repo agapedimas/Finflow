@@ -107,7 +107,7 @@ const Finflow = {
         sessionStorage.clear();
 
         // 4. Redirect ke Halaman Login
-        window.location.href = "/signin.html"; // Atau /index.html
+        window.location.href = "/signin"; // Atau /index.html
     },
 
   // 3. API WRAPPERS

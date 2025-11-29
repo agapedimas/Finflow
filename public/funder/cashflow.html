@@ -349,7 +349,7 @@
   #Header_MonthlyReport,
   #List_MonthlyReport {
     position: relative;
-    max-width: 800px;
+    max-width: 900px;
   }
     #List_MonthlyReport .emptytitle {
       font-family: var(--font-bold);
@@ -421,6 +421,10 @@
   }
   #List_MonthlyReport .stack .navigate .icon {
     color: var(--foreground-description);
+  }
+
+  #List_Track {
+    max-width: 900px;
   }
 
   #PopOver_InputManual {
@@ -609,7 +613,7 @@
 
 <div class="content">
     <section ad-header="<$ cashflow track_title />">
-        <div class="list">
+        <div class="list" id="List_Track">
             <div class="stack">
                 <span><$ cashflow track_program /></span>
                 <select id="Select_Programs" class="plain"></select>

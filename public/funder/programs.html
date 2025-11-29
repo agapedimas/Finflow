@@ -380,7 +380,7 @@
         // dan membukanya kembali. Tapi reload list saja sudah cukup agar data sinkron.
                 
         // Menutup sheet agar user bisa klik ulang untuk melihat data terbaru
-        if(typeof Sheet_Program !== 'undefined') Sheet_Program.close();
+        PopOver_AddStudent.close(true);
       } else {
         console.error(res.message);
         // alert("Gagal: " + res.message);
