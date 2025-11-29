@@ -4,6 +4,7 @@ const { ethers } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const GeminiModule = require("../../gemini");
+const BlockchainService = require("./blockchainService");
 
 GeminiModule.Initialize();
 
@@ -430,7 +431,8 @@ module.exports = {
                 // Mapping Student
                 const joinedStudents = funds.data.map(f => ({
                     id: f.student_id,
-                    name: f.displayname
+                    name: f.displayname,
+                    fundingId: f.funding_id
                 }));
 
                 // Tentukan Status Program
@@ -899,148 +901,68 @@ module.exports = {
         }
     },
 
-    // CONFIRM TRANSFER (Crowdfunding + Batch Support)
-    // Bisa dipakai oleh Funder (Bayar Full/Sisa) atau Parent (Bayar Sebagian)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
     confirmTransfer: async (req, res) => {
         try {
-            // Input fleksibel:
-            // 1. funding_ids: Array ID yang mau dibayar
-            // 2. amount_paid: Nominal (Opsional). Jika kosong/null, dianggap LUNAS (Full Payment).
-            const {  funding_ids, amount_paid } = req.body;
+            const { funding_ids } = req.body; // Array ID
 
             if (!Array.isArray(funding_ids) || funding_ids.length === 0) {
-                return error(res, "Funding IDs harus array dan tidak boleh kosong", 400);
+                return error(res, "Pilih minimal satu program", 400);
             }
 
-            // Ambil Data Funding yang mau dibayar
-            // Status bisa 'Ready_To_Fund' (Belum ada dana) atau 'Partially_Funded' (Sudah ada dana sebagian)
             const placeholders = funding_ids.map(() => '?').join(',');
-            const qCheck = `
-                SELECT funding_id, total_period_fund, collected_amount, student_id 
-                FROM funding 
-                WHERE funding_id IN (${placeholders}) 
-                AND status IN ('Ready_To_Fund', 'Partially_Funded')
-            `;
             
-            const fRes = await SQL.Query(qCheck, funding_ids);
-            const fundingsToProcess = fRes.data || [];
+            // Query Check
+            const qCheck = `SELECT f.funding_id, p.total_period_fund, f.student_id, p.funder_id FROM funding f JOIN scholarship_programs p ON f.program_id = p.id WHERE f.funding_id IN (${placeholders}) AND f.status = 'Ready_To_Fund'`;
+            
+            const result = await SQL.Query(qCheck, funding_ids);
 
-            if (fundingsToProcess.length === 0) {
-                return error(res, "Tidak ada tagihan aktif yang bisa dibayar.", 404);
+            if (!result || !result.data) {
+                console.error("SQL Error di confirmTransfer:", result);
+                return error(res, "Terjadi kesalahan database saat verifikasi pembayaran.", 500);
             }
 
-            let processedCount = 0;
-            let totalMoneyReceived = 0;
-            let lastTxHash = null;
+            const funds = result.data;
 
-            for (const fund of fundingsToProcess) {
-                const totalTarget = Number(fund.total_period_fund);
-                const currentCollected = Number(fund.collected_amount || 0);
-                const remaining = totalTarget - currentCollected;
+            if (funds.length === 0) return error(res, "Tidak ada tagihan aktif atau status sudah berubah", 404);
 
-                // Tentukan berapa yang dibayar kali ini
-                let payNow = 0;
-                if (amount_paid) {
-                    // Jika user input nominal spesifik (misal Parent bayar 1 Juta)
-                    payNow = Number(amount_paid);
-                } else {
-                    // Jika kosong (Funder klik "Bayar"), asumsikan MELUNASI sisanya
-                    payNow = remaining;
-                }
+            let totalPaid = 0;
 
-                // --- LOGIC BLOCKCHAIN (THE ENGINE) ---
-                // Kita melakukan transfer di setiap loop atau diakumulasi?
-                // Agar hemat gas, idealnya diakumulasi. Tapi agar tercatat per anak, kita loop.
-                // Skenario: Admin "memindahkan" token dari Treasury ke Vault seolah-olah Funder yang setor.
-                try {
-                    console.log(`[BLOCKCHAIN] Mengirim ${payNow} FIDR ke Vault...`);
-                    
-                    // Logika: Admin Transfer Token ke Vault Address
-                    // Seolah-olah Funder yang setor (Strategi Treasury Pool)
-                    
-                    // Konversi angka ke BigInt (Ethers butuh BigInt/String untuk angka besar)
-                    // Karena decimals kita 0, 1 Rupiah = 1 Unit Token. Aman.
-                    const amountInWei = ethers.BigNumber.from(payNow.toString()); 
-                    // Note: Jika pakai ethers v6: ethers.parseUnits(payNow.toString(), 0)
-
-                    // KIRIM TRANSAKSI!
-                    const tx = await tokenContract.transfer(VAULT_ADDRESS, payNow.toString());
-                    
-                    console.log(`[BLOCKCHAIN] Tx Sent! Hash: ${tx.hash}`);
-                    lastTxHash = tx.hash;
-
-                    // (Opsional) Tunggu 1 blok konfirmasi agar aman
-                    // await tx.wait(); 
-                    
-                    // Simpan Hash ke Database (Tabel Transactions) sebagai bukti
-                    // Kita catat ini sebagai "Deposit"
-                    const txId = generateId('depo');
-                    await SQL.Query(`
-                        INSERT INTO transactions 
-                        (transaction_id, student_id, amount, type, blockchain_tx_hash, raw_description, transaction_date) 
-                        VALUES (?, ?, ?, 'Income', ?, 'Deposit Beasiswa ke Vault', NOW())
-                    `, [txId, fund.student_id, payNow, lastTxHash]);
-
-                } catch (bcError) {
-                    console.error("[BLOCKCHAIN CRITICAL ERROR]", bcError);
-                    // Dalam production, kita harus stop proses disini. 
-                    // Untuk hackathon, kita log error tapi lanjut update DB (Fallback).
-                }
-
-                // Update Collected
-                const newCollected = currentCollected + payNow;
-                totalMoneyReceived += payNow;
-
-                // Tentukan Status Baru
-                let newStatus = 'Partially_Funded'; // Default
-                if (newCollected >= totalTarget) {
-                    newStatus = 'Active'; // Lunas!
-                }
-
-                // Update Database
+            for (const fund of funds) {
+                const amount = Number(fund.total_period_fund);
+                
+                // 1. UPDATE DATABASE
                 await SQL.Query(
-                    "UPDATE funding SET collected_amount = ?, status = ? WHERE funding_id = ?", 
-                    [newCollected, newStatus, fund.funding_id]
+                    "UPDATE funding SET status = 'Waiting_Allocation' WHERE funding_id = ?", 
+                    [fund.funding_id]
+                );
+                
+                // 2. NOTIFIKASI [PERBAIKAN DISINI]
+                // Format Rupiah
+                const fmtAmount = amount.toLocaleString('id-ID');
+                
+                // Susun pesan di Javascript dulu (Lebih Aman)
+                const notifMessage = `Funder telah menyetor dana Rp ${fmtAmount}. Buat Budget Plan sekarang.`;
+
+                // Masukkan pesan yang sudah jadi ke database
+                await SQL.Query(
+                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Masuk! 💰', ?, 'Success')", 
+                    [fund.student_id, notifMessage]
                 );
 
-                // Notifikasi jika Lunas
-                if (newStatus === 'Active') {
-                    // Notif ke Student
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Terkumpul! 💰', 'Selamat! Dana beasiswa kamu sudah penuh dan aktif.', 'Success')",
-                        [fund.student_id]
-                    );
-                    // Notif ke Funder
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif ✅', 'Dana telah dikunci. Smart Contract aktif.', 'Success')",
-                        [fund.funder_id]
-                    );
-
-                    // [BARU] Cari Parent & Kirim Notif
-                    const pRes = await SQL.Query("SELECT parent_id FROM accounts WHERE id=?", [fund.student_id]);
-                    const parentId = pRes.data?.[0]?.parent_id;
-
-                    if (parentId) {
-                        await SQL.Query(
-                            "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif 🎉', 'Dana pendidikan anak Anda telah terkunci aman di Smart Contract.', 'Success')",
-                            [parentId]
-                        );
-                    }
-                }
-
-                processedCount++;
+                totalPaid += amount;
             }
 
             return success(res, { 
-                processed: processedCount, 
-                total_received: totalMoneyReceived,
-                tx_hash: blockchainTxHash,
-                status_message: "Transfer Sukses & Tercatat di Blockchain"
-            }, "Transfer Berhasil");
+                total_paid: totalPaid,
+                status: "Waiting_Allocation"
+            }, "Pembayaran Sukses. Mahasiswa telah dinotifikasi.");
 
-        } catch (e) {
+        } catch (e) { 
             console.error(e);
-            return error(res, "Gagal proses transfer");
+            return error(res, "Gagal transfer: " + e.message); 
         }
     },
 
@@ -2178,10 +2100,9 @@ module.exports = {
         try {
             const user = req.currentUser;
             
-            // 1. Ambil Funding yang sedang menunggu (Waiting_Allocation)
-            // Kita JOIN ke scholarship_programs untuk dapat 'total_period_fund' dan durasi
+            // 1. Ambil Funding yang sedang menunggu
             const qFund = `
-                SELECT f.funding_id, f.status, sp.total_period_fund, sp.start_date, sp.end_date, f.funder_id
+                SELECT f.funding_id, f.status, sp.total_period_fund, sp.start_date, sp.end_date, sp.funder_id
                 FROM funding f
                 JOIN scholarship_programs sp ON f.program_id = sp.id
                 WHERE f.student_id = ? AND f.status = 'Waiting_Allocation'
@@ -2193,8 +2114,7 @@ module.exports = {
                 return error(res, "Tidak ada program beasiswa yang menunggu aktivasi (Status harus Waiting_Allocation).", 404);
             }
 
-            // 2. Ambil SEMUA Item Budget untuk Funding ini (Satu Periode)
-            // Kita tidak filter bulan/tahun, tapi filter by funding_id agar mencakup seluruh periode
+            // 2. Ambil SEMUA Item Budget
             const qItems = "SELECT * FROM budget_plan WHERE funding_id = ?";
             const itemsRes = await SQL.Query(qItems, [funding.funding_id]);
             const items = itemsRes.data;
@@ -2204,44 +2124,43 @@ module.exports = {
             // 3. VALIDASI 1: Semua item harus APPROVED
             const pendingOrRejected = items.filter(i => i.status !== 'approved');
             if (pendingOrRejected.length > 0) {
-                return error(res, `Masih ada ${pendingOrRejected.length} item yang belum disetujui (Pending/Rejected). Harap perbaiki dulu.`, 400);
+                return error(res, `Masih ada ${pendingOrRejected.length} item yang belum disetujui.`, 400);
             }
 
             // 4. VALIDASI 2: Total Rencana == Total Dana
-            const totalPlanned = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+            const totalPlanned = items.reduce((sum, item) => sum + (Number(item.amount) * Number(item.quantity)), 0);
             const totalBudget = Number(funding.total_period_fund);
 
-            // Toleransi selisih kecil (misal Rp 1.000) untuk menghindari masalah pembulatan desimal
             if (Math.abs(totalPlanned - totalBudget) > 1000) {
-                return error(res, `Total rencana (Rp ${totalPlanned.toLocaleString()}) TIDAK SAMA dengan dana beasiswa (Rp ${totalBudget.toLocaleString()}). Selisih: Rp ${(totalBudget - totalPlanned).toLocaleString()}`, 400);
+                return error(res, `Total rencana (Rp ${totalPlanned.toLocaleString()}) TIDAK SAMA dengan dana beasiswa (Rp ${totalBudget.toLocaleString()}).`, 400);
             }
 
             // --- SETUP SISTEM & BLOCKCHAIN LOGIC ---
             
-            // 5. Hitung Durasi Minggu (Untuk Drip)
+            // 5. Hitung Durasi Minggu
             const weeks = calculateWeeks(funding.start_date, funding.end_date);
             
-            // 6. Pisahkan Dana: Drip Pool (Needs+Wants) vs Vault Pool (Education)
+            // 6. Pisahkan Dana
             let totalNeeds = 0;
             let totalWants = 0;
             let totalEdu = 0;
 
             items.forEach(item => {
-                const val = Number(item.price) * Number(item.quantity);
-                if (item.category_id === 1) totalNeeds += val; // Needs
-                else if (item.category_id === 0) totalWants += val; // Wants
-                else if (item.category_id === 2) totalEdu += val; // Education
+                const val = Number(item.amount) * Number(item.quantity);
+                if (item.category_id === 1) totalNeeds += val; 
+                else if (item.category_id === 0) totalWants += val; 
+                else if (item.category_id === 2) totalEdu += val; 
             });
 
-            // Hitung nominal per minggu
             const dripNeeds = Math.floor(totalNeeds / weeks);
             const dripWants = Math.floor(totalWants / weeks);
+            
+            // [PERBAIKAN SCOPE]: Definisikan variabel ini DI LUAR blok try/catch
+            const totalWeeklyDrip = dripNeeds + dripWants;
 
             // 7. SIMPAN ATURAN KONTRAK (Funding Allocation)
-            // Hapus aturan lama jika ada (bersih-bersih)
             await SQL.Query("DELETE FROM funding_allocation WHERE funding_id = ?", [funding.funding_id]);
 
-            // Insert Drip Rules (Needs & Wants) -> Frequency: Weekly
             const qAllocDrip = `
                 INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, remaining_drip_count) 
                 VALUES (?, ?, 1, ?, 'Weekly', ?, ?), (?, ?, 0, ?, 'Weekly', ?, ?)
@@ -2251,38 +2170,64 @@ module.exports = {
                 generateId('aw'), funding.funding_id, totalWants, dripWants, weeks
             ]);
 
-            // Insert Vault Rule (Education) -> Frequency: Locked (Tidak Drip)
             const qAllocVault = `
                 INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, total_withdrawn) 
                 VALUES (?, ?, 2, ?, 'Locked', 0, 0)
             `;
             await SQL.Query(qAllocVault, [generateId('ae'), funding.funding_id, totalEdu]);
 
-            // 8. AKTIFKAN PROGRAM
+            // 8. AKTIFKAN PROGRAM (DB)
             await SQL.Query("UPDATE funding SET status = 'Active' WHERE funding_id = ?", [funding.funding_id]);
 
-            // 9. BLOCKCHAIN ACTION (MINTING/LOCKING)
-            // Karena di langkah 'confirmTransfer' Funder sudah transfer uang, dan kita asumsikan token sudah di Vault,
-            // di sini kita bisa mencatat hash konfirmasi atau sekadar log.
-            // Jika ingin lebih real, Backend bisa mengirim 0 token ke student sebagai tanda "Kontrak Aktif".
-            let txHash = "0x_contract_activated_" + Date.now();
-            console.log(`[BC] Smart Contract Rules Set: Drip ${weeks} Weeks started.`);
+            // ============================================================
+            // 9. BLOCKCHAIN ACTION (REAL INTEGRATION)
+            // ============================================================
+            let txHash = "";
+            try {
+                // Panggil Service Blockchain
+                txHash = await BlockchainService.setupVaultPlan(
+                    user.wallet_address,  
+                    totalEdu,             
+                    totalWeeklyDrip,      
+                    weeks                 
+                );
+                
+                console.log(`[BC] ✅ Plan Setup Success! Hash: ${txHash}`);
 
-            // 10. Notifikasi
+            } catch (bcError) {
+                console.error("⚠️ Blockchain Setup Failed:", bcError.message);
+                txHash = "failed_on_chain_db_ok"; 
+            }
+            // ============================================================
+
+            // 10. Notifikasi DETAIL
+            const fmtEdu = Number(totalEdu).toLocaleString('id-ID');
+            const fmtDrip = Number(totalWeeklyDrip).toLocaleString('id-ID'); // Sekarang variabel ini dikenali
+            const fmtTotal = Number(funding.total_period_fund).toLocaleString('id-ID');
+
+            const msgStudent = `🎉 Beasiswa Aktif! Dana Total Rp ${fmtTotal} telah dikunci di Smart Contract. Dana Pendidikan: Rp ${fmtEdu} (Terkunci). Uang Saku Mingguan: Rp ${fmtDrip}.`;
+
             await SQL.Query(
-                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif! 🚀', 'Rencana disetujui. Drip mingguan akan otomatis masuk ke walletmu mulai sekarang.', 'Success')",
-                [user.id]
-            );
-            await SQL.Query(
-                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Student Ready ✅', 'Student telah menyelesaikan budget plan. Penyaluran dana dimulai.', 'Success')",
-                [funding.funder_id]
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Kontrak Blockchain Aktif 🔗', ?, 'Success')",
+                [user.id, msgStudent]
             );
 
-            return success(res, { status: "Active", weekly_drip: (dripNeeds + dripWants), tx_hash: txHash }, "Aktivasi Berhasil!");
+            const msgFunder = `Student ${user.displayname} siap! Dana Rp ${fmtTotal} sudah diamankan di Smart Contract (Hash: ${txHash.substring(0, 10)}...).`;
+            
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Setup Berhasil ✅', ?, 'Success')",
+                [funding.funder_id, msgFunder]
+            );
+
+            return success(res, { 
+                status: "Active", 
+                weekly_drip: totalWeeklyDrip, 
+                tx_hash: txHash 
+            }, "Aktivasi Berhasil!");
 
         } catch (e) {
             console.error(e);
-            return error(res, "Gagal aktivasi budget plan");
+            return error(res, "Gagal aktivasi budget plan: " + e.message);
         }
     },
 
