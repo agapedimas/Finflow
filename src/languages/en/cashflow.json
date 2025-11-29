@@ -40,5 +40,10 @@
     "track_student": "Student",
 
     "select_student_none": "No Student Selected",
-    "select_student_title": "Select Student"
+    "select_student_title": "Select Student",
+
+    "no_transactions_title": "No Transactions Yet",
+    "no_transactions_message": "You haven't made any transactions this month.",
+    "server_error_title": "Something Went Wrong",
+    "server_error_message": "Please try again later."
 }
