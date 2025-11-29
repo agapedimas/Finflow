@@ -9,6 +9,9 @@
 
     "signup_with_google": "Sign up with Google",
     
+    "complete_data_student": "Please fill the form below to register.",
+    "complete_data_funder": "Please fill the form below to register.",
+    
     "offer_signin_title": "Already have an account?",
     "offer_signin_link": "Sign in",
 
