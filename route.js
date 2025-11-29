@@ -400,11 +400,11 @@ function Route(Server) {
 
   // 1. Kartu Saldo (Wallet Card)
   // Frontend call: $.get("/api/wallet")
-  Server.get("/api/wallet/:studentId", ApiFinflow.requireAuth, ApiFinflow.getWalletData);
+  Server.get(["/api/wallet", "/api/wallet/:studentId"], ApiFinflow.requireAuth, ApiFinflow.getWalletData);
 
   // 2. Grafik Batang (Expenses Chart)
   // Frontend call: $.get("/api/expenses")
-  Server.get("/api/expenses/:studentId", ApiFinflow.requireAuth, ApiFinflow.getExpensesData);
+  Server.get(["/api/expenses", "/api/expenses/:studentId"], ApiFinflow.requireAuth, ApiFinflow.getExpensesData);
 
   // 3. AI Feedback (Feedback Card)
   // Frontend call: $.get("/api/cashflow/feedback")
@@ -417,7 +417,7 @@ function Route(Server) {
   // 5. List Transaksi Bulanan
   // Frontend call: $.get("/api/transactions?month=...&year=...")
   // Kita gunakan fungsi history yang sudah ada, tapi URL-nya disesuaikan
-  Server.get("/api/transactions/:studentId", ApiFinflow.requireAuth, ApiFinflow.getTransactionHistory);
+  Server.get(["/api/transactions", "/api/transactions/:studentId"], ApiFinflow.requireAuth, ApiFinflow.getTransactionHistory);
   // Server.get("/api/transactions/history", ...); // (Opsional: Simpan yang lama jika ada halaman lain yg pakai)
 
   // 6. Fitur Tambah Transaksi (Scan & Manual)
