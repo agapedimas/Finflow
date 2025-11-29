@@ -534,7 +534,7 @@ module.exports = {
 
             // Mapping Items ke format Frontend ('stuffs')
             const stuffs = itemsRes.data.map(item => {
-                const totalItemPrice = Number(item.price) * Number(item.quantity);
+                const totalItemPrice = Number(item.amount) * Number(item.quantity);
                 
                 // Tambahkan ke summary jika status approved
                 if (item.status === 'approved') {
@@ -547,7 +547,7 @@ module.exports = {
                 return {
                     id: item.id,
                     name: item.item_name,          // Map: item_name -> name
-                    amount: Number(item.price),    // Map: price -> amount (Harga Satuan)
+                    amount: Number(item.amount),    // Map: price -> amount (Harga Satuan)
                     quantity: Number(item.quantity),
                     status: item.status,
                     feedback: item.ai_feedback,
@@ -582,7 +582,7 @@ module.exports = {
             const user = req.currentUser;
             const { name, amount, quantity, categoryId, month, year } = req.body;
 
-            if (!item_name || !price || !quantity || !month || !year) {
+            if (!name || !amount || !quantity || !month || !year) {
                 return error(res, "Data item tidak lengkap", 400);
             }
 
@@ -592,7 +592,12 @@ module.exports = {
             // A. Cari Funding ID Aktif milik Student
             // Item ini harus "nempel" ke program beasiswa yang sedang berjalan
             const fundRes = await SQL.Query(
-                "SELECT funding_id, total_period_fund FROM funding WHERE student_id = ? AND status IN ('Waiting_Allocation', 'Ready_To_Fund', 'Active') LIMIT 1",
+                `SELECT f.funding_id, sp.total_period_fund 
+                FROM funding f
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE f.student_id = ? 
+                AND f.status IN ('Waiting_Allocation', 'Ready_To_Fund', 'Active') 
+                LIMIT 1`,
                 [user.id]
             );
             const funding = fundRes.data?.[0];
@@ -600,19 +605,19 @@ module.exports = {
             if (!funding) return error(res, "Tidak ada program beasiswa aktif untuk membuat rencana.", 404);
 
             // B. AI VALIDATION (The Auditor)
-            const totalCost = Number(price) * Number(quantity);
-            const categoryName = category_id == 0 ? "Wants" : (category_id == 1 ? "Needs" : "Education");
+            const totalCost = Number(amount) * Number(quantity);
+            const categoryName = categoryId == 0 ? "Wants" : (categoryId == 1 ? "Needs" : "Education");
 
             const prompt = `
                 ROLE: You are a strict but fair Financial Auditor for an Indonesian Scholarship Program called Finflow.
                 YOUR GOAL: Validate a single budget item proposed by a student.
                 
                 --- INPUT DATA ---
-                Item Name: "${item_name}"
-                Category: ${categoryLabel}
-                Unit Price: IDR ${Number(price).toLocaleString('id-ID')}
+                Item Name: "${name}"
+                Category: ${categoryName}
+                Unit Price: IDR ${Number(amount).toLocaleString('id-ID')}
                 Quantity: ${quantity}
-                Total Line Cost: IDR ${totalLineCost.toLocaleString('id-ID')}
+                Total Line Cost: IDR ${totalCost.toLocaleString('id-ID')}
                 Student's Total Scholarship Fund: IDR ${Number(funding.total_period_fund).toLocaleString('id-ID')}
                 
                 --- ANALYSIS RULES (LOGIC CHAIN) ---
@@ -646,31 +651,57 @@ module.exports = {
             `;
 
             let aiCheck = await askGemini(prompt, null, 'AUDITOR');
-            
-            // Fallback jika AI error
-            if (!aiCheck) {
-                aiCheck = { status: 'pending', feedback: 'AI sedang sibuk, akan divalidasi manual nanti.' };
+
+
+            // [DEBUG] LIHAT HASIL MENTAH AI DI TERMINAL
+            console.log("🔍 RAW AI RESULT:", JSON.stringify(aiCheck, null, 2));
+
+            // --- 3. NORMALISASI HASIL AI (PENTING!) ---
+            let finalStatus = 'pending';
+            let finalFeedback = 'Menunggu validasi manual.';
+
+            if (aiCheck) {
+                // Handle key sensitif (Status vs status)
+                const rawStatus = aiCheck.status || aiCheck.Status || "";
+                
+                // Paksa jadi lowercase & trim spasi
+                const normalizedStatus = rawStatus.toLowerCase().trim();
+                
+                // Validasi apakah nilai sesuai ENUM MySQL?
+                if (['approved', 'rejected'].includes(normalizedStatus)) {
+                    finalStatus = normalizedStatus;
+                    finalFeedback = aiCheck.feedback || aiCheck.Feedback || "Tanpa alasan.";
+                } else {
+                    console.warn("⚠️ AI mengembalikan status aneh:", rawStatus);
+                    // Jika AI jawab aneh (misal "Review"), kita anggap pending
+                    finalStatus = 'pending'; 
+                }
+            } else {
+                console.warn("⚠️ AI Check Gagal/Null -> Fallback ke Pending");
             }
 
-            // C. Simpan ke Database
+            console.log(`📝 FINAL STATUS DB: ${finalStatus}`);
+
+            // --- 4. INSERT DATABASE ---
             const itemId = generateId('item');
             const qInsert = `
                 INSERT INTO budget_plan 
-                (id, planner_id, funding_id, item_name, category_id, price, quantity, month, year, status, ai_feedback) 
+                (id, planner_id, funding_id, item_name, category_id, amount, quantity, month, year, status, ai_feedback) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
-            
-            // Default status pending/approved tergantung AI (mockup dulu boleh)
-            const status = 'pending'; 
-            const feedback = 'Menunggu analisis AI';
 
             await SQL.Query(qInsert, [
                 itemId, user.id, funding.funding_id, 
                 name, categoryId, amount, quantity, monthNum, year, 
-                status, feedback
+                finalStatus, // Gunakan status yang sudah dinormalisasi
+                finalFeedback
             ]);
 
-            return success(res, { item_id: itemId }, "Item ditambahkan");
+            return success(res, { 
+                item_id: itemId, 
+                status: finalStatus, 
+                feedback: finalFeedback 
+            }, "Item ditambahkan");
 
         } catch (e) {
             console.error(e);
@@ -681,24 +712,84 @@ module.exports = {
     editBudgetItem: async (req, res) => {
         try {
             const user = req.currentUser;
-            const { id } = req.body; // Frontend kirim ID di body, bukan params URL
-            const { name, amount, quantity, categoryId } = req.body;
+            const { id, name, amount, quantity, categoryId } = req.body; 
 
-            // Cek Item
-            const check = await SQL.Query("SELECT * FROM budget_plan WHERE id = ? AND planner_id = ?", [id, user.id]);
+            // 1. Cek Validitas Item & Ambil Total Period Fund
+            // Kita perlu JOIN 3 Tabel: budget_plan -> funding -> scholarship_programs
+            const qCheck = `
+                SELECT bp.*, sp.total_period_fund 
+                FROM budget_plan bp
+                JOIN funding f ON bp.funding_id = f.funding_id
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE bp.id = ? AND bp.planner_id = ?
+            `;
+            
+            const check = await SQL.Query(qCheck, [id, user.id]);
+            
             if (check.data.length === 0) return error(res, "Item tidak ditemukan", 404);
+            
+            const currentItem = check.data[0];
 
-            // Update & Reset Status ke Pending (Untuk di-revalidate AI)
+            // 2. RE-VALIDASI AI (Panggil Gemini Lagi)
+            const totalCost = Number(amount) * Number(quantity);
+            const categoryName = categoryId == 0 ? "Wants" : (categoryId == 1 ? "Needs" : "Education");
+
+            const prompt = `
+                ROLE: Financial Auditor. RE-VALIDATION REQUEST.
+                
+                CONTEXT: Student is editing a budget item.
+                PREVIOUS ITEM: "${currentItem.item_name}" (IDR ${currentItem.amount})
+                
+                NEW PROPOSAL:
+                - Item Name: "${name}"
+                - Category: ${categoryName}
+                - Unit Price: IDR ${Number(amount).toLocaleString('id-ID')}
+                - Quantity: ${quantity}
+                - Total Line Cost: IDR ${totalCost.toLocaleString('id-ID')}
+                - Student Total Scholarship: IDR ${Number(currentItem.total_period_fund).toLocaleString('id-ID')}
+                
+                RULES:
+                Validate this update strictly. 
+                Check if the price is reasonable and category is correct.
+                
+                OUTPUT JSON: { "status": "approved" | "rejected", "feedback": "Reason in Indonesian" }
+            `;
+
+            // Panggil AI
+            let aiCheck = await askGemini(prompt, null, 'AUDITOR');
+            
+            // Fallback jika AI mati
+            if (!aiCheck) {
+                aiCheck = { status: 'pending', feedback: 'AI sibuk. Item disimpan sebagai pending.' };
+            }
+
+            // 3. UPDATE DATABASE
             const qUpdate = `
                 UPDATE budget_plan 
-                SET item_name=?, price=?, quantity=?, category_id=?, status='pending', ai_feedback='Menunggu re-validasi'
+                SET item_name=?, amount=?, quantity=?, category_id=?, status=?, ai_feedback=?
                 WHERE id=?
             `;
-            await SQL.Query(qUpdate, [name, amount, quantity, categoryId, id]);
+            
+            await SQL.Query(qUpdate, [
+                name, 
+                amount, 
+                quantity, 
+                categoryId, 
+                aiCheck.status,   
+                aiCheck.feedback, 
+                id
+            ]);
 
-            return success(res, {}, "Item diperbarui");
+            return success(res, { 
+                id: id,
+                status: aiCheck.status, 
+                feedback: aiCheck.feedback 
+            }, "Item diperbarui dan divalidasi ulang.");
 
-        } catch (e) { return error(res, "Gagal edit item"); }
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal edit item");
+        }
     },
 
 
@@ -950,7 +1041,7 @@ module.exports = {
             const stuffs = items.data.map(item => ({
                 id: item.id,
                 name: item.item_name,
-                amount: Number(item.price),
+                amount: Number(item.amount),
                 quantity: Number(item.quantity),
                 status: item.status, // pending, approved, rejected
                 feedback: item.ai_feedback,
