@@ -500,7 +500,9 @@
         if (this != Input_StuffAmountEdit)
             Input_StuffAmountEdit.oninput();
     }
-    Input_StuffAmount.onblur =
+    Input_StuffAmount.onblur = function() {
+        checkInputs(PopOver_NewPlan);
+    }
     Input_StuffAmountEdit.onblur = function() {
         checkInputs(PopOver_EditPlan);
     }
