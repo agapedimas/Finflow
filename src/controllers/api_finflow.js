@@ -4,7 +4,7 @@ const { ethers } = require("ethers");
 const fs = require("fs");
 const path = require("path");
 const GeminiModule = require("../../gemini");
-const BlockchainService = require("blockchainService");
+const BlockchainService = require("./blockchainService");
 
 GeminiModule.Initialize();
 
@@ -431,7 +431,8 @@ module.exports = {
                 // Mapping Student
                 const joinedStudents = funds.data.map(f => ({
                     id: f.student_id,
-                    name: f.displayname
+                    name: f.displayname,
+                    fundingId: f.funding_id
                 }));
 
                 // Tentukan Status Program
@@ -901,6 +902,8 @@ module.exports = {
     },
 
     // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
     confirmTransfer: async (req, res) => {
         try {
             const { funding_ids } = req.body; // Array ID
@@ -911,53 +914,42 @@ module.exports = {
 
             const placeholders = funding_ids.map(() => '?').join(',');
             
-            // Cari tagihan yang statusnya 'Ready_To_Fund'
-            const qCheck = `
-                SELECT f.funding_id, p.total_period_fund, f.student_id 
-                FROM funding f
-                JOIN scholarship_programs p ON f.program_id = p.id
-                WHERE f.funding_id IN (${placeholders}) 
-                AND f.status = 'Ready_To_Fund'
-            `;
-            const funds = (await SQL.Query(qCheck, funding_ids)).data;
+            // Query Check
+            const qCheck = `SELECT f.funding_id, p.total_period_fund, f.student_id, p.funder_id FROM funding f JOIN scholarship_programs p ON f.program_id = p.id WHERE f.funding_id IN (${placeholders}) AND f.status = 'Ready_To_Fund'`;
+            
+            const result = await SQL.Query(qCheck, funding_ids);
 
-            if (funds.length === 0) return error(res, "Tidak ada tagihan aktif", 404);
+            if (!result || !result.data) {
+                console.error("SQL Error di confirmTransfer:", result);
+                return error(res, "Terjadi kesalahan database saat verifikasi pembayaran.", 500);
+            }
+
+            const funds = result.data;
+
+            if (funds.length === 0) return error(res, "Tidak ada tagihan aktif atau status sudah berubah", 404);
 
             let totalPaid = 0;
-            let txHash = ""; // Hash transaksi terakhir (untuk bukti)
 
             for (const fund of funds) {
                 const amount = Number(fund.total_period_fund);
                 
-                // --- BLOCKCHAIN ACTION: ADMIN DEPOSIT KE VAULT ---
-                try {
-                    console.log(`[BC] Admin mengirim ${amount} FIDR ke Vault...`);
-                    
-                    // Transfer Token: Admin -> Vault
-                    // Kita convert amount ke String karena ethers butuh BigNumber/String
-                    const tx = await tokenContract.transfer(VAULT_ADDRESS, amount.toString());
-                    
-                    console.log(`[BC] Sukses! Hash: ${tx.hash}`);
-                    txHash = tx.hash;
-
-                    // (Opsional: Simpan hash ini di tabel funding atau transaction log jika mau)
-
-                } catch (bcError) {
-                    console.error("[BC ERROR] Gagal transfer ke Vault:", bcError);
-                    // Note: Di Production, harus ada rollback DB. Di Hackathon, lanjut aja (log error).
-                }
-                // -------------------------------------------------
-
-                // UPDATE DATABASE
+                // 1. UPDATE DATABASE
                 await SQL.Query(
                     "UPDATE funding SET status = 'Waiting_Allocation' WHERE funding_id = ?", 
                     [fund.funding_id]
                 );
                 
-                // NOTIFIKASI
+                // 2. NOTIFIKASI [PERBAIKAN DISINI]
+                // Format Rupiah
+                const fmtAmount = amount.toLocaleString('id-ID');
+                
+                // Susun pesan di Javascript dulu (Lebih Aman)
+                const notifMessage = `Funder telah menyetor dana Rp ${fmtAmount}. Buat Budget Plan sekarang.`;
+
+                // Masukkan pesan yang sudah jadi ke database
                 await SQL.Query(
-                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Masuk! 💰', 'Funder telah menyetor dana penuh. Buat Budget Plan sekarang.', 'Success')", 
-                    [fund.student_id]
+                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Masuk! 💰', ?, 'Success')", 
+                    [fund.student_id, notifMessage]
                 );
 
                 totalPaid += amount;
@@ -965,11 +957,13 @@ module.exports = {
 
             return success(res, { 
                 total_paid: totalPaid,
-                tx_hash: txHash,
                 status: "Waiting_Allocation"
-            }, "Pembayaran Sukses & Tercatat di Blockchain.");
+            }, "Pembayaran Sukses. Mahasiswa telah dinotifikasi.");
 
-        } catch (e) { return error(res, "Gagal transfer"); }
+        } catch (e) { 
+            console.error(e);
+            return error(res, "Gagal transfer: " + e.message); 
+        }
     },
 
     getBudgets: async (req, res) => {
@@ -2108,7 +2102,7 @@ module.exports = {
             
             // 1. Ambil Funding yang sedang menunggu
             const qFund = `
-                SELECT f.funding_id, f.status, sp.total_period_fund, sp.start_date, sp.end_date, f.funder_id
+                SELECT f.funding_id, f.status, sp.total_period_fund, sp.start_date, sp.end_date, sp.funder_id
                 FROM funding f
                 JOIN scholarship_programs sp ON f.program_id = sp.id
                 WHERE f.student_id = ? AND f.status = 'Waiting_Allocation'
@@ -2152,15 +2146,17 @@ module.exports = {
             let totalEdu = 0;
 
             items.forEach(item => {
-                // [PERBAIKAN] Ganti item.price jadi item.amount
                 const val = Number(item.amount) * Number(item.quantity);
-                if (item.category_id === 1) totalNeeds += val; // Needs
-                else if (item.category_id === 0) totalWants += val; // Wants
-                else if (item.category_id === 2) totalEdu += val; // Education
+                if (item.category_id === 1) totalNeeds += val; 
+                else if (item.category_id === 0) totalWants += val; 
+                else if (item.category_id === 2) totalEdu += val; 
             });
 
             const dripNeeds = Math.floor(totalNeeds / weeks);
             const dripWants = Math.floor(totalWants / weeks);
+            
+            // [PERBAIKAN SCOPE]: Definisikan variabel ini DI LUAR blok try/catch
+            const totalWeeklyDrip = dripNeeds + dripWants;
 
             // 7. SIMPAN ATURAN KONTRAK (Funding Allocation)
             await SQL.Query("DELETE FROM funding_allocation WHERE funding_id = ?", [funding.funding_id]);
@@ -2183,63 +2179,40 @@ module.exports = {
             // 8. AKTIFKAN PROGRAM (DB)
             await SQL.Query("UPDATE funding SET status = 'Active' WHERE funding_id = ?", [funding.funding_id]);
 
-            if (!user.wallet_address || !user.wallet_address.startsWith("0x") || user.wallet_address.length !== 42) {
-                // Jangan panggil blockchain, return error atau skip
-                console.error("Wallet Address Student Invalid:", user.wallet_address);
-                return error(res, "Gagal Aktivasi: Wallet Address Student tidak valid.");
-            }
-            
             // ============================================================
             // 9. BLOCKCHAIN ACTION (REAL INTEGRATION)
             // ============================================================
             let txHash = "";
             try {
-                // Hitung total drip per minggu (Needs + Wants)
-                const totalWeeklyDrip = dripNeeds + dripWants;
-                
-                // Panggil Service Blockchain yang sudah kita buat
+                // Panggil Service Blockchain
                 txHash = await BlockchainService.setupVaultPlan(
-                    user.wallet_address,  // Kirim ke wallet student
-                    totalEdu,             // Dana Edukasi (Locked)
-                    totalWeeklyDrip,      // Dana Drip Mingguan
-                    weeks                 // Durasi
+                    user.wallet_address,  
+                    totalEdu,             
+                    totalWeeklyDrip,      
+                    weeks                 
                 );
                 
                 console.log(`[BC] ✅ Plan Setup Success! Hash: ${txHash}`);
 
             } catch (bcError) {
-                // Safeguard Hackathon:
-                // Jika blockchain gagal (misal gas kurang), log error tapi jangan crash server.
-                // Database sudah terupdate, jadi secara UX tetap jalan.
                 console.error("⚠️ Blockchain Setup Failed:", bcError.message);
                 txHash = "failed_on_chain_db_ok"; 
             }
             // ============================================================
 
             // 10. Notifikasi DETAIL
-            // Format angka ke Rupiah
             const fmtEdu = Number(totalEdu).toLocaleString('id-ID');
-            const fmtDrip = Number(totalWeeklyDrip).toLocaleString('id-ID');
+            const fmtDrip = Number(totalWeeklyDrip).toLocaleString('id-ID'); // Sekarang variabel ini dikenali
             const fmtTotal = Number(funding.total_period_fund).toLocaleString('id-ID');
 
-            // Pesan untuk Student
-            const msgStudent = `
-                🎉 <b>Beasiswa Aktif!</b>
-                Dana Total: Rp ${fmtTotal} telah dikunci di Smart Contract.
-                
-                🔒 <b>Dana Pendidikan:</b> Rp ${fmtEdu} (Terkunci aman).
-                💧 <b>Uang Saku:</b> Rp ${fmtDrip} akan cair otomatis setiap minggu selama ${weeks} minggu.
-                
-                Gunakan dana ini dengan bijak ya!
-            `.replace(/\n/g, "").trim(); // Hapus enter berlebih biar rapi di DB
+            const msgStudent = `🎉 Beasiswa Aktif! Dana Total Rp ${fmtTotal} telah dikunci di Smart Contract. Dana Pendidikan: Rp ${fmtEdu} (Terkunci). Uang Saku Mingguan: Rp ${fmtDrip}.`;
 
             await SQL.Query(
                 "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Kontrak Blockchain Aktif 🔗', ?, 'Success')",
                 [user.id, msgStudent]
             );
 
-            // Pesan untuk Funder
-            const msgFunder = `Student ${user.displayname} siap! Dana Rp ${fmtTotal} sudah diamankan di Smart Contract (Hash: ${txHash.substring(0, 10)}...). Sistem Drip otomatis berjalan mulai sekarang.`;
+            const msgFunder = `Student ${user.displayname} siap! Dana Rp ${fmtTotal} sudah diamankan di Smart Contract (Hash: ${txHash.substring(0, 10)}...).`;
             
             await SQL.Query(
                 "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Setup Berhasil ✅', ?, 'Success')",
@@ -2248,13 +2221,13 @@ module.exports = {
 
             return success(res, { 
                 status: "Active", 
-                weekly_drip: (dripNeeds + dripWants), 
+                weekly_drip: totalWeeklyDrip, 
                 tx_hash: txHash 
             }, "Aktivasi Berhasil!");
 
         } catch (e) {
             console.error(e);
-            return error(res, "Gagal aktivasi budget plan");
+            return error(res, "Gagal aktivasi budget plan: " + e.message);
         }
     },
 

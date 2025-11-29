@@ -228,8 +228,65 @@
 </div>
 
 <script>
-    Button_PayAll.onclick = function() {
+    Button_PayAll.onclick = async function() {
+        // 1. Ambil Data Program saat ini
+        const currentProgram = Sheet_Program.data;
 
+        if (!currentProgram || !currentProgram.joinedStudents || currentProgram.joinedStudents.length === 0) {
+            alert("Belum ada mahasiswa di program ini.");
+            return;
+        }
+
+        // 2. Ambil ID Funding dari setiap mahasiswa
+        // (Karena Anda sudah update backend, property .fundingId pasti ada)
+        const fundingIds = currentProgram.joinedStudents
+            .map(s => s.fundingId)
+            .filter(id => id); // Hapus jika ada yang null
+
+        if (fundingIds.length === 0) {
+            alert("Data pembayaran tidak valid (ID Funding hilang).");
+            return;
+        }
+
+        // 3. Konfirmasi Total Pembayaran
+        // Kita hitung total manual atau pakai angka dari program
+        const totalAmount = currentProgram.totalPeriodFund * fundingIds.length;
+        const fmtTotal = formatCurrency(totalAmount);
+        
+        if (!confirm(`Konfirmasi Pembayaran:\n\nProgram: ${currentProgram.name}\nJumlah Mahasiswa: ${fundingIds.length}\nTotal Transfer: ${fmtTotal}\n\nLanjutkan?`)) {
+            return;
+        }
+
+        // 4. Loading State
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerText = "Processing...";
+
+        try {
+            // 5. Panggil API Confirm Transfer
+            const res = await $.post("/api/funding/pay", { funding_ids: fundingIds });
+
+            if (res.success) {
+                const paidTotal = Number(res.data.total_paid).toLocaleString('id-ID');
+                alert(`✅ Pembayaran Sukses!\nTotal Terbayar: Rp ${paidTotal}\n\nStatus mahasiswa telah diperbarui menjadi 'Waiting Allocation'.`);
+                
+                // Tutup Sheet & Refresh List
+                Sheet_Program.close();
+                initializePrograms(); 
+
+            } else {
+                alert("Gagal: " + res.message);
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Terjadi kesalahan koneksi server.");
+        } finally {
+            // Reset Tombol
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 
     registerCurrencyInput(Input_ProgramAmount);
