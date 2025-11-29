@@ -325,8 +325,51 @@
 <script>
   let categories = [];
 
-  Button_ActivateScholarship.onclick = function() {
+  Button_ActivateScholarship.onclick = async function() {
+    // 1. Konfirmasi User (Sangat penting karena ini transaksi Blockchain immutable)
+    if (!confirm("Apakah Anda yakin ingin mengaktifkan rencana anggaran ini?\n\nAksi ini akan mengunci dana di Smart Contract Blockchain dan memulai jadwal Drip mingguan. Aksi ini tidak dapat dibatalkan.")) {
+      return;
+    }
 
+    // 2. UI Loading State (Disable tombol agar tidak double click)
+    const btn = this;
+    btn.disabled = true;
+
+
+    try {
+      // 3. Panggil API Backend
+      // Kita tidak perlu kirim body data, karena backend mengambil data dari Session User & Database
+      const res = await $.post("/api/budget/activate", {});
+
+      if (res.success) {
+        // 4. Sukses
+        let msg = "Sukses! Rencana Anggaran Aktif \n\n";
+        msg += "Smart Contract telah dibuat.\n";
+        
+        if (res.data.tx_hash) {
+            // Tampilkan sedikit hash agar terlihat canggih/real blockchain
+            msg += "TX Hash: " + res.data.tx_hash.substring(0, 10) + "..." + res.data.tx_hash.substring(res.data.tx_hash.length - 4) + "\n";
+        }
+        
+        msg += "Weekly Drip: Rp " + formatCurrency(res.data.weekly_drip);
+        
+        alert(msg);
+
+        // 5. Refresh Halaman untuk memperbarui status UI (misal tombol jadi hilang atau status berubah)
+        window.location.reload(); 
+
+      } else {
+        // 5. Gagal (Validasi Backend: misal ada item belum approved, atau saldo admin kurang)
+        alert("Gagal Aktivasi: " + res.message);
+      }
+
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan koneksi atau server error.");
+    } finally {
+      // 6. Reset State Tombol
+      btn.disabled = false;
+    }
   }
 
   PopOver_NewPlan.onbeforeclose = function () {
