@@ -1,0 +1,15 @@
+{
+    "title": "Masuk",
+    "description": "Mulai kelola keuangan Anda untuk masa depan yang lebih cerah.",
+    
+    "error_generic": "Terjadi kesalahan",
+    "error_incorrect": "Nama pengguna atau kata sandi salah",
+    "error_nointernet": "Sambungkan ke internet",
+    "error_server": "Kami sedang mengalami masalah saat ini. Silakan coba lagi nanti.",
+    "error_signin": "Silakan masuk untuk melanjutkan",
+
+    "signin_with_google": "Lanjutkan dengan Google",
+
+    "offer_signup_title": "Belum punya akun?",
+    "offer_signup_link": "Daftar"
+}

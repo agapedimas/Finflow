@@ -1,0 +1,23 @@
+{
+    "title": "Pengaturan",
+
+    "signout": "Keluar",
+    "appearance": "Tampilan",
+    "theme": "Tema",
+    "theme_system": "Default Sistem",
+    "theme_light": "Terang",
+    "theme_dark": "Gelap",
+    "accent_color": "Warna Aksen",
+    "language": "Bahasa",
+    "accounts": "Akun",
+    "about_app": "Tentang Aplikasi",
+    "git_repository": "Repositori Git",
+    "version": "Versi",
+    "copyright": "Hak Cipta",
+    "copyright_text": "Hambatan Hak Cipta.",
+    
+    "signout_confirm_title": "Apakah Anda yakin ingin keluar?",
+    "signout_confirm_message": "Anda dapat masuk kembali kapan saja.",
+
+    "error_generic": "Terjadi kesalahan."
+}

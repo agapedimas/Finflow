@@ -1,0 +1,49 @@
+{
+    "title": "Arus Kas",
+
+    "overview_title": "Ringkasan",
+    "overview_budgetremaining": "Sisa Anggaran",
+    "overview_budgetstatus_overlimit": "Terlalu tinggi, Anda mungkin perlu menyesuaikan kembali rencana anggaran.",
+    "overview_budgetstatus_nearlimit": "Hati-hati! Saldo Anda rendah.",
+    "overview_budgetstatus_normal": "Terlihat normal. Pertahankan kerja bagus ini.",
+    "overview_budgetreadjust": "Sesuaikan Ulang",
+    "overview_expensesthisweek": "Pengeluaran Minggu Ini",
+    "overview_feedback_title": "Umpan Balik Asisten",
+    "overview_feedback_empty": "Belum ada umpan balik dari asisten. Periksa lagi nanti.",
+    "overview_feedback_ask": "Tanya Asisten",
+
+    "monthlyreport_title": "Laporan Bulanan",
+
+    "transaction_scanbill": "Pindai Tagihan",
+    "transaction_scanbill_preview": "Pratinjau",
+    "transaction_scan_uploadgallery": "Unggah dari Galeri",
+    "transaction_addmanual": "Input Manual",
+    "transaction_addmanual_discard_title": "Buang Input Transaksi?",
+    "transaction_addmanual_discard_description": "Anda dapat menginputnya nanti, kapan saja.",
+    "transaction_addmanual_discard_confirm": "Buang",
+    "transaction_addmanual_discard_cancel": "Lanjut Input",
+    "transaction_add_title": "Transaksi Baru",
+    "transaction_scan_title": "Pindai Tagihan",
+
+    "request_drip_title": "Ajukan Dana",
+    "request_drip_input_purpose": "Tujuan",
+    "request_drip_input_purpose_placeholder": "misal: Beli buku koding",
+    "request_drip_input_amount": "Jumlah",
+    "request_drip_input_amount_placeholder": "misal: Rp85.000,00",
+    "request_drip_input_proof": "Bukti",
+    "request_drip_urgency_title": "Urgensi",
+    "request_drip_urgency_urgent": "Mendesak",
+    "request_drip_urgency_request_education": "Permintaan Pendidikan",
+
+    "track_title": "Lacak",
+    "track_program": "Program",
+    "track_student": "Siswa",
+
+    "select_student_none": "Tidak Ada Siswa Dipilih",
+    "select_student_title": "Pilih Siswa",
+
+    "no_transactions_title": "Belum Ada Transaksi",
+    "no_transactions_message": "Anda belum melakukan transaksi apa pun bulan ini.",
+    "server_error_title": "Terjadi Kesalahan",
+    "server_error_message": "Silakan coba lagi nanti."
+}

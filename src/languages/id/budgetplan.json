@@ -1,0 +1,31 @@
+{
+    "title": "Rencana Anggaran",
+
+    "newplan_title": "Rencana Baru",
+    "newplan_discard_title": "Buang Pembuatan Rencana Baru?",
+    "newplan_discard_description": "Anda dapat membuat rencana baru nanti, kapan saja.",
+    "newplan_discard_confirm": "Buang",
+    "newplan_discard_cancel": "Lanjut Membuat",
+
+    "editplan_title": "Ubah Rencana",
+    "editplan_discard_title": "Buang Perubahan Rencana?",
+    "editplan_discard_description": "Perubahan Anda tidak akan disimpan.",
+    "editplan_discard_confirm": "Buang",
+    "editplan_discard_cancel": "Lanjut Mengubah",
+
+    "plan_status_approved": "Disetujui",
+    "plan_status_rejected": "Ditolak",
+    "plan_status_pending": "Menunggu",
+
+    "monthlyplan": "Rencana Bulanan",
+    "allocation": "Alokasi",
+    "allocated_parent": "Alokasi Orang Tua",
+    "allocated_funder": "Alokasi {0}",
+
+    "activate_scholarship": "Aktifkan Beasiswa",
+
+    "no_plans_title": "Belum Ada Rencana",
+    "no_plans_message": "Anda belum merencanakan pengeluaran apa pun bulan ini.",
+    "server_error_title": "Terjadi Kesalahan",
+    "server_error_message": "Silakan coba lagi nanti."
+}
