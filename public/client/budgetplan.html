@@ -375,36 +375,46 @@
         Button_SubmitNewPlan.disabled =
         Button_CancelNewPlan.disabled = 
         PopOver_NewPlan.isloading = true;
-        for (const input of newPlanInputs)
-            input.disabled = true;
+        for (const input of newPlanInputs) input.disabled = true;
 
-        const plan = {
+        // Ambil Bulan & Tahun Aktif dari Tab
+        const activeTab = document.querySelector("#Tab_Months span.active");
+        const monthStr = activeTab ? activeTab.dataset.month : "jan";
+        const yearStr = Select_Years.value;
+
+        const payload = {
             name: Input_StuffName.value,
-            amount: Input_StuffAmount.valueInt,
-            quantity: parseInt(Input_StuffQuantity.value) || 0,
-            categoryId: Select_StuffCategory.value
-        }
+            // Bersihkan format rupiah
+            amount: parseInt(Input_StuffAmount.value.replace(/[^0-9]/g, "")) || 0,
+            quantity: parseInt(Input_StuffQuantity.value) || 1,
+            categoryId: Select_StuffCategory.value,
+            month: monthStr,
+            year: yearStr
+        };
 
         try {
-            // DUMMY ACTION
-            await Delay(500);
-            DUMMY_MONTHLY_PLAN.stuffs.push(plan);
-            // await $.post("/api/budgetplan/", plan);
-            const activeMonth = [...Tab_Months.children].find(o => o.classList.contains("active"))?.dataset?.month;
-            const activeYear = Select_Years.value;
-            fetchPlanList(activeMonth, activeYear);
+            // PANGGIL API ADD
+            const res = await $.post("/api/budget/add", payload); // Endpoint Backend
+
+            if(res.success) {
+                alert("Item berhasil ditambahkan! Menunggu validasi AI...");
+                // Refresh List
+                fetchPlanList(monthStr, yearStr);
+            } else {
+                alert("Gagal: " + res.message);
+            }
         }
         catch (error) {
+            console.error(error);
+            alert("Error koneksi server.");
         }
 
+        // Reset UI State
         Button_SubmitNewPlan.disabled =
         Button_CancelNewPlan.disabled = 
         PopOver_NewPlan.isloading = false;
-        for (const input of newPlanInputs)
-            input.disabled = false;
+        for (const input of newPlanInputs) input.disabled = false;
         PopOver_NewPlan.close(true);
-
-        console.log(plan);
     }
     Button_EditPlan.onclick = async function() {
         const plan = Activity_Main.sections[1].data;
@@ -412,6 +422,7 @@
         Input_StuffAmountEdit.value = formatCurrency(plan.amount);
         Input_StuffQuantityEdit.value = plan.quantity;
         Select_StuffCategoryEdit.value = plan.categoryId;
+        PopOver_EditPlan.itemId = plan.id;
         checkInputs(PopOver_EditPlan);
         PopOver_EditPlan.isinputchanged = false;
         PopOver_EditPlan.open();
@@ -423,49 +434,51 @@
         Button_SubmitEditPlan.disabled =
         Button_CancelEditPlan.disabled = 
         PopOver_EditPlan.isloading = true;
-        for (const input of editPlanInputs)
-            input.disabled = true;
-
-        const plan = {
-            name: Input_StuffNameEdit.value,
-            amount: Input_StuffAmountEdit.valueInt,
-            quantity: parseInt(Input_StuffQuantityEdit.value) || 0,
-            categoryId: Select_StuffCategoryEdit.value,
-            status: "pending",
-            feedback: null
-        }
-
-        Object.assign(Activity_Main.sections[1].data, plan);
+        
+        for (const input of editPlanInputs) input.disabled = true;
 
         try {
-            // DUMMY ACTION
-            await Delay(500);
-            // await $.patch("/api/budgetplan/", plan);
-            
-            const category = categories.find(o => o.id == plan.categoryId);
-            Activity_Main.sections[1].name = plan.name;
-            
-            Text_StuffAmount.innerText = formatCurrency(plan.amount);
-            Text_StuffQuantity.innerText = plan.quantity;
-            Text_StuffCategory.innerText = category.name;
-            Text_StuffStatus.innerText = "<$ budgetplan plan_status_pending />";
+            const payload = {
+                id: PopOver_EditPlan.itemId, // ID Item wajib dikirim di body
+                name: Input_StuffNameEdit.value,
+                // Bersihkan format rupiah
+                amount: parseInt(Input_StuffAmountEdit.value.replace(/[^0-9]/g, "")) || 0,
+                quantity: parseInt(Input_StuffQuantityEdit.value) || 1,
+                categoryId: Select_StuffCategoryEdit.value
+            };
 
-            Text_StuffStatus.setAttribute("class", "pending");
-            Text_StuffFeedback.innerText = plan.feedback;
+            // 1. PANGGIL API EDIT (POST)
+            // Backend kita pakai POST biasa, bukan PUT
+            const res = await $.post(`/api/budget/edit`, payload);
 
-            const activeMonth = [...Tab_Months.children].find(o => o.classList.contains("active"))?.dataset?.month;
-            const activeYear = Select_Years.value;
-            fetchPlanList(activeMonth, activeYear);
+            if(res.success) {
+                alert("Item diperbarui! Menunggu validasi ulang AI.");
+                
+                // 2. Refresh Halaman
+                const activeTab = document.querySelector("#Tab_Months span.active");
+                // Pastikan fetchPlanList dipanggil dengan bulan/tahun yang benar
+                fetchPlanList(activeTab.dataset.month, Select_Years.value);
+                
+                PopOver_EditPlan.close(true);
+                
+                // Tutup detail view jika ada
+                try { Activity_Main.back(); } catch(e){} 
+
+            } else {
+                alert("Gagal: " + res.message);
+            }
         }
         catch (error) {
+            console.error(error);
+            alert("Error koneksi edit.");
         }
         
+        // Reset UI
         Button_SubmitEditPlan.disabled =
         Button_CancelEditPlan.disabled = 
         PopOver_EditPlan.isloading = false;
-        for (const input of editPlanInputs)
-            input.disabled = false;
-        PopOver_EditPlan.close(true);
+        for (const input of editPlanInputs) input.disabled = false;
+        // Note: PopOver ditutup di blok try (sukses) atau tetap terbuka di catch (gagal) agar user bisa retry
     }
 
     Input_StuffName.oninput = 
@@ -519,74 +532,101 @@
     initializePlanList();
 
     async function initializeCategories() {
-        categories = DUMMY_CATEGORIES || await $.get("/api/categories");
+        try {
+            const res = await $.get("/api/categories");
+            categories = res.success ? res.data : [];
+            
+            // Fallback jika kosong
+            if(categories.length === 0) categories = [{id:0, name:"Wants"}, {id:1, name:"Needs"}, {id:2, name:"Education"}];
 
-        for (const category of categories) {
-            const optionElement = document.createElement("option");
-            optionElement.value = category.id;
-            optionElement.innerText = category.name;
-            Select_StuffCategory.append(optionElement);
-            Select_StuffCategoryEdit.append(optionElement.cloneNode(true));
-        }
+            for (const category of categories) {
+                const optionElement = document.createElement("option");
+                optionElement.value = category.id;
+                optionElement.innerText = category.name;
+                Select_StuffCategory.append(optionElement);
+                Select_StuffCategoryEdit.append(optionElement.cloneNode(true));
+            }
+        } catch(e) { console.error("Gagal load kategori"); }
     }
 
     function initializePlanList() {
         for (const tab of Tab_Months.children) {
             tab.onclick = function() {
-                fetchPlanList(tab.dataset.month, Select_Years.value);
+                [...Tab_Months.children].forEach(t => t.classList.remove("active"));
+                this.classList.add("active");
+                fetchPlanList(this.dataset.month, Select_Years.value);
             }
         }
         
         const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-        const currentMonth = months[new Date().getMonth()];
-        const currentYear = new Date().getFullYear();
-        fetchPlanList(currentMonth, currentYear);
-        
-        const years = DUMMY_YEARS || $.get("/client/cashflow/transactions/years");
-        for (const year of years) {
-            const optionElement = document.createElement("option");
-            optionElement.value = year;
-            optionElement.innerText = year;
-            if (currentYear == year)
-                optionElement.selected = true;
-            Select_Years.append(optionElement);
+        const now = new Date();
+        const currentMonth = months[now.getMonth()];
+        const currentYear = now.getFullYear();
+
+        // Setup Dropdown Tahun
+        Select_Years.innerHTML = "";
+        for(let y = now.getFullYear(); y >= 2024; y--) {
+            const opt = document.createElement("option");
+            opt.value = y; opt.innerText = y;
+            if(y === now.getFullYear()) opt.selected = true;
+            Select_Years.append(opt);
         }
+
+        // Set Active Tab & Load Data
+        const activeTab = [...Tab_Months.children].find(t => t.dataset.month === currentMonth);
+        if(activeTab) activeTab.classList.add("active");
+        
+        fetchPlanList(currentMonth, currentYear);
     }
 
-    function fetchPlanList(month, year) {
-        let activeTab;
-
-        for (const tab of Tab_Months.children) {
-            if (tab.dataset.month == month) {
-                tab.classList.add("active");
-                activeTab = tab;
-            }
-            else {
-                tab.classList.remove("active");
-            }
-        }
-            
+    async function fetchPlanList(month, year) {
+        let activeTab = document.querySelector(`#Tab_Months span[data-month='${month}']`);
         if (activeTab) {
-            console.log(activeTab.nextElement)
             const x = activeTab.getBoundingClientRect().x;
-            if (x < 20)
-                Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
+            if (x < 20) Tab_Months.scrollLeft = activeTab.offsetLeft - 20;
             else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50)
                 Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
         }
 
-        const plans = DUMMY_MONTHLY_PLAN || $("/client/budgetplan/data/?month=" + month + "&year=" + year);
-        
-        Cards_AllocationTotal.innerHTML = null;
-        
-        for (const category of plans.categories) {
-            appendPlanCategories(category);
-        }
+        // Loading
+        List_MonthlyPlan.innerHTML = "<div style='padding:20px;text-align:center;opacity:0.5'>Loading...</div>";
+        Cards_AllocationTotal.innerHTML = "";
 
-        List_MonthlyPlan.innerHTML = null;
+        try {
+            // 1. PANGGIL 1 ENDPOINT SAJA
+            // Endpoint ini mengembalikan { categories: [], stuffs: [] } sekaligus
+            const res = await $.get(`/api/budget/plan?month=${month}&year=${year}`);
 
-        for (const plan of plans.stuffs) {
-            appendPlanList(plan);
+            if (res.success) {
+                const plans = res.data; // Data paket lengkap
+
+                // A. Render Kartu Summary (Atas)
+                Cards_AllocationTotal.innerHTML = "";
+                if (plans.categories && plans.categories.length > 0) {
+                    for (const cat of plans.categories) {
+                        appendPlanCategories(cat);
+                    }
+                } else {
+                    // Render kartu kosong jika data nol (fallback UI)
+                    categories.forEach(c => appendPlanCategories({ categoryName: c.name, total: 0 }));
+                }
+
+                // B. Render List Item (Bawah)
+                List_MonthlyPlan.innerHTML = "";
+                if (plans.stuffs && plans.stuffs.length > 0) {
+                    for (const item of plans.stuffs) {
+                        appendPlanList(item);
+                    }
+                } else {
+                    List_MonthlyPlan.innerHTML = "<div style='padding:20px;text-align:center;opacity:0.5'>Belum ada rencana anggaran bulan ini.</div>";
+                }
+            } else {
+                List_MonthlyPlan.innerHTML = `<div style='padding:20px;text-align:center;color:red'>${res.message}</div>`;
+            }
+
+        } catch (e) {
+            console.error(e);
+            List_MonthlyPlan.innerHTML = "<div style='padding:20px;text-align:center;color:red'>Gagal memuat data.</div>";
         }
     }
 

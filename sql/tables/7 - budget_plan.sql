@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS `budget_plan` (
     `id` VARCHAR(128) PRIMARY KEY NOT NULL,
     `planner_id` VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    `funding_id` VARCHAR(128) NOT NULL,
     
     `item_name` VARCHAR(255) NOT NULL,
     `category_id` INT UNSIGNED NOT NULL,
@@ -13,6 +14,7 @@ CREATE TABLE IF NOT EXISTS `budget_plan` (
     `status` ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     `ai_feedback` TEXT NULL,
     FOREIGN KEY (`planner_id`) REFERENCES `accounts_student`(`id`),
+    FOREIGN KEY (`funding_id`) REFERENCES `funding`(`funding_id`) ON DELETE CASCADE,
     FOREIGN KEY (`category_id`) REFERENCES `allocation_categories`(`id`)
 ) 
 ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
