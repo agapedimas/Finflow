@@ -11,6 +11,7 @@
 <style>
     #Lists_Programs {
         display: grid;
+        gap: 15px;
     }
         #Lists_Programs .program {
             display: grid;
@@ -270,19 +271,19 @@
       const res = await $.post("/api/program/create", payload);
 
       if (res.success) {
-        alert("Program Berhasil Dibuat!");
+        // alert("Program Berhasil Dibuat!");
         PopOver_AddProgram.close(true);
         // [OPSIONAL] Refresh daftar program di halaman jika ada fungsi loadnya
-        // initializeProgramList();
+        await initializePrograms();
       } else {
-        alert("Gagal: " + res.message);
+        // alert("Gagal: " + res.message);
       }
 
       PopOver_AddProgram.close(true);
     } catch (error) {
       console.error(error);
       const msg = error.responseJSON ? error.responseJSON.message : error.message;
-      alert("Terjadi kesalahan: " + msg);
+      // alert("Terjadi kesalahan: " + msg);
     }
 
     Input_ProgramName.disabled = Input_ProgramAmount.disabled = Input_ProgramStartDate.disabled = Input_ProgramEndDate.disabled = Button_CancelAddProgram.disabled = Button_SubmitAddProgram.disabled = PopOver_AddProgram.isloading = false;
@@ -315,7 +316,7 @@
       });
 
       if (res.success) {
-        alert(`Berhasil! ${res.data.student_name} telah ditambahkan.`);
+        // alert(`Berhasil! ${res.data.student_name} telah ditambahkan.`);
                 
         // Opsional: Jika Anda ingin sheet detailnya tetap terbuka dan terupdate,
         // Anda perlu logika tambahan untuk mencari program yang tadi diedit 
@@ -324,12 +325,13 @@
         // Menutup sheet agar user bisa klik ulang untuk melihat data terbaru
         if(typeof Sheet_Program !== 'undefined') Sheet_Program.close();
       } else {
-        alert("Gagal: " + res.message);
+        console.error(res.message);
+        // alert("Gagal: " + res.message);
       }
     } catch (error) {
         console.error(error);
         const msg = error.responseJSON ? error.responseJSON.message : error.message;
-        alert("Terjadi kesalahan: " + msg);
+        // alert("Terjadi kesalahan: " + msg);
     }
 
     Input_StudentEmail.disabled = Button_CancelAddStudent.disabled = Button_SubmitAddStudent.disabled = PopOver_AddStudent.isloading = false;
@@ -343,6 +345,7 @@
         const response = await $.get("/api/program/list");
 
         if (response.success && response.data) {
+            Lists_Programs.innerHTML = null;
             for (const program of response.data) {
                 appendProgram(program);
             }

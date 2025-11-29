@@ -44,6 +44,7 @@
 
     "no_transactions_title": "Belum Ada Transaksi",
     "no_transactions_message": "Anda belum melakukan transaksi apa pun bulan ini.",
+    "no_transactions_student_message": "{0} belum melakukan transaksi apa pun bulan ini.",
     "server_error_title": "Terjadi Kesalahan",
     "server_error_message": "Silakan coba lagi nanti."
 }

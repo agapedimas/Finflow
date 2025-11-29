@@ -44,6 +44,7 @@
 
     "no_transactions_title": "No Transactions Yet",
     "no_transactions_message": "You haven't made any transactions this month.",
+    "no_transactions_student_message": "{0} haven't made any transactions this month.",
     "server_error_title": "Something Went Wrong",
     "server_error_message": "Please try again later."
 }

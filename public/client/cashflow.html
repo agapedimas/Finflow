@@ -992,13 +992,14 @@
         // Buka Popover agar user bisa review sebelum save
         PopOver_InputCamera.close(true);
         PopOver_InputManual.open(Button_NewTransaction);
-        alert(`AI menemukan ${ai.items ? ai.items.length : 1} item. Silakan cek kategorinya.`);
+        // alert(`AI menemukan ${ai.items ? ai.items.length : 1} item. Silakan cek kategorinya.`);
       } else {
-        alert("AI Gagal: " + res.message);
+        console.error(res.message);
+        // alert("AI Gagal: " + res.message);
       }
     } catch (error) {
       console.error(error);
-      alert("Gagal upload gambar.");
+      // alert("Gagal upload gambar.");
     }
 
     PopOver_InputCamera.iscloseable = true;
