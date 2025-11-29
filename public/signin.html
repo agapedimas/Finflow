@@ -63,7 +63,8 @@
                     width: 1em;
                     height: 1em;
                 }
-                .panel:not(.loading) .inputs button .progressring
+                .panel:not(.loading) .inputs button .progressring,
+                .panel.loading .inputs button .icon
                 {
                     display: none;
                 }
@@ -72,6 +73,9 @@
                 margin-top: 1em;
                 justify-self: center;
             }
+    #w3a-parent-container {
+        display: none;
+    }
 </style>
 
 <script>
@@ -138,8 +142,11 @@
         try {
             // Panggil Login SDK (Popup Google)
             // Fungsi ini otomatis memanggil backend /auth/login juga
+            setTimeout(function() {
+                const googleButton = document.querySelector("#w3a-parent-container button:has(img[alt='login-google-active'])");
+                googleButton.click();
+            }, 500);
             const result = await Finflow.login();
-            
             handleLoginSuccess(result);
 
         } catch (error) {

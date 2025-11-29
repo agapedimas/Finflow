@@ -60,7 +60,7 @@ const Finflow = {
   login: async () => {
     if (!web3auth) throw new Error("SDK belum siap. Cek koneksi internet.");
     provider = await web3auth.connect();
-
+    
     // Auto-login ke backend untuk dapat Session Cookie
     const user = await _getUserInfo();
     const result = await Finflow.backendLogin(user);
