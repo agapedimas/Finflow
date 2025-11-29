@@ -1145,6 +1145,21 @@
             };
             // const result = await $.post("", data);
             PopOver_RequestDrip.close(true);
+            
+            Components.ActionSheet.Open(
+            {
+                Title: "Title Here",
+                Description: "Message Here",
+                Actions: [
+                    { 
+                        Title: "<$ generic done />", Type: "Options.Accent", 
+                        Action: async function()
+                        {
+                          // Actions when user click Done button
+                        }
+                    }
+                ]
+            });  
         }
         catch (error) {
         }
