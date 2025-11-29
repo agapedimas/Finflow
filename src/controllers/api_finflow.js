@@ -2171,6 +2171,121 @@ module.exports = {
         }
     },
 
+    // ============================================================
+    // MODULE 3 EXTENSION: ACTIVATE BUDGET (Blockchain Trigger)
+    // ============================================================
+    activateBudgetPlan: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            
+            // 1. Ambil Funding yang sedang menunggu (Waiting_Allocation)
+            // Kita JOIN ke scholarship_programs untuk dapat 'total_period_fund' dan durasi
+            const qFund = `
+                SELECT f.funding_id, f.status, sp.total_period_fund, sp.start_date, sp.end_date, f.funder_id
+                FROM funding f
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE f.student_id = ? AND f.status = 'Waiting_Allocation'
+            `;
+            const fundRes = await SQL.Query(qFund, [user.id]);
+            const funding = fundRes.data?.[0];
+
+            if (!funding) {
+                return error(res, "Tidak ada program beasiswa yang menunggu aktivasi (Status harus Waiting_Allocation).", 404);
+            }
+
+            // 2. Ambil SEMUA Item Budget untuk Funding ini (Satu Periode)
+            // Kita tidak filter bulan/tahun, tapi filter by funding_id agar mencakup seluruh periode
+            const qItems = "SELECT * FROM budget_plan WHERE funding_id = ?";
+            const itemsRes = await SQL.Query(qItems, [funding.funding_id]);
+            const items = itemsRes.data;
+
+            if (items.length === 0) return error(res, "Belum ada rencana anggaran yang dibuat.", 400);
+
+            // 3. VALIDASI 1: Semua item harus APPROVED
+            const pendingOrRejected = items.filter(i => i.status !== 'approved');
+            if (pendingOrRejected.length > 0) {
+                return error(res, `Masih ada ${pendingOrRejected.length} item yang belum disetujui (Pending/Rejected). Harap perbaiki dulu.`, 400);
+            }
+
+            // 4. VALIDASI 2: Total Rencana == Total Dana
+            const totalPlanned = items.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
+            const totalBudget = Number(funding.total_period_fund);
+
+            // Toleransi selisih kecil (misal Rp 1.000) untuk menghindari masalah pembulatan desimal
+            if (Math.abs(totalPlanned - totalBudget) > 1000) {
+                return error(res, `Total rencana (Rp ${totalPlanned.toLocaleString()}) TIDAK SAMA dengan dana beasiswa (Rp ${totalBudget.toLocaleString()}). Selisih: Rp ${(totalBudget - totalPlanned).toLocaleString()}`, 400);
+            }
+
+            // --- SETUP SISTEM & BLOCKCHAIN LOGIC ---
+            
+            // 5. Hitung Durasi Minggu (Untuk Drip)
+            const weeks = calculateWeeks(funding.start_date, funding.end_date);
+            
+            // 6. Pisahkan Dana: Drip Pool (Needs+Wants) vs Vault Pool (Education)
+            let totalNeeds = 0;
+            let totalWants = 0;
+            let totalEdu = 0;
+
+            items.forEach(item => {
+                const val = Number(item.price) * Number(item.quantity);
+                if (item.category_id === 1) totalNeeds += val; // Needs
+                else if (item.category_id === 0) totalWants += val; // Wants
+                else if (item.category_id === 2) totalEdu += val; // Education
+            });
+
+            // Hitung nominal per minggu
+            const dripNeeds = Math.floor(totalNeeds / weeks);
+            const dripWants = Math.floor(totalWants / weeks);
+
+            // 7. SIMPAN ATURAN KONTRAK (Funding Allocation)
+            // Hapus aturan lama jika ada (bersih-bersih)
+            await SQL.Query("DELETE FROM funding_allocation WHERE funding_id = ?", [funding.funding_id]);
+
+            // Insert Drip Rules (Needs & Wants) -> Frequency: Weekly
+            const qAllocDrip = `
+                INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, remaining_drip_count) 
+                VALUES (?, ?, 1, ?, 'Weekly', ?, ?), (?, ?, 0, ?, 'Weekly', ?, ?)
+            `;
+            await SQL.Query(qAllocDrip, [
+                generateId('an'), funding.funding_id, totalNeeds, dripNeeds, weeks,
+                generateId('aw'), funding.funding_id, totalWants, dripWants, weeks
+            ]);
+
+            // Insert Vault Rule (Education) -> Frequency: Locked (Tidak Drip)
+            const qAllocVault = `
+                INSERT INTO funding_allocation (allocation_id, funding_id, category_id, total_allocation, drip_frequency, drip_amount, total_withdrawn) 
+                VALUES (?, ?, 2, ?, 'Locked', 0, 0)
+            `;
+            await SQL.Query(qAllocVault, [generateId('ae'), funding.funding_id, totalEdu]);
+
+            // 8. AKTIFKAN PROGRAM
+            await SQL.Query("UPDATE funding SET status = 'Active' WHERE funding_id = ?", [funding.funding_id]);
+
+            // 9. BLOCKCHAIN ACTION (MINTING/LOCKING)
+            // Karena di langkah 'confirmTransfer' Funder sudah transfer uang, dan kita asumsikan token sudah di Vault,
+            // di sini kita bisa mencatat hash konfirmasi atau sekadar log.
+            // Jika ingin lebih real, Backend bisa mengirim 0 token ke student sebagai tanda "Kontrak Aktif".
+            let txHash = "0x_contract_activated_" + Date.now();
+            console.log(`[BC] Smart Contract Rules Set: Drip ${weeks} Weeks started.`);
+
+            // 10. Notifikasi
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif! 🚀', 'Rencana disetujui. Drip mingguan akan otomatis masuk ke walletmu mulai sekarang.', 'Success')",
+                [user.id]
+            );
+            await SQL.Query(
+                "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Student Ready ✅', 'Student telah menyelesaikan budget plan. Penyaluran dana dimulai.', 'Success')",
+                [funding.funder_id]
+            );
+
+            return success(res, { status: "Active", weekly_drip: (dripNeeds + dripWants), tx_hash: txHash }, "Aktivasi Berhasil!");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal aktivasi budget plan");
+        }
+    },
+
 }
 
 // ============================================================
