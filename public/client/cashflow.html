@@ -294,8 +294,27 @@
 
   #Header_MonthlyReport,
   #List_MonthlyReport {
+    position: relative;
     max-width: 800px;
   }
+    #List_MonthlyReport .emptytitle {
+      font-family: var(--font-bold);
+      font-size: 1.5em;    
+      text-align: center;
+      margin: 2.5em 0 0;
+    }
+    #List_MonthlyReport .emptymessage {
+      font-size: 1.12em;
+      color: var(--foreground-description);
+      text-align: center;
+      margin: 0.25em 0;
+    }
+    #List_MonthlyReport .progressring {
+      position: absolute;
+      left: 50%;
+      top: 40px;
+      width: 25px;
+    }
   #List_MonthlyReport .stack .thumbnail {
     width: 35px;
     height: 35px;
@@ -372,7 +391,8 @@
   }
   #PopOver_InputManual #Button_AddNewTransaction {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
+    border-radius: 10px;
   }
 
   #PopOver_InputCamera {
@@ -972,13 +992,14 @@
         // Buka Popover agar user bisa review sebelum save
         PopOver_InputCamera.close(true);
         PopOver_InputManual.open(Button_NewTransaction);
-        alert(`AI menemukan ${ai.items ? ai.items.length : 1} item. Silakan cek kategorinya.`);
+        // alert(`AI menemukan ${ai.items ? ai.items.length : 1} item. Silakan cek kategorinya.`);
       } else {
-        alert("AI Gagal: " + res.message);
+        console.error(res.message);
+        // alert("AI Gagal: " + res.message);
       }
     } catch (error) {
       console.error(error);
-      alert("Gagal upload gambar.");
+      // alert("Gagal upload gambar.");
     }
 
     PopOver_InputCamera.iscloseable = true;
@@ -1124,6 +1145,21 @@
             };
             // const result = await $.post("", data);
             PopOver_RequestDrip.close(true);
+            
+            Components.ActionSheet.Open(
+            {
+                Title: "Title Here",
+                Description: "Message Here",
+                Actions: [
+                    { 
+                        Title: "<$ generic done />", Type: "Options.Accent", 
+                        Action: async function()
+                        {
+                          // Actions when user click Done button
+                        }
+                    }
+                ]
+            });  
         }
         catch (error) {
         }
@@ -1415,7 +1451,15 @@
       else if (x + activeTab.clientWidth > window.innerWidth - Select_Years.parentNode.clientWidth - 50) Tab_Months.scrollLeft = (activeTab.nextElementSibling || activeTab).offsetLeft - Select_Years.offsetLeft + activeTab.clientWidth + 30;
     }
 
-    List_MonthlyReport.innerHTML = "<div style='padding:20px; text-align:center; opacity:0.5'>Loading...</div>";
+    const progressRingElement = document.createElement("div");
+    progressRingElement.classList.add("progressring");
+    List_MonthlyReport.innerHTML = null;
+    List_MonthlyReport.append(progressRingElement);
+
+    const emptyTitleElement = document.createElement("div");
+    emptyTitleElement.classList.add("emptytitle");
+    const emptyMessageElement = document.createElement("div");
+    emptyMessageElement.classList.add("emptymessage");
 
     try {
       let transactions = [];
@@ -1432,11 +1476,17 @@
           appendReportList(transaction);
         }
       } else {
-        List_MonthlyReport.innerHTML = "<div style='padding:20px; text-align:center; opacity:0.5'>Belum ada transaksi bulan ini.</div>";
+        emptyTitleElement.innerText = "<$ cashflow no_transactions_title />";
+        emptyMessageElement.innerText = "<$ cashflow no_transactions_message />";
+        List_MonthlyReport.append(emptyTitleElement);
+        List_MonthlyReport.append(emptyMessageElement);
       }
     } catch (e) {
       console.error("Gagal ambil transaksi:", e);
-      List_MonthlyReport.innerHTML = "<div style='padding:20px; text-align:center; color:red'>Gagal memuat data.</div>";
+        emptyTitleElement.innerText = "<$ cashflow server_error_title />";
+        emptyMessageElement.innerText = "<$ cashflow server_error_message />";
+        List_MonthlyReport.append(emptyTitleElement);
+        List_MonthlyReport.append(emptyMessageElement);
     }
   }
 

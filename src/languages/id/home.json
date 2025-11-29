@@ -1,0 +1,14 @@
+{
+    "title": "Beranda",
+
+    "program_title": "Program yang Diikuti",
+    "program_status_notjoined_title": "Anda belum bergabung dengan program apa pun.",
+    "program_status_notjoined_description": "Daftar ke program beasiswa apa pun dan Anda akan diundang melalui email yang tertaut ke akun ini.",
+    "program_status_joined_title": "Program Saat Ini",
+    "program_status_joined_description": "Aktif sampai {0}.",
+    "program_learnmore_link": "Pelajari lebih lanjut",
+
+    "wallet_title": "Dompet",
+
+    "recommendations_title": "Direkomendasikan Untuk Anda"
+}

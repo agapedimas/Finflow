@@ -14,5 +14,7 @@
     "input_totalamount": "Total Amount per Period",
     "input_totalamount_placeholder": "e.g.: Rp1,000,000,000.00",
     "input_startdate": "Start Period Date",
-    "input_enddate": "End Period Date"
+    "input_enddate": "End Period Date",
+
+    "payall_title": "Pay All"
 }

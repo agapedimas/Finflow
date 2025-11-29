@@ -1,0 +1,32 @@
+{
+    "title": "Daftar",
+    "title_student": "Daftar sebagai Siswa",
+    "title_parent": "Daftar sebagai Orang Tua",
+    "title_scholarshipfunder": "Daftar sebagai Penyedia Beasiswa",
+    "description": "Buat akun untuk mengelola keuangan demi masa depan yang lebih cerah.",
+    "description_role": "Saya seorang...",
+    "description_signupwithgoogle": "Daftar dengan Akun Google Anda untuk melanjutkan.",
+
+    "signup_with_google": "Daftar dengan Google",
+    
+    "complete_data_student": "Silakan isi formulir di bawah ini untuk mendaftar.",
+    "complete_data_funder": "Silakan isi formulir di bawah ini untuk mendaftar.",
+    
+    "offer_signin_title": "Sudah punya akun?",
+    "offer_signin_link": "Masuk",
+
+    "role_student": "Siswa",
+    "role_parent": "Orang Tua",
+    "role_scholarshipfunder": "Penyedia Beasiswa",
+
+    "error_email_invalid": "Silakan masukkan email yang valid.",
+    "error_phonenumber_invalid": "Silakan masukkan nomor telepon yang valid.",
+    "error_username_taken": "Nama pengguna sudah digunakan.",
+    "error_password_criteria": "Kata sandi harus terdiri dari minimal 8 karakter, termasuk huruf, angka, dan simbol.",
+    "error_password_space": "Kata sandi tidak boleh diawali atau diakhiri dengan spasi.",
+
+    "error_generic": "Terjadi kesalahan",
+    "error_incorrect": "Nama pengguna atau kata sandi salah",
+    "error_nointernet": "Sambungkan ke internet",
+    "error_server": "Kami sedang mengalami masalah saat ini. Silakan coba lagi nanti."
+}

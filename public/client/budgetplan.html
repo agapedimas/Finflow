@@ -47,8 +47,27 @@
 
   #Header_MonthlyPlan,
   #List_MonthlyPlan {
+    position: relative;
     max-width: 800px;
   }
+    #List_MonthlyPlan .emptytitle {
+      font-family: var(--font-bold);
+      font-size: 1.5em;    
+      text-align: center;
+      margin: 2.5em 0 0;
+    }
+    #List_MonthlyPlan .emptymessage {
+      font-size: 1.12em;
+      color: var(--foreground-description);
+      text-align: center;
+      margin: 0.25em 0;
+    }
+    #List_MonthlyPlan .progressring {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 25px;
+    }
   #List_MonthlyPlan .stack .thumbnail {
     width: 35px;
     height: 35px;
@@ -309,7 +328,7 @@
   Button_ActivateScholarship.onclick = function() {
 
   }
-  
+
   PopOver_NewPlan.onbeforeclose = function () {
     if (PopOver_NewPlan.isinputchanged == false) return PopOver_NewPlan.close(true);
 
@@ -582,8 +601,16 @@
     }
 
     // Loading
-    List_MonthlyPlan.innerHTML = "<div style='padding:20px;text-align:center;opacity:0.5'>Loading...</div>";
-    Cards_AllocationTotal.innerHTML = "";
+    const progressRingElement = document.createElement("div");
+    progressRingElement.classList.add("progressring");
+    List_MonthlyPlan.innerHTML = null;
+    List_MonthlyPlan.append(progressRingElement);
+    Cards_AllocationTotal.innerHTML = null;
+
+    const emptyTitleElement = document.createElement("div");
+    emptyTitleElement.classList.add("emptytitle");
+    const emptyMessageElement = document.createElement("div");
+    emptyMessageElement.classList.add("emptymessage");
 
     try {
       // 1. PANGGIL 1 ENDPOINT SAJA
@@ -611,14 +638,20 @@
             appendPlanList(item);
           }
         } else {
-          List_MonthlyPlan.innerHTML = "<div style='padding:20px;text-align:center;opacity:0.5'>Belum ada rencana anggaran bulan ini.</div>";
+          emptyTitleElement.innerText = "<$ budgetplan no_plans_title />";
+          emptyMessageElement.innerText = "<$ budgetplan no_plans_message />";
+          List_MonthlyPlan.append(emptyTitleElement);
+          List_MonthlyPlan.append(emptyMessageElement);
         }
       } else {
         List_MonthlyPlan.innerHTML = `<div style='padding:20px;text-align:center;color:red'>${res.message}</div>`;
       }
     } catch (e) {
       console.error(e);
-      List_MonthlyPlan.innerHTML = "<div style='padding:20px;text-align:center;color:red'>Gagal memuat data.</div>";
+      emptyTitleElement.innerText = "<$ budgetplan server_error_title />";
+      emptyMessageElement.innerText = "<$ budgetplan server_error_message />";
+      List_MonthlyPlan.append(emptyTitleElement);
+      List_MonthlyPlan.append(emptyMessageElement);
     }
   }
 

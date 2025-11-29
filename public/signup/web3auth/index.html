@@ -51,12 +51,17 @@
     width: 1em;
     height: 1em;
   }
-  .panel:not(.loading) .inputs button .progressring {
-    display: none;
+  .panel:not(.loading) .inputs button .progressring,
+  .panel.loading .inputs button .icon
+  {
+      display: none;
   }
   .panel .inputs .offersignin {
     justify-self: center;
   }
+    #w3a-parent-container {
+        display: none;
+    }
 </style>
 
 <div class="panel" theme="light" accent="blue">
@@ -65,6 +70,7 @@
   <div class="subtitle"><$ signup description_signupwithgoogle /></div>
   <div class="inputs">
     <button id="Button_ContinueWithGoogle" disabled>
+      <div class="progressring"></div>
       <img class="icon" src="/assets/logo_google.webp" />
       <span><$ signup signup_with_google /></span>
     </button>
@@ -113,18 +119,26 @@
   Button_ContinueWithGoogle.disabled = false;
   Button_ContinueWithGoogle.onclick = async function () {
     try {
+      $(".panel").addClass("loading");
+      Button_ContinueWithGoogle.disabled = true;
+      setTimeout(function() {
+          const googleButton = document.querySelector("#w3a-parent-container button:has(img[alt='login-google-active'])");
+          googleButton.click();
+      }, 500);
+            
       const user = await Finflow.login(); // SDK Trigger
       handleRedirect(user);
     } catch (e) {
-      
     }
+    $(".panel").removeClass("loading");
+    Button_ContinueWithGoogle.disabled = false;
   };
 
   // 4. Cek Status Saat Load (Auto Redirect jika sudah login)
   window.onload = async () => {
     // Pastikan SDK sudah dimuat
     if (typeof Finflow === "undefined") {
-      alert("Error: File SDK tidak ditemukan. Cek path /sdk.js");
+      // alert("Error: File SDK tidak ditemukan. Cek path /sdk.js");
       return;
     }
 
