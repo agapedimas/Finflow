@@ -899,149 +899,76 @@ module.exports = {
         }
     },
 
-    // CONFIRM TRANSFER (Crowdfunding + Batch Support)
-    // Bisa dipakai oleh Funder (Bayar Full/Sisa) atau Parent (Bayar Sebagian)
+    // 4. CONFIRM TRANSFER (Funder Bayar Lunas di Awal)
     confirmTransfer: async (req, res) => {
         try {
-            // Input fleksibel:
-            // 1. funding_ids: Array ID yang mau dibayar
-            // 2. amount_paid: Nominal (Opsional). Jika kosong/null, dianggap LUNAS (Full Payment).
-            const {  funding_ids, amount_paid } = req.body;
+            const { funding_ids } = req.body; // Array ID
 
             if (!Array.isArray(funding_ids) || funding_ids.length === 0) {
-                return error(res, "Funding IDs harus array dan tidak boleh kosong", 400);
+                return error(res, "Pilih minimal satu program", 400);
             }
 
-            // Ambil Data Funding yang mau dibayar
-            // Status bisa 'Ready_To_Fund' (Belum ada dana) atau 'Partially_Funded' (Sudah ada dana sebagian)
             const placeholders = funding_ids.map(() => '?').join(',');
-            const qCheck = `
-                SELECT funding_id, total_period_fund, collected_amount, student_id 
-                FROM funding 
-                WHERE funding_id IN (${placeholders}) 
-                AND status IN ('Ready_To_Fund', 'Partially_Funded')
-            `;
             
-            const fRes = await SQL.Query(qCheck, funding_ids);
-            const fundingsToProcess = fRes.data || [];
+            // Cari tagihan yang statusnya 'Ready_To_Fund'
+            const qCheck = `
+                SELECT f.funding_id, p.total_period_fund, f.student_id 
+                FROM funding f
+                JOIN scholarship_programs p ON f.program_id = p.id
+                WHERE f.funding_id IN (${placeholders}) 
+                AND f.status = 'Ready_To_Fund'
+            `;
+            const funds = (await SQL.Query(qCheck, funding_ids)).data;
 
-            if (fundingsToProcess.length === 0) {
-                return error(res, "Tidak ada tagihan aktif yang bisa dibayar.", 404);
-            }
+            if (funds.length === 0) return error(res, "Tidak ada tagihan aktif", 404);
 
-            let processedCount = 0;
-            let totalMoneyReceived = 0;
-            let lastTxHash = null;
+            let totalPaid = 0;
+            let txHash = ""; // Hash transaksi terakhir (untuk bukti)
 
-            for (const fund of fundingsToProcess) {
-                const totalTarget = Number(fund.total_period_fund);
-                const currentCollected = Number(fund.collected_amount || 0);
-                const remaining = totalTarget - currentCollected;
-
-                // Tentukan berapa yang dibayar kali ini
-                let payNow = 0;
-                if (amount_paid) {
-                    // Jika user input nominal spesifik (misal Parent bayar 1 Juta)
-                    payNow = Number(amount_paid);
-                } else {
-                    // Jika kosong (Funder klik "Bayar"), asumsikan MELUNASI sisanya
-                    payNow = remaining;
-                }
-
-                // --- LOGIC BLOCKCHAIN (THE ENGINE) ---
-                // Kita melakukan transfer di setiap loop atau diakumulasi?
-                // Agar hemat gas, idealnya diakumulasi. Tapi agar tercatat per anak, kita loop.
-                // Skenario: Admin "memindahkan" token dari Treasury ke Vault seolah-olah Funder yang setor.
+            for (const fund of funds) {
+                const amount = Number(fund.total_period_fund);
+                
+                // --- BLOCKCHAIN ACTION: ADMIN DEPOSIT KE VAULT ---
                 try {
-                    console.log(`[BLOCKCHAIN] Mengirim ${payNow} FIDR ke Vault...`);
+                    console.log(`[BC] Admin mengirim ${amount} FIDR ke Vault...`);
                     
-                    // Logika: Admin Transfer Token ke Vault Address
-                    // Seolah-olah Funder yang setor (Strategi Treasury Pool)
+                    // Transfer Token: Admin -> Vault
+                    // Kita convert amount ke String karena ethers butuh BigNumber/String
+                    const tx = await tokenContract.transfer(VAULT_ADDRESS, amount.toString());
                     
-                    // Konversi angka ke BigInt (Ethers butuh BigInt/String untuk angka besar)
-                    // Karena decimals kita 0, 1 Rupiah = 1 Unit Token. Aman.
-                    const amountInWei = ethers.BigNumber.from(payNow.toString()); 
-                    // Note: Jika pakai ethers v6: ethers.parseUnits(payNow.toString(), 0)
+                    console.log(`[BC] Sukses! Hash: ${tx.hash}`);
+                    txHash = tx.hash;
 
-                    // KIRIM TRANSAKSI!
-                    const tx = await tokenContract.transfer(VAULT_ADDRESS, payNow.toString());
-                    
-                    console.log(`[BLOCKCHAIN] Tx Sent! Hash: ${tx.hash}`);
-                    lastTxHash = tx.hash;
-
-                    // (Opsional) Tunggu 1 blok konfirmasi agar aman
-                    // await tx.wait(); 
-                    
-                    // Simpan Hash ke Database (Tabel Transactions) sebagai bukti
-                    // Kita catat ini sebagai "Deposit"
-                    const txId = generateId('depo');
-                    await SQL.Query(`
-                        INSERT INTO transactions 
-                        (transaction_id, student_id, amount, type, blockchain_tx_hash, raw_description, transaction_date) 
-                        VALUES (?, ?, ?, 'Income', ?, 'Deposit Beasiswa ke Vault', NOW())
-                    `, [txId, fund.student_id, payNow, lastTxHash]);
+                    // (Opsional: Simpan hash ini di tabel funding atau transaction log jika mau)
 
                 } catch (bcError) {
-                    console.error("[BLOCKCHAIN CRITICAL ERROR]", bcError);
-                    // Dalam production, kita harus stop proses disini. 
-                    // Untuk hackathon, kita log error tapi lanjut update DB (Fallback).
+                    console.error("[BC ERROR] Gagal transfer ke Vault:", bcError);
+                    // Note: Di Production, harus ada rollback DB. Di Hackathon, lanjut aja (log error).
                 }
+                // -------------------------------------------------
 
-                // Update Collected
-                const newCollected = currentCollected + payNow;
-                totalMoneyReceived += payNow;
-
-                // Tentukan Status Baru
-                let newStatus = 'Partially_Funded'; // Default
-                if (newCollected >= totalTarget) {
-                    newStatus = 'Active'; // Lunas!
-                }
-
-                // Update Database
+                // UPDATE DATABASE
                 await SQL.Query(
-                    "UPDATE funding SET collected_amount = ?, status = ? WHERE funding_id = ?", 
-                    [newCollected, newStatus, fund.funding_id]
+                    "UPDATE funding SET status = 'Waiting_Allocation' WHERE funding_id = ?", 
+                    [fund.funding_id]
+                );
+                
+                // NOTIFIKASI
+                await SQL.Query(
+                    "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Masuk! 💰', 'Funder telah menyetor dana penuh. Buat Budget Plan sekarang.', 'Success')", 
+                    [fund.student_id]
                 );
 
-                // Notifikasi jika Lunas
-                if (newStatus === 'Active') {
-                    // Notif ke Student
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Dana Terkumpul! 💰', 'Selamat! Dana beasiswa kamu sudah penuh dan aktif.', 'Success')",
-                        [fund.student_id]
-                    );
-                    // Notif ke Funder
-                    await SQL.Query(
-                        "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif ✅', 'Dana telah dikunci. Smart Contract aktif.', 'Success')",
-                        [fund.funder_id]
-                    );
-
-                    // [BARU] Cari Parent & Kirim Notif
-                    const pRes = await SQL.Query("SELECT parent_id FROM accounts WHERE id=?", [fund.student_id]);
-                    const parentId = pRes.data?.[0]?.parent_id;
-
-                    if (parentId) {
-                        await SQL.Query(
-                            "INSERT INTO notifications (user_id, title, message, type) VALUES (?, 'Beasiswa Aktif 🎉', 'Dana pendidikan anak Anda telah terkunci aman di Smart Contract.', 'Success')",
-                            [parentId]
-                        );
-                    }
-                }
-
-                processedCount++;
+                totalPaid += amount;
             }
 
             return success(res, { 
-                processed: processedCount, 
-                total_received: totalMoneyReceived,
-                tx_hash: blockchainTxHash,
-                status_message: "Transfer Sukses & Tercatat di Blockchain"
-            }, "Transfer Berhasil");
+                total_paid: totalPaid,
+                tx_hash: txHash,
+                status: "Waiting_Allocation"
+            }, "Pembayaran Sukses & Tercatat di Blockchain.");
 
-        } catch (e) {
-            console.error(e);
-            return error(res, "Gagal proses transfer");
-        }
+        } catch (e) { return error(res, "Gagal transfer"); }
     },
 
     getBudgets: async (req, res) => {
