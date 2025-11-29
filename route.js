@@ -368,6 +368,16 @@ function Route(Server) {
   Server.post("/api/funding/finalize", ApiFinflow.requireAuth, ApiFinflow.finalizeAgreement);
   Server.post("/api/funding/pay", ApiFinflow.requireAuth, ApiFinflow.confirmTransfer);
 
+  // Home
+  Server.get("/api/currentprogram", ApiFinflow.requireAuth, ApiFinflow.getCurrentProgram);
+  Server.get("/api/wallet", ApiFinflow.requireAuth, ApiFinflow.getWalletData);
+
+  // Budget Plan UI
+  Server.get("/api/budget/plan", ApiFinflow.requireAuth, ApiFinflow.getMonthlyBudgetPlan);
+    
+  // Action
+  Server.post("/api/budget/add", ApiFinflow.requireAuth, ApiFinflow.addBudgetItem);
+  Server.post("/api/budget/edit", ApiFinflow.requireAuth, ApiFinflow.editBudgetItem);
 
   // API EXECUTION & PENYALURAN DANA
   Server.post("/api/exec/drip", ApiFinflow.requireAuth, ApiFinflow.triggerWeeklyDrip); // Tombol Admin/Dev

@@ -510,28 +510,28 @@
 
     async function initializeProgramInfoCards() {
         // fetch data from /api/currentprogram
-        const program = DUMMY_CURRENTPROGRAM || await $.get("/api/currentprogram");
+        const program = await $.get("/api/currentprogram");
         
-        if (program.isJoined == false) {
+        if (program.data.isJoined == false) {
             Grid_ProgramNotJoined.classList.remove("hidden");
             Grid_ProgramCurrentlyJoined.remove();
         }
         else {
-            Text_ProgramCurrentlyJoined_Name.innerText = program.displayName;
-            Text_ProgramCurrentlyJoined_Status.innerText = "<$ home program_status_joined_description />".format(moment(program.activeUntil).format("ll"));
+            Text_ProgramCurrentlyJoined_Name.innerText = program.data.displayName;
+            Text_ProgramCurrentlyJoined_Status.innerText = "<$ home program_status_joined_description />".format(moment(program.data.activeUntil).format("ll"));
             Grid_ProgramCurrentlyJoined.classList.remove("hidden");
-            Image_ProgramCurrentlyJoined.src = "/avatar/" + program.funderId;
+            Image_ProgramCurrentlyJoined.src = "/avatar/" + program.data.funderId;
             Grid_ProgramNotJoined.remove();
         }
     }
 
     async function initializeWalletCards() {
         // fetch data from /api/wallet
-        const wallet = DUMMY_WALLET || await $.get("/api/wallet");
+        const wallet =  await $.get("/api/wallet");
 
-        Text_WalletBalance.innerText = formatCurrency(wallet.balance);
+        Text_WalletBalance.innerText = formatCurrency(wallet.data.balance);
 
-        for (const allocation of wallet.allocations) {
+        for (const allocation of wallet.data.allocations) {
             const name = document.createElement("span");
             name.classList.add("name");
             name.innerText = allocation.categoryName;

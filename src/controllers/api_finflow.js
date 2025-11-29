@@ -525,6 +525,293 @@ module.exports = {
         }
     },
 
+    getMonthlyBudgetPlan: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            const { month, year } = req.query; // e.g., month=jan, year=2025
+
+            // 1. Konversi Bulan (jan -> 1)
+            const monthMap = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+            const monthNum = isNaN(month) ? monthMap[month.toLowerCase()] : month;
+
+            if (!monthNum || !year) return error(res, "Bulan & Tahun wajib diisi", 400);
+
+            // 2. Ambil Item Budget (Detail)
+            const qItems = `
+                SELECT * FROM budget_plan 
+                WHERE planner_id = ? AND month = ? AND year = ?
+            `;
+            const itemsRes = await SQL.Query(qItems, [user.id, monthNum, year]);
+
+            // 3. Hitung Summary per Kategori (Untuk 3 Kartu Atas)
+            let catSummary = {
+                '0': { categoryName: 'Wants', total: 0 },
+                '1': { categoryName: 'Needs', total: 0 },
+                '2': { categoryName: 'Education', total: 0 }
+            };
+            
+            let totalAllocated = 0;
+
+            // Mapping Items ke format Frontend ('stuffs')
+            const stuffs = itemsRes.data.map(item => {
+                const totalItemPrice = Number(item.amount) * Number(item.quantity);
+                
+                // Tambahkan ke summary jika status approved
+                if (item.status === 'approved') {
+                    if(catSummary[item.category_id]) {
+                        catSummary[item.category_id].total += totalItemPrice;
+                    }
+                    totalAllocated += totalItemPrice;
+                }
+
+                return {
+                    id: item.id,
+                    name: item.item_name,          // Map: item_name -> name
+                    amount: Number(item.amount),    // Map: price -> amount (Harga Satuan)
+                    quantity: Number(item.quantity),
+                    status: item.status,
+                    feedback: item.ai_feedback,
+                    categoryId: item.category_id.toString()
+                };
+            });
+
+            // Format Categories Array
+            const categoriesArr = Object.keys(catSummary).map(key => ({
+                categoryId: key,
+                categoryName: catSummary[key].categoryName,
+                total: catSummary[key].total
+            }));
+
+            // 4. Return JSON Sesuai DUMMY_MONTHLY_PLAN
+            return success(res, {
+                month: month,
+                year: year,
+                allocated: totalAllocated,
+                categories: categoriesArr, // Array untuk kartu atas
+                stuffs: stuffs             // Array untuk list bawah
+            });
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal memuat budget plan");
+        }
+    },
+
+    addBudgetItem: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            const { name, amount, quantity, categoryId, month, year } = req.body;
+
+            if (!name || !amount || !quantity || !month || !year) {
+                return error(res, "Data item tidak lengkap", 400);
+            }
+
+            const monthMap = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+            const monthNum = isNaN(month) ? monthMap[month.toLowerCase()] : month;
+
+            // A. Cari Funding ID Aktif milik Student
+            // Item ini harus "nempel" ke program beasiswa yang sedang berjalan
+            const fundRes = await SQL.Query(
+                `SELECT f.funding_id, sp.total_period_fund 
+                FROM funding f
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE f.student_id = ? 
+                AND f.status IN ('Waiting_Allocation', 'Ready_To_Fund', 'Active') 
+                LIMIT 1`,
+                [user.id]
+            );
+            const funding = fundRes.data?.[0];
+            
+            if (!funding) return error(res, "Tidak ada program beasiswa aktif untuk membuat rencana.", 404);
+
+            // B. AI VALIDATION (The Auditor)
+            const totalCost = Number(amount) * Number(quantity);
+            const categoryName = categoryId == 0 ? "Wants" : (categoryId == 1 ? "Needs" : "Education");
+
+            const prompt = `
+                ROLE: You are a strict but fair Financial Auditor for an Indonesian Scholarship Program called Finflow.
+                YOUR GOAL: Validate a single budget item proposed by a student.
+                
+                --- INPUT DATA ---
+                Item Name: "${name}"
+                Category: ${categoryName}
+                Unit Price: IDR ${Number(amount).toLocaleString('id-ID')}
+                Quantity: ${quantity}
+                Total Line Cost: IDR ${totalCost.toLocaleString('id-ID')}
+                Student's Total Scholarship Fund: IDR ${Number(funding.total_period_fund).toLocaleString('id-ID')}
+                
+                --- ANALYSIS RULES (LOGIC CHAIN) ---
+                1. **Check Categorization:**
+                   - Is the item suitable for the selected category?
+                   - Example: "Netflix" in Education -> REJECT. "Rice" in Needs -> APPROVE.
+                
+                2. **Check Unit Price Reality (Standard Indonesian Prices):**
+                   - Is the 'Unit Price' reasonable for a SINGLE unit of this item?
+                   - Example: "Lunch" @ 20.000 is OK. "Lunch" @ 500.000 is REJECT (Too expensive for one meal).
+                   - Exception: If the name implies a bundle (e.g., "Monthly Catering"), a high unit price is acceptable.
+                
+                3. **Check Quantity Logic:**
+                   - Is the quantity reasonable for a monthly/semester plan?
+                   - Example: "Toothpaste" Qty 2 is OK. "Toothpaste" Qty 50 is REJECT (Hoarding/Reselling risk).
+                   - Example: "Lunch" Qty 30 (for a month) is OK. "Laptop" Qty 2 is SUSPICIOUS (Why 2?).
+                
+                4. **Check Total Impact:**
+                   - Is the 'Total Line Cost' a rational portion of their scholarship?
+                   - Example: If Total Scholarship is 6 Million, and they want to buy a 5 Million Bag (Wants) -> REJECT.
+                
+                --- OUTPUT REQUIREMENT ---
+                Respond ONLY in JSON format without markdown code blocks.
+                Language for 'feedback': Indonesian (Bahasa Indonesia yang sopan tapi tegas).
+                
+                JSON Format:
+                {
+                    "status": "approved" OR "rejected",
+                    "feedback": "Alasan singkat dan jelas (maksimal 2 kalimat)."
+                }
+            `;
+
+            let aiCheck = await askGemini(prompt, null, 'AUDITOR');
+
+
+            // [DEBUG] LIHAT HASIL MENTAH AI DI TERMINAL
+            console.log("🔍 RAW AI RESULT:", JSON.stringify(aiCheck, null, 2));
+
+            // --- 3. NORMALISASI HASIL AI (PENTING!) ---
+            let finalStatus = 'pending';
+            let finalFeedback = 'Menunggu validasi manual.';
+
+            if (aiCheck) {
+                // Handle key sensitif (Status vs status)
+                const rawStatus = aiCheck.status || aiCheck.Status || "";
+                
+                // Paksa jadi lowercase & trim spasi
+                const normalizedStatus = rawStatus.toLowerCase().trim();
+                
+                // Validasi apakah nilai sesuai ENUM MySQL?
+                if (['approved', 'rejected'].includes(normalizedStatus)) {
+                    finalStatus = normalizedStatus;
+                    finalFeedback = aiCheck.feedback || aiCheck.Feedback || "Tanpa alasan.";
+                } else {
+                    console.warn("⚠️ AI mengembalikan status aneh:", rawStatus);
+                    // Jika AI jawab aneh (misal "Review"), kita anggap pending
+                    finalStatus = 'pending'; 
+                }
+            } else {
+                console.warn("⚠️ AI Check Gagal/Null -> Fallback ke Pending");
+            }
+
+            console.log(`📝 FINAL STATUS DB: ${finalStatus}`);
+
+            // --- 4. INSERT DATABASE ---
+            const itemId = generateId('item');
+            const qInsert = `
+                INSERT INTO budget_plan 
+                (id, planner_id, funding_id, item_name, category_id, amount, quantity, month, year, status, ai_feedback) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+
+            await SQL.Query(qInsert, [
+                itemId, user.id, funding.funding_id, 
+                name, categoryId, amount, quantity, monthNum, year, 
+                finalStatus, // Gunakan status yang sudah dinormalisasi
+                finalFeedback
+            ]);
+
+            return success(res, { 
+                item_id: itemId, 
+                status: finalStatus, 
+                feedback: finalFeedback 
+            }, "Item ditambahkan");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal menambah item");
+        }
+    },
+
+    editBudgetItem: async (req, res) => {
+        try {
+            const user = req.currentUser;
+            const { id, name, amount, quantity, categoryId } = req.body; 
+
+            // 1. Cek Validitas Item & Ambil Total Period Fund
+            // Kita perlu JOIN 3 Tabel: budget_plan -> funding -> scholarship_programs
+            const qCheck = `
+                SELECT bp.*, sp.total_period_fund 
+                FROM budget_plan bp
+                JOIN funding f ON bp.funding_id = f.funding_id
+                JOIN scholarship_programs sp ON f.program_id = sp.id
+                WHERE bp.id = ? AND bp.planner_id = ?
+            `;
+            
+            const check = await SQL.Query(qCheck, [id, user.id]);
+            
+            if (check.data.length === 0) return error(res, "Item tidak ditemukan", 404);
+            
+            const currentItem = check.data[0];
+
+            // 2. RE-VALIDASI AI (Panggil Gemini Lagi)
+            const totalCost = Number(amount) * Number(quantity);
+            const categoryName = categoryId == 0 ? "Wants" : (categoryId == 1 ? "Needs" : "Education");
+
+            const prompt = `
+                ROLE: Financial Auditor. RE-VALIDATION REQUEST.
+                
+                CONTEXT: Student is editing a budget item.
+                PREVIOUS ITEM: "${currentItem.item_name}" (IDR ${currentItem.amount})
+                
+                NEW PROPOSAL:
+                - Item Name: "${name}"
+                - Category: ${categoryName}
+                - Unit Price: IDR ${Number(amount).toLocaleString('id-ID')}
+                - Quantity: ${quantity}
+                - Total Line Cost: IDR ${totalCost.toLocaleString('id-ID')}
+                - Student Total Scholarship: IDR ${Number(currentItem.total_period_fund).toLocaleString('id-ID')}
+                
+                RULES:
+                Validate this update strictly. 
+                Check if the price is reasonable and category is correct.
+                
+                OUTPUT JSON: { "status": "approved" | "rejected", "feedback": "Reason in Indonesian" }
+            `;
+
+            // Panggil AI
+            let aiCheck = await askGemini(prompt, null, 'AUDITOR');
+            
+            // Fallback jika AI mati
+            if (!aiCheck) {
+                aiCheck = { status: 'pending', feedback: 'AI sibuk. Item disimpan sebagai pending.' };
+            }
+
+            // 3. UPDATE DATABASE
+            const qUpdate = `
+                UPDATE budget_plan 
+                SET item_name=?, amount=?, quantity=?, category_id=?, status=?, ai_feedback=?
+                WHERE id=?
+            `;
+            
+            await SQL.Query(qUpdate, [
+                name, 
+                amount, 
+                quantity, 
+                categoryId, 
+                aiCheck.status,   
+                aiCheck.feedback, 
+                id
+            ]);
+
+            return success(res, { 
+                id: id,
+                status: aiCheck.status, 
+                feedback: aiCheck.feedback 
+            }, "Item diperbarui dan divalidasi ulang.");
+
+        } catch (e) {
+            console.error(e);
+            return error(res, "Gagal edit item");
+        }
+    },
+
 
     // 3. Student Buat Plan & AI Validasi
     finalizeAgreement: async (req, res) => {
@@ -774,7 +1061,7 @@ module.exports = {
             const stuffs = items.data.map(item => ({
                 id: item.id,
                 name: item.item_name,
-                amount: Number(item.price),
+                amount: Number(item.amount),
                 quantity: Number(item.quantity),
                 status: item.status, // pending, approved, rejected
                 feedback: item.ai_feedback,
@@ -1631,56 +1918,43 @@ module.exports = {
             const bRes = await SQL.Query("SELECT balance FROM accounts_student WHERE id=?", [user.id]);
             const totalBalance = Number(bRes.data?.[0]?.balance || 0);
 
-            // 2. Hitung Arus Kas per Kategori (Cashflow Calculation)
-            // Rumus: Total Masuk (Drip) - Total Keluar (Expense) = Sisa Uang di Tangan
-            const qFlow = `
+            // 2. Hitung Saldo Per Kategori (Cashflow Calculation)
+            // Rumus: (Total Masuk ke Kategori Ini) - (Total Keluar dari Kategori Ini)
+            // Kita Join ke tabel allocation_categories agar kategori yang kosong tetap muncul
+            const qCalc = `
                 SELECT 
-                    category_id, 
-                    SUM(CASE WHEN type = 'Drip_In' OR type = 'Income' THEN amount ELSE 0 END) as total_in,
-                    SUM(CASE WHEN type = 'Expense' THEN amount ELSE 0 END) as total_out
-                FROM transactions 
-                WHERE student_id = ?
-                GROUP BY category_id
+                    ac.id as cat_id, 
+                    ac.category_name,
+                    COALESCE(SUM(CASE WHEN t.type IN ('Drip_In', 'Income') THEN t.amount ELSE 0 END), 0) as total_in,
+                    COALESCE(SUM(CASE WHEN t.type = 'Expense' THEN t.amount ELSE 0 END), 0) as total_out
+                FROM allocation_categories ac
+                LEFT JOIN transactions t ON ac.id = t.category_id AND t.student_id = ?
+                GROUP BY ac.id, ac.category_name
+                ORDER BY ac.id ASC
             `;
-            
-            const flowData = await SQL.Query(qFlow, [user.id]);
 
-            // 3. Mapping Data
-            const flowMap = {};
-            flowData.data.forEach(row => {
-                // Hitung Net Balance (Sisa Amplop)
-                const net = Number(row.total_in) - Number(row.total_out);
-                // Pastikan tidak negatif (opsional, tapi aman untuk UI)
-                flowMap[row.category_id] = Math.max(0, net);
+            const calcRes = await SQL.Query(qCalc, [user.id]);
+
+            // 3. Format Output Sesuai DUMMY_WALLET
+            const allocations = calcRes.data.map(row => {
+                const netBalance = Number(row.total_in) - Number(row.total_out);
+                
+                return {
+                    categoryId: row.cat_id.toString(), // String ID "0"
+                    categoryName: row.category_name,   // "Wants"
+                    balance: Math.max(0, netBalance)   // Pastikan tidak negatif
+                };
             });
 
-            // 4. Struktur Kategori Default
-            // Kita gabungkan dengan nama kategori master
-            const defaultCats = [
-                { id: 0, name: "Wants" },
-                { id: 1, name: "Needs" },
-                { id: 2, name: "Education" }
-            ];
-
-            const allocations = defaultCats.map(cat => ({
-                categoryId: cat.id.toString(),
-                categoryName: cat.name,
-                // Ambil sisa uang dari map, atau 0 jika belum ada transaksi
-                balance: flowMap[cat.id] || 0 
-            }));
-
-            // [NOTE] Khusus Education: 
-            // Karena Edu dananya di Vault (bukan di wallet student), biasanya balancenya 0 atau minus (reimburse).
-            // Tapi jika ada sisa 'Drip_In' yang dialokasikan ke Edu, akan muncul disini.
-
+            // 4. Return JSON
             return success(res, {
-                balance: totalBalance, // Saldo Total semua amplop
-                allocations: allocations // Rincian isi per amplop
+                balance: totalBalance,
+                allocations: allocations
             });
 
-        } catch (e) { 
+        } catch (e) {
             console.error(e);
-            return res.status(500).json({ success: false, message: "Gagal hitung cashflow" }); 
+            return error(res, "Gagal mengambil data wallet");
         }
     },
 
@@ -1856,57 +2130,44 @@ module.exports = {
     // Halaman Home: Get Current Program Info
     getCurrentProgram: async (req, res) => {
         try {
-            const user = req.currentUser;
-            
+            const user = req.currentUser; // Ambil student dari session
+
+            // Query untuk mencari program aktif yang diikuti student
+            // Kita perlu JOIN ke tabel 'scholarship_programs' untuk ambil nama & tanggal
             const q = `
-                SELECT 
-                    f.funding_id, f.status,
-                    p.id as program_id, p.program_name, p.funder_id, p.total_period_fund, p.start_date, p.end_date
+                SELECT p.funder_id, p.program_name, p.end_date
                 FROM funding f
                 JOIN scholarship_programs p ON f.program_id = p.id
                 WHERE f.student_id = ? 
-                AND f.status IN ('Waiting_Allocation', 'Ready_To_Fund', 'Active')
-                ORDER BY f.funding_id DESC 
+                AND f.status IN ('Ready_To_Fund', 'Waiting_Allocation', 'Partially_Funded', 'Active')
+                ORDER BY p.end_date DESC 
                 LIMIT 1
             `;
             
             const result = await SQL.Query(q, [user.id]);
-            const myFunding = result.data?.[0];
+            const program = result.data?.[0];
 
-            if (!myFunding) return success(res, null, "Belum terdaftar");
+            // SKENARIO A: Belum Join Program Apapun
+            if (!program) {
+                return success(res, {
+                    isJoined: false,
+                    funderId: null,
+                    displayName: null,
+                    activeUntil: null
+                });
+            }
 
-            // 2. Cari Teman Seangkatan (Joined Students)
-            // Mengambil semua student yang ada di program_id yang sama
-            const qPeers = `
-                SELECT a.id, a.displayname as name
-                FROM funding f
-                JOIN accounts a ON f.student_id = a.id
-                WHERE f.program_id = ?
-            `;
-            const peersRes = await SQL.Query(qPeers, [myFunding.program_id]);
-            
-            const joinedStudents = peersRes.data.map(p => ({
-                id: p.id,
-                name: p.name
-            }));
-
-            // 3. Format Output Sesuai Request Anda
-            const responseData = {
-                name: myFunding.program_name,
-                fundingId: myFunding.funding_id,
-                funderId: myFunding.funder_id,
-                totalPeriodFund: Number(myFunding.total_period_fund),
-                startDate: new Date(myFunding.start_date).toISOString().split('T')[0], // YYYY-MM-DD
-                endDate: new Date(myFunding.end_date).toISOString().split('T')[0],     // YYYY-MM-DD
-                status: myFunding.status,
-                joinedStudents: joinedStudents
-            };
-
-            return success(res, responseData, "Data Program Ditemukan");
+            // SKENARIO B: Sudah Join (Format sesuai Request)
+            return success(res, {
+                isJoined: true,
+                funderId: program.funder_id,        // "fund1"
+                displayName: program.program_name,  // "Djarum Super"
+                activeUntil: new Date(program.end_date).getTime() // UNIX Timestamp (1767...)
+            });
 
         } catch (e) {
             console.error(e);
-            return error(res, "Gagal mengambil info program");
+            return error(res, "Gagal mengambil data program");
         }
     },
 
