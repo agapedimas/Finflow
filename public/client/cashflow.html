@@ -698,6 +698,13 @@
                         <img id="Image_InputProofPreview"/>
                     </div>
                 </div>
+                <div class="stack">
+                    <span><$ cashflow request_drip_urgency_title /></span>
+                    <select id="Select_RequestDripUrgency" class="plain">
+                      <option value="urgent"><$ cashflow request_drip_urgency_urgent /></option>
+                      <option value="request_education"><$ cashflow request_drip_urgency_request_education /></option>
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -1110,8 +1117,12 @@
         PopOver_RequestDrip.iscloseable = false;
 
         try {
-            await Delay(1000);
-            //await $.post("");
+            const data = {
+              purpose: Input_RequestDripPurpose.value,
+              amount: Input_RequestDripAmount.valueInt,
+              urgency: Select_RequestDripUrgency.value
+            };
+            // const result = await $.post("", data);
             PopOver_RequestDrip.close(true);
         }
         catch (error) {

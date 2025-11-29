@@ -172,7 +172,7 @@
 <section>
   <div class="header">
     <div class="buttons">
-      <div></div>
+      <button id="Button_ActivateScholarship"><$ budgetplan activate_scholarship /></button>
       <button id="Button_NewPlan" class="icon" ad-tooltip="<$ budgetplan newplan_title />">&#xf8dd;</button>
     </div>
     <div class="title"><$ budgetplan title /></div>
@@ -306,6 +306,10 @@
 <script>
   let categories = [];
 
+  Button_ActivateScholarship.onclick = function() {
+
+  }
+  
   PopOver_NewPlan.onbeforeclose = function () {
     if (PopOver_NewPlan.isinputchanged == false) return PopOver_NewPlan.close(true);
 

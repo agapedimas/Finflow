@@ -20,5 +20,7 @@
     "monthlyplan": "Monthly Plan",
     "allocation": "Allocation",
     "allocated_parent": "Parent's Allocation",
-    "allocated_funder": "{0}'s Allocation"
+    "allocated_funder": "{0}'s Allocation",
+
+    "activate_scholarship": "Activate Scholarship"
 }
